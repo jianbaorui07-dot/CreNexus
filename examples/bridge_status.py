@@ -14,7 +14,7 @@ from pathlib import Path
 
 DEFAULT_COMFY_URL = "http://127.0.0.1:8188"
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DOWNLOAD_INBOX = Path(r"E:\00_待整理收件箱\下载")
+DOWNLOAD_INBOX = os.environ.get("STARBRIDGE_DOWNLOAD_INBOX")
 
 
 def unique_paths(paths: list[Path]) -> list[Path]:
@@ -49,14 +49,7 @@ def find_comfy_root() -> Path | None:
     if env_path:
         candidates.append(Path(env_path))
 
-    candidates.extend(
-        [
-            Path(r"D:\AIGC\comfyui安装包\ComfyUI"),
-            Path(r"D:\AIGC\ComfyUI"),
-            Path(r"C:\Users\jian\AppData\Local\ComfyUI"),
-            REPO_ROOT / "ComfyUI",
-        ]
-    )
+    candidates.extend([REPO_ROOT / "ComfyUI"])
 
     for candidate in unique_paths(candidates):
         if (candidate / "main.py").exists():
@@ -70,12 +63,7 @@ def find_comfy_launcher() -> Path | None:
     if env_path:
         candidates.append(Path(env_path))
 
-    candidates.extend(
-        [
-            Path(r"D:\AIGC\Start_ComfyUI_Codex.cmd"),
-            REPO_ROOT / "Start_ComfyUI_Codex.cmd",
-        ]
-    )
+    candidates.extend([REPO_ROOT / "Start_ComfyUI_Codex.cmd"])
 
     for candidate in unique_paths(candidates):
         if candidate.exists():
@@ -98,8 +86,8 @@ def check_comfy(base_url: str, timeout: int) -> dict:
             details.append(f"Local ComfyUI root: {comfy_root}")
         if comfy_launcher:
             details.append(f"Launch script: {comfy_launcher}")
-        if DOWNLOAD_INBOX.exists():
-            details.append(f"Download inbox for new source/projects: {DOWNLOAD_INBOX}")
+        if DOWNLOAD_INBOX:
+            details.append(f"Download inbox configured by STARBRIDGE_DOWNLOAD_INBOX: {DOWNLOAD_INBOX}")
         return status(
             "ComfyUI",
             "missing",
@@ -178,12 +166,6 @@ def find_blender() -> Path | None:
 
     path_candidates.extend(
         [
-            Path(r"D:\AIGC\CAD\blender.exe"),
-            Path(r"D:\AIGC\CAD\5.0\blender.exe"),
-            Path(r"D:\AIGC\Blender 5.0\blender.exe"),
-            Path(r"D:\AIGC\Blender\blender.exe"),
-            Path(r"D:\AIGC\blender\blender.exe"),
-            Path(r"D:\AIGC\blender-5.0\blender.exe"),
             Path(r"C:\Program Files\Blender Foundation\Blender 5.0\blender.exe"),
             Path(r"C:\Program Files\Blender Foundation\Blender\blender.exe"),
         ]
@@ -203,7 +185,6 @@ def find_blender_mcp_dir() -> Path | None:
 
     candidates.extend(
         [
-            Path(r"D:\AIGC\blender-mcp"),
             REPO_ROOT / "blender-mcp",
         ]
     )
@@ -281,7 +262,6 @@ def find_autocad() -> Path | None:
 
     candidates.extend(
         [
-            Path(r"D:\AIGC\cad2026\CAD2026\AutoCAD 2026\acad.exe"),
             Path(r"C:\Program Files\Autodesk\AutoCAD 2026\acad.exe"),
             Path(r"C:\Program Files\Autodesk\AutoCAD 2025\acad.exe"),
         ]

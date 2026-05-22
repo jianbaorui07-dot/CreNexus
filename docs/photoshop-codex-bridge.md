@@ -62,7 +62,7 @@ powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\com_p
 只在你明确提供输入图和输出路径时运行：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\extract_subject_to_png.ps1 -InputPath "D:\path\source.jpg" -OutputPath "$env:TEMP\subject.png"
+powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\extract_subject_to_png.ps1 -InputPath "<source-image>" -OutputPath "$env:TEMP\subject.png"
 ```
 
 这个脚本会：

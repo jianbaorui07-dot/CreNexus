@@ -34,10 +34,11 @@ Start ComfyUI first, then run:
 python examples/comfy_bridge/comfy_probe.py
 ```
 
-Known local launcher on this workstation:
+Optional local launcher:
 
 ```powershell
-D:\AIGC\Start_ComfyUI_Codex.cmd
+$env:COMFY_LAUNCHER="<path-to-Start_ComfyUI.cmd>"
+& $env:COMFY_LAUNCHER
 ```
 
 Check the full StarBridge local environment:
@@ -55,11 +56,11 @@ python examples/comfy_bridge/run_txt2img.py --prompt "a quiet futuristic tea hou
 Optional environment variables:
 
 - `COMFY_BASE_URL`, default `http://127.0.0.1:8188`
-- `COMFY_OUTPUT_DIR`, default `D:\AIGC\comfyui安装包\ComfyUI\output`
+- `COMFY_OUTPUT_DIR`, optional explicit ComfyUI output directory
 - `COMFY_ROOT` or `COMFYUI_PATH`, optional explicit ComfyUI root for status checks
 - `COMFY_LAUNCHER` or `COMFY_START_SCRIPT`, optional explicit ComfyUI launch script for status checks
 
-New downloaded source projects, installers, and research bundles should go under `E:\00_待整理收件箱\下载`. Do not place model files, generated images, browser profiles, tokens, or private assets in this Git workspace.
+New downloaded source projects, installers, and research bundles should go under your local download inbox, configured outside Git with `STARBRIDGE_DOWNLOAD_INBOX`. Do not place model files, generated images, browser profiles, tokens, or private assets in this Git workspace.
 
 ## Visual Workflow
 

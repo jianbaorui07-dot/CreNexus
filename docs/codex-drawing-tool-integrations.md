@@ -8,17 +8,21 @@
 
 | 通道 | 当前入口 | 当前状态 | 下一步 |
 | --- | --- | --- | --- |
-| Codex x ComfyUI | `examples/comfy_bridge/`；`D:\AIGC\Start_ComfyUI_Codex.cmd` | 已有 API 示例和启动脚本；当前状态检查显示 `http://127.0.0.1:8188` 未运行 | 启动 ComfyUI 后跑 `python examples\bridge_status.py --json` 和 `python examples\comfy_bridge\comfy_probe.py` |
-| Codex x Blender | `D:\AIGC\CAD\blender.exe`；`D:\AIGC\blender-mcp` | 本机有 Blender 可执行文件和 MCP 桥目录 | 用状态脚本固化检测路径，再补公开安全的 Blender 示例脚本 |
+| Codex x ComfyUI | `examples/comfy_bridge/`；`COMFY_LAUNCHER` | 已有 API 示例和启动脚本配置方式；不在仓库记录本机路径 | 启动 ComfyUI 后跑 `python examples\bridge_status.py --json` 和 `python examples\comfy_bridge\comfy_probe.py` |
+| Codex x Blender | `BLENDER_EXE`；`BLENDER_MCP_DIR` | 通过环境变量或常见安装路径识别 Blender 和 MCP 桥 | 用状态脚本固化检测路径，再补公开安全的 Blender 示例脚本 |
 | Codex x CAD | `cad-mcp-autocad/`；`AUTOCAD_MCP_SETUP.md` | 状态检查已能找到 AutoCAD 2026 和 `pywin32/win32com` | 继续保留在 `cad-mcp-autocad/` 子项目内优化 |
 | Codex x Photoshop | `examples/photoshop_bridge/`；`docs/photoshop-codex-bridge.md` | 已验证 Windows COM + Photoshop JavaScript 能创建测试文档、导出 PNG，并能调用主体选择做抠图实验 | 继续优化 UXP 面板、本地桥状态接口和 MCP 封装；不记录个人路径和素材信息 |
-| 下载/整理 | `E:\00_待整理收件箱\下载` | 已存在 `codex/` 整理目录 | 如果要下载源码或安装包，先放这里，不直接塞进 Git 工作区 |
+| 下载/整理 | `STARBRIDGE_DOWNLOAD_INBOX` | 下载目录只保存在本机环境变量里 | 如果要下载源码或安装包，先放本机收件箱，不直接塞进 Git 工作区 |
 
 ## 仓库入口
 
 | 文件或目录 | 用途 |
 | --- | --- |
-| `docs/starbridge-link-protocol.md` | 星桥三联主协议：ComfyUI、Blender、CAD 三条桥的边界和安全规则 |
+| `docs/starbridge-link-protocol.md` | 星桥三联主协议：ComfyUI、Blender、CAD、Photoshop 四条桥的边界和安全规则 |
+| `docs/01-codex-cad.md` | Codex 接入 CAD 中文介绍 |
+| `docs/02-codex-comfyui.md` | Codex 接入 ComfyUI 中文介绍 |
+| `docs/03-codex-photoshop.md` | Codex 接入 Photoshop 中文介绍 |
+| `docs/04-codex-blender.md` | Codex 接入 Blender 中文介绍 |
 | `docs/photoshop-codex-bridge.md` | Photoshop 本地桥接入方案、实验结论和安全边界 |
 | `examples/bridge_status.py` | 一次检查 ComfyUI、Blender、CAD、Photoshop 的本机可用性 |
 | `examples/comfy_bridge/README.md` | ComfyUI API 示例说明 |
@@ -56,13 +60,13 @@
 如果确实需要下载源码、安装包或调研资料，先放到：
 
 ```text
-E:\00_待整理收件箱\下载
+%STARBRIDGE_DOWNLOAD_INBOX%
 ```
 
 建议源码克隆位置：
 
 ```text
-E:\00_待整理收件箱\下载\codex\GitHub项目源码_保持可运行
+%STARBRIDGE_DOWNLOAD_INBOX%\codex\GitHub项目源码_保持可运行
 ```
 
 不要下载或提交以下内容：

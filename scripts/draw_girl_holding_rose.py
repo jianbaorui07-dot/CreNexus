@@ -6,7 +6,7 @@ import pythoncom
 import win32com.client
 
 
-WORKSPACE = pathlib.Path(r"C:\Users\jian\Documents\New project")
+WORKSPACE = pathlib.Path(__file__).resolve().parents[1]
 OUTPUT = WORKSPACE / "output" / "girl_holding_rose.dwg"
 
 

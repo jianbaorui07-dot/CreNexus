@@ -4,6 +4,15 @@
 
 星桥三联是一套面向本地创作工作站的接入方案。它把 Codex、GitHub/Jules、ComfyUI、Blender 5.0、CAD 和 Photoshop 放在同一条可追踪的工作链里，让 Codex 负责写脚本、整理流程、调用本地接口和记录结果，让专业软件继续负责各自擅长的创作任务。
 
+## Codex 接入项目总目录
+
+| 编号 | 项目 | 中文介绍 | 当前状态 |
+| --- | --- | --- | --- |
+| 1 | Codex 接入 CAD | `docs/01-codex-cad.md` | 已有 AutoCAD MCP 子项目和绘图脚本 |
+| 2 | Codex 接入 ComfyUI | `docs/02-codex-comfyui.md` | 已有 API 探针、文生图 workflow 示例 |
+| 3 | Codex 接入 Photoshop | `docs/03-codex-photoshop.md` | 已有 COM 探针和主体抠图实验脚本 |
+| 4 | Codex 接入 Blender | `docs/04-codex-blender.md` | 已有状态检查入口，待补公开安全生成脚本 |
+
 这不是把所有工具混成一个黑盒，而是把能力拆成清楚的几条桥：
 
 - **ComfyUI** 负责图像生成、修复、放大和批量提示词实验。
@@ -18,6 +27,10 @@
 
 | 入口 | 用途 |
 | --- | --- |
+| `docs/01-codex-cad.md` | 1. Codex 接入 CAD 中文介绍 |
+| `docs/02-codex-comfyui.md` | 2. Codex 接入 ComfyUI 中文介绍 |
+| `docs/03-codex-photoshop.md` | 3. Codex 接入 Photoshop 中文介绍 |
+| `docs/04-codex-blender.md` | 4. Codex 接入 Blender 中文介绍 |
 | `examples/bridge_status.py` | 一次检查 ComfyUI、Blender、CAD、Photoshop 四条桥的本机状态 |
 | `examples/comfy_bridge/` | ComfyUI API 探针、文生图脚本和 workflow 示例 |
 | `examples/photoshop_bridge/` | Photoshop COM 探针和主体抠图实验脚本 |
@@ -42,20 +55,22 @@ npm.cmd run bridge:status:json
 
 如果 PowerShell 拦截 `npm.ps1`，优先使用 `npm.cmd`。
 
-## 当前本机路径
+## 本机路径和个人信息处理
 
-这些路径来自当前工作站的实际实践记录，用于帮助状态脚本找到本地工具：
+公开仓库不保存个人安装路径、素材路径、桌面路径、账号信息或授权信息。每台电脑通过环境变量或本地 `.env` 管理路径，状态脚本只读取这些本地配置。
 
-| 项目 | 本机路径 |
+| 项目 | 环境变量 |
 | --- | --- |
-| ComfyUI 启动脚本 | `D:\AIGC\Start_ComfyUI_Codex.cmd` |
-| ComfyUI 根目录 | `D:\AIGC\comfyui安装包\ComfyUI` |
-| Blender 可执行文件 | `D:\AIGC\CAD\blender.exe` |
-| Blender MCP 桥目录 | `D:\AIGC\blender-mcp` |
-| AutoCAD 可执行文件 | `D:\AIGC\cad2026\CAD2026\AutoCAD 2026\acad.exe` |
-| 新下载源码和安装包 | `E:\00_待整理收件箱\下载` |
+| ComfyUI 启动脚本 | `COMFY_LAUNCHER` 或 `COMFY_START_SCRIPT` |
+| ComfyUI 根目录 | `COMFY_ROOT` 或 `COMFYUI_PATH` |
+| ComfyUI 输出目录 | `COMFY_OUTPUT_DIR` |
+| Blender 可执行文件 | `BLENDER_EXE` |
+| Blender MCP 桥目录 | `BLENDER_MCP_DIR` |
+| AutoCAD 可执行文件 | `AUTOCAD_EXE` |
+| Photoshop 可执行文件 | `PHOTOSHOP_EXE` |
+| 下载收件箱 | `STARBRIDGE_DOWNLOAD_INBOX` |
 
-新下载的源码项目、安装包和调研资料先放在 `E:\00_待整理收件箱\下载`。模型、生成图、渲染输出、DWG 成品和临时缓存不要放进 Git 工作区。
+模型、生成图、渲染输出、DWG 成品、PSD 工程、临时缓存和本机路径配置不要放进 Git 工作区。
 
 ## 总体结构
 
@@ -74,9 +89,9 @@ flowchart LR
   PS --> Retouch["本地修图输出"]
 ```
 
-Codex 只做连接、脚本化、检查和说明沉淀；图像、三维、制图仍交给对应的专业软件完成。
+Codex 只做连接、脚本化、检查和说明沉淀；图像、三维、制图和修图仍交给对应的专业软件完成。
 
-## 三条核心桥
+## 四条核心桥
 
 ### 1. Codex x ComfyUI：图像生成桥
 
@@ -147,7 +162,7 @@ Photoshop 是修图和图层处理引擎。Codex 可以通过 Windows COM 调用
 
 ## 扩展工具方向
 
-星桥三联目前以 ComfyUI、Blender、CAD 为主线。后续可以在同一安全边界下扩展到更多绘画和设计工具：
+星桥三联目前以 ComfyUI、Blender、CAD、Photoshop 为主线。后续可以在同一安全边界下扩展到更多绘画和设计工具：
 
 | 方向 | 适合工具 | 优先级 |
 | --- | --- | --- |
@@ -199,13 +214,13 @@ Photoshop 是修图和图层处理引擎。Codex 可以通过 Windows COM 调用
 
 ```text
 只读项目梳理任务。请检查这个仓库，但不要修改、创建、删除任何文件，不要提交 commit，不要创建 PR。
-请用中文输出：仓库结构概要、ComfyUI / Blender / CAD 三条桥的入口文件、运行方法、依赖文件、应忽略目录、潜在风险，以及 5 个后续安全任务。
+请用中文输出：仓库结构概要、ComfyUI / Blender / CAD / Photoshop 四条桥的入口文件、运行方法、依赖文件、应忽略目录、潜在风险，以及 5 个后续安全任务。
 这个任务只允许阅读，不允许改文件。
 ```
 
 ## 下一步路线
 
-- 完善 `examples/bridge_status.py`，持续识别 ComfyUI、Blender、CAD 的本机路径和在线状态。
+- 完善 `examples/bridge_status.py`，持续识别 ComfyUI、Blender、CAD、Photoshop 的本机配置和在线状态。
 - 为 ComfyUI 增加 `img2img`、upscale、inpaint、批量 prompt 和 workflow 校验示例。
 - 为 Blender 增加公开安全的场景生成脚本，不引用私有资产。
 - 为 CAD 增加标准零件绘图脚本和更清晰的参数化输入格式。
@@ -215,4 +230,4 @@ Photoshop 是修图和图层处理引擎。Codex 可以通过 Windows COM 调用
 
 ## 结论
 
-星桥三联是一套本地创作工作台的组织方式：Codex 负责把需求拆成脚本和流程，GitHub 保存可公开协作的工程说明，Jules 做异步只读审查，ComfyUI 生成图像，Blender 构建三维，CAD 输出精确图纸。每条桥保持清楚边界，既提升创作效率，也让本地资产和账号安全保持可控。
+星桥三联是一套本地创作工作台的组织方式：Codex 负责把需求拆成脚本和流程，GitHub 保存可公开协作的工程说明，Jules 做异步只读审查，ComfyUI 生成图像，Blender 构建三维，CAD 输出精确图纸，Photoshop 处理修图和抠图。每条桥保持清楚边界，既提升创作效率，也让本地资产和账号安全保持可控。

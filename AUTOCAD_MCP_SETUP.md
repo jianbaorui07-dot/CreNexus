@@ -1,23 +1,27 @@
 # AutoCAD MCP Setup
 
+这份记录只保留可公开的 AutoCAD MCP 配置方式，不记录个人用户名、真实安装路径、客户图纸路径或本机输出路径。
+
 ## GitHub Project
 
 Selected project: https://github.com/daobataotie/CAD-MCP
 
-Reason: it targets Windows CAD through COM and supports AutoCAD, GstarCAD, and ZWCAD. This matches the local AutoCAD 2026 install at:
+Reason: it targets Windows CAD through COM and supports AutoCAD, GstarCAD, and ZWCAD. This matches the StarBridge direction: let Codex call local CAD software through a controlled bridge.
 
-```text
-D:\AIGC\cad2026\CAD2026\AutoCAD 2026\acad.exe
+## Local Path Policy
+
+Use local environment variables or a local `.env` file for machine-specific paths:
+
+```powershell
+$env:AUTOCAD_EXE="C:\Path\To\acad.exe"
+$env:STARBRIDGE_OUTPUT_DIR="$env:TEMP\starbridge-output"
 ```
 
-## Local Paths
+Do not commit:
 
-```text
-C:\Users\jian\Documents\New project\cad-mcp-autocad
-C:\Users\jian\Documents\New project\scripts\test_autocad_mcp.py
-C:\Users\jian\Documents\New project\output\codex_autocad_mcp_test.dwg
-C:\Users\jian\Documents\New project\output\codex_autocad_mcp_protocol_test.dwg
-```
+- AutoCAD install paths tied to a personal workstation.
+- Codex config paths under a user profile.
+- Customer DWG files, paid assets, license files, or generated outputs.
 
 ## Installed Python Packages
 
@@ -27,24 +31,24 @@ python -m pip install --user pywin32 mcp pydantic
 
 ## Codex MCP Config
 
-Added to `C:\Users\jian\.codex\config.toml`:
+Use your local Python and local checkout path. Keep the real config in the Codex local config file, not in Git:
 
 ```toml
 [mcp_servers.autocad]
-command = "C:\\Users\\jian\\AppData\\Local\\Programs\\Python\\Python314\\python.exe"
-args = ["C:\\Users\\jian\\Documents\\New project\\cad-mcp-autocad\\src\\server.py"]
+command = "python"
+args = ["<repo>\\cad-mcp-autocad\\src\\server.py"]
 startup_timeout_sec = 60
 tool_timeout_sec = 120
 ```
 
-Restart or reload Codex after editing the config so the new MCP tool namespace is available in the app.
+Restart or reload Codex after editing the config so the MCP tool namespace is available in the app.
 
 ## Verification
 
-Run:
+From the repository root:
 
 ```powershell
-python "C:\Users\jian\Documents\New project\scripts\test_autocad_mcp.py"
+python scripts\test_autocad_mcp.py
 ```
 
-Expected result: the script lists 11 MCP tools, draws a rectangle and text in AutoCAD, then saves `codex_autocad_mcp_protocol_test.dwg` under the workspace `output` folder.
+Expected result: the script lists MCP tools, draws a rectangle and text in AutoCAD, then saves a test DWG under the local `output` folder. The generated DWG should stay local and should not be committed.

@@ -1,3 +1,4 @@
+import argparse
 import math
 import pathlib
 import time
@@ -9,10 +10,8 @@ import pythoncom
 import win32com.client
 
 
-WORKSPACE = pathlib.Path(r"C:\Users\jian\Documents\New project")
-IMAGE_PATH = pathlib.Path(
-    r"C:\Users\jian\Documents\xwechat_files\wxid_lyhg5uxhqaa322_65c1\temp\RWTemp\2026-05\9e20f478899dc29eb19741386f9343c8\302c121f1329eb760184176c73a8c830.jpg"
-)
+WORKSPACE = pathlib.Path(__file__).resolve().parents[1]
+IMAGE_PATH: pathlib.Path | None = None
 OUTPUT = WORKSPACE / "output" / "girl_rose_reference_vector.dwg"
 PREVIEW = WORKSPACE / "output" / "girl_rose_reference_vector_preview.png"
 
@@ -264,6 +263,8 @@ def pixel_to_cad(points, roi_width, roi_height):
 
 
 def build_masks():
+    if IMAGE_PATH is None:
+        raise ValueError("Set IMAGE_PATH through the --image argument.")
     image = cv2.imread(str(IMAGE_PATH))
     if image is None:
         raise FileNotFoundError(IMAGE_PATH)
@@ -355,6 +356,10 @@ def draw():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Trace a local reference image into AutoCAD polylines.")
+    parser.add_argument("--image", required=True, help="Local reference image path. The path is not stored in Git.")
+    args = parser.parse_args()
+    IMAGE_PATH = pathlib.Path(args.image)
     doc_name, output, preview, entity_count, path_counts = draw()
     print(f"active_document={doc_name}")
     print(f"output={output}")

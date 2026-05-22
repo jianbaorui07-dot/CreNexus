@@ -6,7 +6,7 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
 
-WORKSPACE = pathlib.Path(r"C:\Users\jian\Documents\New project")
+WORKSPACE = pathlib.Path(__file__).resolve().parents[1]
 SERVER_PATH = WORKSPACE / "cad-mcp-autocad" / "src" / "server.py"
 OUTPUT_PATH = WORKSPACE / "output" / "codex_autocad_mcp_protocol_test.dwg"
 

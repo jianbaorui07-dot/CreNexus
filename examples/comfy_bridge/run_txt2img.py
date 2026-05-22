@@ -14,7 +14,7 @@ from pathlib import Path
 BASE_URL = os.environ.get("COMFY_BASE_URL", "http://127.0.0.1:8188")
 BRIDGE_ROOT = Path(__file__).resolve().parent
 WORKFLOW_PATH = BRIDGE_ROOT / "workflows" / "txt2img_basic_api.json"
-COMFY_OUTPUT = Path(os.environ.get("COMFY_OUTPUT_DIR", r"D:\AIGC\comfyui安装包\ComfyUI\output"))
+COMFY_OUTPUT = Path(os.environ.get("COMFY_OUTPUT_DIR", str(Path.cwd() / "output" / "comfyui")))
 
 
 def get_json(path: str):

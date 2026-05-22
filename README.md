@@ -1,36 +1,39 @@
 # Codex 软件接入实验仓库
 
-这个仓库只发布和 **Codex 接入各类本地软件** 有关的协议、示例脚本、状态检查工具和配置说明。当前重点是 ComfyUI、Blender、CAD，以及已开始本机实验的 Photoshop。
+这个仓库用来整理 **Codex 接入本地创作软件** 的方法。目标很简单：让 Codex 写脚本、跑检查、调用本机软件；让 ComfyUI、Blender、CAD、Photoshop 继续负责图像、三维、制图和修图。
 
-不属于这个范围的网页 demo、报告生成脚本、图片素材、PPT 工作区、临时输出和缓存，只保留在本机，不再作为 GitHub 发布内容。
+公开仓库只放说明、协议、示例脚本和安全检查。不放个人路径、账号、模型、素材、生成图、客户图纸、授权信息和本机缓存。
 
-## 项目目标
+## 项目总目录
 
-- 让 Codex 能通过脚本或 MCP 调用本机创作软件。
-- 把可公开协作的说明、示例和检查脚本沉淀到 GitHub。
-- 保持账号、模型、素材、生成结果、客户图纸和授权信息不进入仓库。
-- 为后续接入 Photoshop、Figma、Penpot、Krita 等工具保留清晰路线。
+| 编号 | 项目 | 先看这个 | 当前状态 |
+| --- | --- | --- | --- |
+| 1 | Codex 接入 CAD | `docs/01-codex-cad.md` | 已有 AutoCAD MCP 子项目和绘图脚本 |
+| 2 | Codex 接入 ComfyUI | `docs/02-codex-comfyui.md` | 已有 API 探针和文生图 workflow 示例 |
+| 3 | Codex 接入 Photoshop | `docs/03-codex-photoshop.md` | 已有 COM 探针和主体抠图实验脚本 |
+| 4 | Codex 接入 Blender | `docs/04-codex-blender.md` | 已有状态检查入口，待补生成脚本 |
 
-## 当前发布范围
+## 怎么读这个仓库
 
-| 目录或文件 | 用途 |
+1. 先看本页，了解仓库范围。
+2. 再看 `docs/starbridge-link-protocol.md`，了解总协议。
+3. 按需要打开上面的 4 个单项中文介绍。
+4. 真要运行时，再看 `examples/` 和对应脚本。
+
+## 主要文件
+
+| 路径 | 用途 |
 | --- | --- |
-| `docs/starbridge-link-protocol.md` | 星桥三联主说明：Codex 接入 ComfyUI、Blender、CAD 的整体方案 |
-| `docs/codex-drawing-tool-integrations.md` | 绘画、图像、设计、三维、制图工具的接入路线图 |
-| `docs/photoshop-codex-bridge.md` | Codex 接入 Photoshop 的本地桥方案、实验结论和安全边界 |
-| `docs/中文用途索引.md` | 仓库文件中文用途索引 |
-| `examples/bridge_status.py` | 一次检查 ComfyUI、Blender、CAD、Photoshop 的本机状态 |
-| `examples/comfy_bridge/` | ComfyUI API 探针、文生图脚本和 workflow 示例 |
-| `examples/photoshop_bridge/` | Photoshop COM 探针和主体抠图实验脚本 |
+| `docs/starbridge-link-protocol.md` | 总协议：四条本地软件桥怎么组织 |
+| `docs/codex-drawing-tool-integrations.md` | 绘画、图像、设计、三维、制图工具路线图 |
+| `docs/中文用途索引.md` | 全仓库中文索引 |
+| `examples/bridge_status.py` | 检查 ComfyUI / Blender / CAD / Photoshop 状态 |
+| `examples/comfy_bridge/` | ComfyUI API 示例 |
+| `examples/photoshop_bridge/` | Photoshop COM 和抠图实验示例 |
 | `cad-mcp-autocad/` | AutoCAD MCP 子项目 |
-| `AUTOCAD_MCP_SETUP.md` | AutoCAD MCP 本地配置记录 |
-| `scripts/test_autocad_mcp.py` | AutoCAD MCP 连接测试脚本 |
-| `scripts/draw_*.py`、`scripts/trace_*.py` | AutoCAD 自动绘图示例 |
-| `package.json` | 本地桥接检查快捷命令 |
+| `scripts/` | CAD 自动绘图示例 |
 
-## 快速开始
-
-检查 ComfyUI、Blender、CAD 三条桥：
+## 快速检查
 
 ```powershell
 python examples\bridge_status.py
@@ -38,118 +41,82 @@ python examples\bridge_status.py --json
 python examples\bridge_status.py --probe-executables
 ```
 
-也可以使用 npm 快捷命令：
+也可以用 npm：
 
 ```powershell
 npm.cmd run bridge:status:json
 ```
 
-如果 PowerShell 拦截 `npm.ps1`，请使用 `npm.cmd`。
+## 本机路径怎么处理
 
-## ComfyUI 接入
+不要把真实路径写进 GitHub。每台电脑用环境变量或本地 `.env` 管理：
 
-先启动本机 ComfyUI：
+| 软件 | 环境变量 |
+| --- | --- |
+| ComfyUI 启动脚本 | `COMFY_LAUNCHER` 或 `COMFY_START_SCRIPT` |
+| ComfyUI 根目录 | `COMFY_ROOT` 或 `COMFYUI_PATH` |
+| ComfyUI 输出目录 | `COMFY_OUTPUT_DIR` |
+| Blender 可执行文件 | `BLENDER_EXE` |
+| Blender MCP 目录 | `BLENDER_MCP_DIR` |
+| AutoCAD 可执行文件 | `AUTOCAD_EXE` |
+| Photoshop 可执行文件 | `PHOTOSHOP_EXE` |
+| 下载收件箱 | `STARBRIDGE_DOWNLOAD_INBOX` |
 
-```powershell
-D:\AIGC\Start_ComfyUI_Codex.cmd
-```
+## 四个接入方向
 
-然后运行探针：
-
-```powershell
-python examples\comfy_bridge\comfy_probe.py
-```
-
-提交基础文生图任务：
-
-```powershell
-python examples\comfy_bridge\run_txt2img.py --prompt "a quiet futuristic tea house in a garden"
-```
-
-## Blender 接入
-
-当前本机路径：
-
-```text
-D:\AIGC\CAD\blender.exe
-D:\AIGC\blender-mcp
-```
-
-状态脚本会自动识别 Blender 可执行文件和 Blender MCP 桥目录。需要确认版本时运行：
-
-```powershell
-python examples\bridge_status.py --probe-executables
-```
-
-## CAD 接入
-
-AutoCAD MCP 子项目位于：
-
-```text
-cad-mcp-autocad/
-```
-
-安装依赖并启动服务：
-
-```powershell
-cd cad-mcp-autocad
-python -m pip install -r requirements.txt
-python src\server.py
-```
-
-测试 AutoCAD MCP：
+### CAD
 
 ```powershell
 python scripts\test_autocad_mcp.py
 ```
 
-## Photoshop 接入
+用于验证 AutoCAD MCP。生成的 DWG 只留本机，不提交。
 
-Photoshop 接入只发布通用脚本，不写本机安装路径、源图路径、桌面路径或账号授权信息。先手动打开已授权的 Photoshop，再运行 COM 探针：
+### ComfyUI
+
+```powershell
+python examples\comfy_bridge\comfy_probe.py
+python examples\comfy_bridge\run_txt2img.py --prompt "a quiet futuristic tea house in a garden"
+```
+
+用于读取本地 ComfyUI 状态并提交基础文生图任务。
+
+### Photoshop
+
+先手动打开已授权的 Photoshop，再运行：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\com_probe.ps1 -OutputPath "$env:TEMP\codex_photoshop_probe.png"
 ```
 
-主体抠图实验需要显式传入输入和输出路径：
+主体抠图实验：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\extract_subject_to_png.ps1 -InputPath "D:\path\source.jpg" -OutputPath "$env:TEMP\subject.png"
+powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\extract_subject_to_png.ps1 -InputPath "<source-image>" -OutputPath "$env:TEMP\subject.png"
 ```
 
-复杂海报、文字背景和线稿背景可能带出残留，脚本只作为半自动起点。
+### Blender
 
-## 本机路径约定
+先在本机配置 `BLENDER_EXE`，然后运行：
 
-| 项目 | 路径 |
-| --- | --- |
-| ComfyUI 启动脚本 | `D:\AIGC\Start_ComfyUI_Codex.cmd` |
-| ComfyUI 根目录 | `D:\AIGC\comfyui安装包\ComfyUI` |
-| Blender 可执行文件 | `D:\AIGC\CAD\blender.exe` |
-| Blender MCP 桥目录 | `D:\AIGC\blender-mcp` |
-| AutoCAD 可执行文件 | `D:\AIGC\cad2026\CAD2026\AutoCAD 2026\acad.exe` |
-| 新下载源码和安装包 | `E:\00_待整理收件箱\下载` |
-
-新下载的源码、安装包和调研资料先放到 `E:\00_待整理收件箱\下载`。不要把模型、生成图、渲染输出、DWG 成品、浏览器资料或授权文件放进 Git 工作区。
+```powershell
+python examples\bridge_status.py --probe-executables
+```
 
 ## 不发布内容
 
-以下内容只保留本机，不进入 GitHub：
+以下内容只留本机：
 
-- 网页 demo、虚拟宠物 demo、PPT 工作区。
-- 报告生成脚本、样式参考图片、临时研究文档。
-- `output/`、`scratch/`、`docx_render_check/`、缓存和日志。
+- 账号、密码、验证码、Cookie、token、OAuth 缓存。
 - ComfyUI 模型、LoRA、VAE、ControlNet、生成图片。
-- Blender 私有 `.blend`、贴图、资产库和渲染缓存。
+- Blender 私有 `.blend`、贴图、资产库、渲染缓存。
 - CAD 客户图纸、商业 DWG、授权文件。
-- Photoshop 安装路径、Creative Cloud 缓存、PSD 私有工程、商业字体、商业笔刷、购买素材和源图输出路径。
-- 密码、token、Cookie、OAuth 缓存、浏览器数据、支付信息。
+- Photoshop 安装路径、Creative Cloud 缓存、PSD、商业字体、笔刷、购买素材、源图和导出结果。
+- `output/`、`scratch/`、临时文件、日志和缓存。
 
-## 后续方向
+## 下一步
 
-- 增加 ComfyUI 的 `img2img`、upscale、inpaint、批量 prompt 示例。
-- 增加 Blender 公开安全场景生成脚本。
-- 增加 CAD 标准零件参数化绘图脚本。
-- 继续把 Photoshop COM、UXP、本地桥和 MCP 封装成更稳定的工具层。
-- 评估 Penpot、Figma、Krita 的 MCP 或脚本接入方式。
-- 将稳定脚本逐步包装成 Codex 可调用的 MCP 工具。
+- 给 Blender 增加公开安全的基础场景生成脚本。
+- 给 ComfyUI 增加 `img2img`、inpaint、upscale 示例。
+- 给 CAD 增加更清楚的 JSON 参数格式。
+- 给 Photoshop 增加 UXP 面板和本地 MCP 工具封装。
