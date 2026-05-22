@@ -3,6 +3,8 @@
   "type": "module",
   "scripts": {
     "bridge:status": "python examples/bridge_status.py",
+    "bridge:status:json": "python examples/bridge_status.py --json",
+    "bridge:status:probe": "python examples/bridge_status.py --probe-executables",
     "comfy:probe": "python examples/comfy_bridge/comfy_probe.py"
   }
 }

@@ -14,6 +14,7 @@ from pathlib import Path
 
 DEFAULT_COMFY_URL = "http://127.0.0.1:8188"
 REPO_ROOT = Path(__file__).resolve().parents[1]
+DOWNLOAD_INBOX = Path(r"E:\00_待整理收件箱\下载")
 
 
 def unique_paths(paths: list[Path]) -> list[Path]:
@@ -42,18 +43,72 @@ def get_json(base_url: str, path: str, timeout: int) -> dict:
         return json.loads(response.read().decode("utf-8"))
 
 
+def find_comfy_root() -> Path | None:
+    env_path = os.environ.get("COMFY_ROOT") or os.environ.get("COMFYUI_PATH")
+    candidates: list[Path] = []
+    if env_path:
+        candidates.append(Path(env_path))
+
+    candidates.extend(
+        [
+            Path(r"D:\AIGC\comfyui安装包\ComfyUI"),
+            Path(r"D:\AIGC\ComfyUI"),
+            Path(r"C:\Users\jian\AppData\Local\ComfyUI"),
+            REPO_ROOT / "ComfyUI",
+        ]
+    )
+
+    for candidate in unique_paths(candidates):
+        if (candidate / "main.py").exists():
+            return candidate
+    return None
+
+
+def find_comfy_launcher() -> Path | None:
+    env_path = os.environ.get("COMFY_LAUNCHER") or os.environ.get("COMFY_START_SCRIPT")
+    candidates: list[Path] = []
+    if env_path:
+        candidates.append(Path(env_path))
+
+    candidates.extend(
+        [
+            Path(r"D:\AIGC\Start_ComfyUI_Codex.cmd"),
+            REPO_ROOT / "Start_ComfyUI_Codex.cmd",
+        ]
+    )
+
+    for candidate in unique_paths(candidates):
+        if candidate.exists():
+            return candidate
+    return None
+
+
 def check_comfy(base_url: str, timeout: int) -> dict:
+    comfy_root = find_comfy_root()
+    comfy_launcher = find_comfy_launcher()
     try:
         stats = get_json(base_url, "/system_stats", timeout)
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        details = [
+            f"Not reachable at {base_url}.",
+            f"Error: {exc}",
+            "Start ComfyUI first, then rerun this script.",
+        ]
+        if comfy_root:
+            details.append(f"Local ComfyUI root: {comfy_root}")
+        if comfy_launcher:
+            details.append(f"Launch script: {comfy_launcher}")
+        if DOWNLOAD_INBOX.exists():
+            details.append(f"Download inbox for new source/projects: {DOWNLOAD_INBOX}")
         return status(
             "ComfyUI",
             "missing",
-            [
-                f"Not reachable at {base_url}.",
-                f"Error: {exc}",
-                "Start ComfyUI first, then rerun this script.",
-            ],
+            details,
+            {
+                "base_url": base_url,
+                "local_root": str(comfy_root) if comfy_root else None,
+                "launcher": str(comfy_launcher) if comfy_launcher else None,
+            },
         )
 
     system = stats.get("system", {})
@@ -79,7 +134,21 @@ def check_comfy(base_url: str, timeout: int) -> dict:
     except Exception as exc:  # noqa: BLE001 - status script should keep going.
         details.append(f"Checkpoint check failed: {exc}")
 
-    return status("ComfyUI", "ok", details, {"base_url": base_url})
+    if comfy_root:
+        details.append(f"Local ComfyUI root: {comfy_root}")
+    if comfy_launcher:
+        details.append(f"Launch script: {comfy_launcher}")
+
+    return status(
+        "ComfyUI",
+        "ok",
+        details,
+        {
+            "base_url": base_url,
+            "local_root": str(comfy_root) if comfy_root else None,
+            "launcher": str(comfy_launcher) if comfy_launcher else None,
+        },
+    )
 
 
 def command_version(command: Path | str, args: list[str], timeout: int) -> str:
@@ -109,6 +178,8 @@ def find_blender() -> Path | None:
 
     path_candidates.extend(
         [
+            Path(r"D:\AIGC\CAD\blender.exe"),
+            Path(r"D:\AIGC\CAD\5.0\blender.exe"),
             Path(r"D:\AIGC\Blender 5.0\blender.exe"),
             Path(r"D:\AIGC\Blender\blender.exe"),
             Path(r"D:\AIGC\blender\blender.exe"),
@@ -146,12 +217,17 @@ def find_blender_mcp_dir() -> Path | None:
 def check_blender(probe_executable: bool, timeout: int) -> dict:
     blender = find_blender()
     blender_mcp = find_blender_mcp_dir()
+    blender_mcp_launcher = blender_mcp / "Start-Blender-MCP.cmd" if blender_mcp else None
+    if blender_mcp_launcher and not blender_mcp_launcher.exists():
+        blender_mcp_launcher = None
     if not blender:
         details = [
             "No Blender executable found.",
             "Set BLENDER_EXE to the full blender.exe path or install Blender in a standard location.",
             f"Blender MCP bridge: {blender_mcp if blender_mcp else 'not found'}",
         ]
+        if blender_mcp_launcher:
+            details.append(f"Blender MCP launch script: {blender_mcp_launcher}")
         if blender_mcp:
             return status(
                 "Blender",
@@ -160,7 +236,10 @@ def check_blender(probe_executable: bool, timeout: int) -> dict:
                     *details,
                     "Bridge files exist, but the Blender executable is not configured yet.",
                 ],
-                {"blender_mcp_dir": str(blender_mcp)},
+                {
+                    "blender_mcp_dir": str(blender_mcp),
+                    "blender_mcp_launcher": str(blender_mcp_launcher) if blender_mcp_launcher else None,
+                },
             )
         return status(
             "Blender",
@@ -172,6 +251,8 @@ def check_blender(probe_executable: bool, timeout: int) -> dict:
         f"Executable: {blender}",
         f"Blender MCP bridge: {blender_mcp if blender_mcp else 'not found'}",
     ]
+    if blender_mcp_launcher:
+        details.append(f"Blender MCP launch script: {blender_mcp_launcher}")
     if probe_executable:
         try:
             details.append(f"Version probe: {command_version(blender, ['--version'], timeout)}")
@@ -184,7 +265,11 @@ def check_blender(probe_executable: bool, timeout: int) -> dict:
         "Blender",
         "ok",
         details,
-        {"executable": str(blender), "blender_mcp_dir": str(blender_mcp) if blender_mcp else None},
+        {
+            "executable": str(blender),
+            "blender_mcp_dir": str(blender_mcp) if blender_mcp else None,
+            "blender_mcp_launcher": str(blender_mcp_launcher) if blender_mcp_launcher else None,
+        },
     )
 
 

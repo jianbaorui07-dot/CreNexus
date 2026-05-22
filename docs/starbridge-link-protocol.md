@@ -8,7 +8,7 @@
 
 ## 一句话简介
 
-**星桥三联**把 Codex、GitHub/Jules、ComfyUI、Blender 5.0 和 CAD 连接成一个可审计、可复用、可逐步扩展的本地 AIGC 工作台。
+**星桥三联**把 Codex、GitHub/Jules、ComfyUI、Blender 5.0 和 CAD 连接成一个可审计、可复用、可逐步扩展的本地 AIGC 工作台。扩展到 Photoshop、Penpot、Figma、Krita 等绘画或设计工具时，仍沿用同一原则：本地优先、工具边界清楚、可公开协作内容与私有资产分离。
 
 ```text
 Codex 写脚本和协议
@@ -30,7 +30,7 @@ ComfyUI 是本地生成引擎。Codex 通过 `http://127.0.0.1:8188` 调用 Comf
 - API 探针脚本：检查 ComfyUI 是否在线、显卡是否可用、有哪些 checkpoint。
 - API 工作流：用于脚本提交任务。
 - 可视化工作流：可直接在 ComfyUI 画布里看到节点和连线。
-- 下载、缓存、临时目录优先放在 `D:\AIGC`，避免散落到系统盘。
+- 新下载的源码项目、安装包和调研资料先放在 `E:\00_待整理收件箱\下载`。ComfyUI 模型、缓存、临时目录和生成输出继续留在本机 AIGC 目录，避免散落到系统盘或误入 Git。
 
 这条桥适合做：
 
@@ -136,6 +136,9 @@ flowchart LR
 - `docs/starbridge-link-protocol.md`  
   星桥三联协议主文档。
 
+- `docs/codex-drawing-tool-integrations.md`
+  Codex 接入绘画、图像、设计、三维和工程制图工具的路线图。
+
 - `examples/comfy_bridge/README.md`  
   ComfyUI 桥接示例说明。
 
@@ -169,9 +172,11 @@ flowchart LR
 ## 下一步路线
 
 - 已增加统一的 `examples/bridge_status.py`，可一次检查 ComfyUI、Blender 和 CAD 三条桥是否在线或可配置。
+- 已补齐本机常用路径检测：ComfyUI 启动脚本、ComfyUI 根目录、Blender 可执行文件、Blender MCP 桥和 AutoCAD 可执行文件。
 - 为 ComfyUI 增加 `img2img`、放大、修复和批量提示词示例。
 - 为 Blender 5.0 增加一个公开安全的场景生成脚本示例。
 - 为 CAD 增加一个公开安全的标准零件绘图脚本示例。
+- 为 Photoshop、Penpot/Figma、Krita 等绘画或设计工具建立候选接入评估表，先记录来源、许可、依赖、账号要求和本机安全边界，再决定是否下载或安装。
 - 后续将三条桥逐步包装成 MCP 工具，让 Codex 可以稳定调用、记录结果并提示风险。
 
 ## 结语

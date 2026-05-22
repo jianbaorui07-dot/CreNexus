@@ -20,6 +20,7 @@ This workspace includes **StarBridge Trinity Protocol** (`星桥三联`), a docu
 Start here:
 
 - `docs/starbridge-link-protocol.md`
+- `docs/codex-drawing-tool-integrations.md`
 - `docs/中文用途索引.md`
 - `examples/bridge_status.py`
 - `examples/comfy_bridge/README.md`
@@ -42,6 +43,7 @@ npm run bridge:status
 - Root `requirements.txt` does not exist. Python dependencies vary by script.
 - `cad-mcp-autocad/requirements.txt` lists the Python dependencies for the AutoCAD MCP server.
 - This workspace currently does not use a ComfyUI `custom_nodes/` layout.
+- New downloaded source projects, installers, and research bundles should go under `E:\00_待整理收件箱\下载`, not into this Git workspace unless they are intentionally curated source files.
 
 ## Running Locally
 
@@ -75,6 +77,15 @@ StarBridge status check:
 python examples\bridge_status.py
 python examples\bridge_status.py --json
 python examples\bridge_status.py --probe-executables
+npm run bridge:status
+npm run bridge:status:json
+npm run bridge:status:probe
+```
+
+If PowerShell blocks `npm.ps1` because of execution policy, use `npm.cmd` instead:
+
+```powershell
+npm.cmd run bridge:status:json
 ```
 
 The status script checks local ComfyUI, Blender, and CAD bridge readiness without reading credentials, browser data, model files, generated images, or private project assets.
@@ -82,9 +93,19 @@ The status script checks local ComfyUI, Blender, and CAD bridge readiness withou
 Useful environment variables for bridge detection:
 
 - `COMFY_BASE_URL`, default `http://127.0.0.1:8188`
+- `COMFY_ROOT` or `COMFYUI_PATH`, full path to the local ComfyUI directory
+- `COMFY_LAUNCHER` or `COMFY_START_SCRIPT`, full path to a local ComfyUI launch script
 - `BLENDER_EXE`, full path to `blender.exe`
 - `BLENDER_MCP_DIR`, full path to a local Blender MCP bridge directory
 - `AUTOCAD_EXE`, full path to `acad.exe`
+
+Known local paths from this workstation:
+
+- ComfyUI launch script: `D:\AIGC\Start_ComfyUI_Codex.cmd`
+- ComfyUI root: `D:\AIGC\comfyui安装包\ComfyUI`
+- Blender executable: `D:\AIGC\CAD\blender.exe`
+- Blender MCP bridge: `D:\AIGC\blender-mcp`
+- AutoCAD executable: `D:\AIGC\cad2026\CAD2026\AutoCAD 2026\acad.exe`
 
 ## GitHub / Jules Readiness
 
