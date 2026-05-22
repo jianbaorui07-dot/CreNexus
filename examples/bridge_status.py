@@ -318,6 +318,54 @@ def check_cad() -> dict:
     return status("CAD", state, details, {"autocad_executable": str(autocad) if autocad else None})
 
 
+def find_photoshop() -> Path | None:
+    env_path = os.environ.get("PHOTOSHOP_EXE")
+    if not env_path:
+        return None
+
+    candidate = Path(env_path)
+    return candidate if candidate.exists() else None
+
+
+def check_photoshop(probe_com: bool) -> dict:
+    photoshop = find_photoshop()
+    has_win32com = importlib.util.find_spec("win32com") is not None
+    details = [
+        "Photoshop install path is intentionally not hardcoded.",
+        f"PHOTOSHOP_EXE configured: {bool(os.environ.get('PHOTOSHOP_EXE'))}",
+        f"PHOTOSHOP_EXE exists: {bool(photoshop)}",
+        f"Current Python has pywin32/win32com: {has_win32com}",
+    ]
+    data: dict[str, str | bool | int | None] = {
+        "photoshop_exe_configured": bool(os.environ.get("PHOTOSHOP_EXE")),
+        "photoshop_exe_exists": bool(photoshop),
+        "has_win32com": has_win32com,
+    }
+
+    if not probe_com:
+        details.append("COM probe skipped. Use --probe-executables to attach to an already running Photoshop.")
+        return status("Photoshop", "warn" if not has_win32com else "ok", details, data)
+
+    if not has_win32com:
+        details.append("Install pywin32 if Python-based COM probing is needed.")
+        return status("Photoshop", "warn", details, data)
+
+    try:
+        import win32com.client  # type: ignore[import-not-found]
+
+        app = win32com.client.GetActiveObject("Photoshop.Application")
+        version = str(app.Version)
+        documents = int(app.Documents.Count)
+        details.append(f"Active Photoshop COM object: found, version {version}, documents {documents}")
+        data.update({"active_com_object": True, "version": version, "documents": documents})
+        return status("Photoshop", "ok", details, data)
+    except Exception as exc:  # noqa: BLE001 - status script should keep going.
+        details.append(f"Active Photoshop COM object not found: {exc}")
+        details.append("Open Photoshop manually, then rerun with --probe-executables.")
+        data["active_com_object"] = False
+        return status("Photoshop", "warn", details, data)
+
+
 def print_text_report(results: list[dict]) -> None:
     print("StarBridge local bridge status")
     print("=" * 30)
@@ -348,6 +396,7 @@ def main() -> None:
         check_comfy(args.comfy_url, args.timeout),
         check_blender(args.probe_executables, args.timeout),
         check_cad(),
+        check_photoshop(args.probe_executables),
     ]
 
     if args.json:

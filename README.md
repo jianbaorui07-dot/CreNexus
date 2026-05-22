@@ -1,6 +1,6 @@
 # Codex 软件接入实验仓库
 
-这个仓库只发布和 **Codex 接入各类本地软件** 有关的协议、示例脚本、状态检查工具和配置说明。当前重点是三条已经实践过的本地创作桥：ComfyUI、Blender、CAD。
+这个仓库只发布和 **Codex 接入各类本地软件** 有关的协议、示例脚本、状态检查工具和配置说明。当前重点是 ComfyUI、Blender、CAD，以及已开始本机实验的 Photoshop。
 
 不属于这个范围的网页 demo、报告生成脚本、图片素材、PPT 工作区、临时输出和缓存，只保留在本机，不再作为 GitHub 发布内容。
 
@@ -17,9 +17,11 @@
 | --- | --- |
 | `docs/starbridge-link-protocol.md` | 星桥三联主说明：Codex 接入 ComfyUI、Blender、CAD 的整体方案 |
 | `docs/codex-drawing-tool-integrations.md` | 绘画、图像、设计、三维、制图工具的接入路线图 |
+| `docs/photoshop-codex-bridge.md` | Codex 接入 Photoshop 的本地桥方案、实验结论和安全边界 |
 | `docs/中文用途索引.md` | 仓库文件中文用途索引 |
-| `examples/bridge_status.py` | 一次检查 ComfyUI、Blender、CAD 三条桥的本机状态 |
+| `examples/bridge_status.py` | 一次检查 ComfyUI、Blender、CAD、Photoshop 的本机状态 |
 | `examples/comfy_bridge/` | ComfyUI API 探针、文生图脚本和 workflow 示例 |
+| `examples/photoshop_bridge/` | Photoshop COM 探针和主体抠图实验脚本 |
 | `cad-mcp-autocad/` | AutoCAD MCP 子项目 |
 | `AUTOCAD_MCP_SETUP.md` | AutoCAD MCP 本地配置记录 |
 | `scripts/test_autocad_mcp.py` | AutoCAD MCP 连接测试脚本 |
@@ -101,6 +103,22 @@ python src\server.py
 python scripts\test_autocad_mcp.py
 ```
 
+## Photoshop 接入
+
+Photoshop 接入只发布通用脚本，不写本机安装路径、源图路径、桌面路径或账号授权信息。先手动打开已授权的 Photoshop，再运行 COM 探针：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\com_probe.ps1 -OutputPath "$env:TEMP\codex_photoshop_probe.png"
+```
+
+主体抠图实验需要显式传入输入和输出路径：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\extract_subject_to_png.ps1 -InputPath "D:\path\source.jpg" -OutputPath "$env:TEMP\subject.png"
+```
+
+复杂海报、文字背景和线稿背景可能带出残留，脚本只作为半自动起点。
+
 ## 本机路径约定
 
 | 项目 | 路径 |
@@ -124,6 +142,7 @@ python scripts\test_autocad_mcp.py
 - ComfyUI 模型、LoRA、VAE、ControlNet、生成图片。
 - Blender 私有 `.blend`、贴图、资产库和渲染缓存。
 - CAD 客户图纸、商业 DWG、授权文件。
+- Photoshop 安装路径、Creative Cloud 缓存、PSD 私有工程、商业字体、商业笔刷、购买素材和源图输出路径。
 - 密码、token、Cookie、OAuth 缓存、浏览器数据、支付信息。
 
 ## 后续方向
@@ -131,5 +150,6 @@ python scripts\test_autocad_mcp.py
 - 增加 ComfyUI 的 `img2img`、upscale、inpaint、批量 prompt 示例。
 - 增加 Blender 公开安全场景生成脚本。
 - 增加 CAD 标准零件参数化绘图脚本。
-- 评估 Photoshop、Penpot、Figma、Krita 的 MCP 或脚本接入方式。
+- 继续把 Photoshop COM、UXP、本地桥和 MCP 封装成更稳定的工具层。
+- 评估 Penpot、Figma、Krita 的 MCP 或脚本接入方式。
 - 将稳定脚本逐步包装成 Codex 可调用的 MCP 工具。

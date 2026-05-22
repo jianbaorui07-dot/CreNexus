@@ -6,6 +6,7 @@
 
 - `docs/`：Codex 接入软件的协议、路线图和中文用途索引。
 - `examples/`：公开安全的桥接状态检查和 ComfyUI API 示例。
+- `examples/photoshop_bridge/`：Photoshop 本地桥示例，只能包含通用参数化脚本，不能包含本机路径或素材信息。
 - `cad-mcp-autocad/`：AutoCAD MCP 子项目。修改前先读本目录 README 和 `requirements.txt`。
 - `scripts/`：只保留与 AutoCAD/CAD 自动化直接相关的脚本。
 - `AUTOCAD_MCP_SETUP.md`：AutoCAD MCP 本地配置记录。
@@ -21,6 +22,7 @@
 - ComfyUI 模型、LoRA、VAE、ControlNet、生成图片。
 - Blender 私有 `.blend`、贴图、资产库、渲染缓存。
 - CAD 客户图纸、商业 DWG、授权文件和真实项目输出。
+- Photoshop 安装路径、Creative Cloud 缓存、PSD 私有工程、商业字体、商业笔刷、购买素材、源图路径和导出结果。
 - 密码、token、Cookie、OAuth 缓存、浏览器资料、支付信息。
 
 ## 修改规则
@@ -28,6 +30,7 @@
 - 优先做小而清晰的变更，不做无关重构。
 - 说明文字以中文为主；命令、路径、API、MCP、workflow、prompt 等必要术语可以保留英文。
 - 新增下载源码或安装包时，先放到 `E:\00_待整理收件箱\下载`，不要直接放进仓库。
+- Photoshop 示例必须通过参数传入输入和输出路径；不要把个人路径、文件名、素材目录或桌面路径写成默认值。
 - 修改 Python 脚本前先检查 imports、输入路径、输出路径和平台依赖。
 - 修改 `cad-mcp-autocad/` 时，尽量把改动限制在该子项目内。
 - 不要删除本机文件；如果只是清理 GitHub 发布范围，优先用 `git rm --cached` 让文件留在本地。
