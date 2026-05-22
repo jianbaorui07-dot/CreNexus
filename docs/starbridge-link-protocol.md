@@ -110,7 +110,35 @@ powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\docum
 
 这个命令不保存图片，只读取当前 Photoshop 状态。
 
-### 4.5 单独运行 COM 探针
+### 4.5 生成本机接入报告
+
+生成中文 Markdown 和 JSON 报告，汇总环境诊断、COM 探测、当前文档信息：
+
+```powershell
+python examples\photoshop_bridge\write_practice_report.py
+```
+
+如果要把一键实操结果也写进报告：
+
+```powershell
+python examples\photoshop_bridge\write_practice_report.py --run-practice
+```
+
+默认输出目录：
+
+```text
+output\photoshop_bridge_report\
+```
+
+报告文件：
+
+| 文件 | 中文说明 |
+| --- | --- |
+| `photoshop_bridge_report.md` | 给人看的中文报告 |
+| `photoshop_bridge_report.json` | 给脚本读取的结构化结果 |
+| `practice\` | 加 `--run-practice` 时保存探针图、测试图和抠图结果 |
+
+### 4.6 单独运行 COM 探针
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\com_probe.ps1 -OutputPath "$env:TEMP\codex_photoshop_probe.png"
@@ -118,7 +146,7 @@ powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\com_p
 
 成功时会返回 JSON，包含 Photoshop 版本、测试文档名称、图层数量和 PNG 输出路径。
 
-### 4.6 单独运行主体抠图
+### 4.7 单独运行主体抠图
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\extract_subject_to_png.ps1 -InputPath "<source-image>" -OutputPath "$env:TEMP\subject.png"
@@ -131,6 +159,7 @@ powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\extra
 | 文件 | 中文用途 |
 | --- | --- |
 | `examples/photoshop_bridge/README.md` | Photoshop 本地桥中文说明 |
+| `examples/photoshop_bridge/write_practice_report.py` | 生成本机接入 Markdown / JSON 报告 |
 | `examples/photoshop_bridge/scripts/diagnose_local.ps1` | 本机诊断：安装线索、COM 注册、进程和可选 COM 探测 |
 | `examples/photoshop_bridge/scripts/document_info.ps1` | 当前文档信息：名称、尺寸、模式、图层数量 |
 | `examples/photoshop_bridge/scripts/run_local_practice.ps1` | 一键本机实操：探针、测试图、主体抠图 |
@@ -143,6 +172,7 @@ powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\extra
 
 | 输出类型 | 建议位置 | 是否提交 |
 | --- | --- | --- |
+| Photoshop 接入报告 | `output\photoshop_bridge_report\` | 不提交 |
 | Photoshop 探针 PNG | `output\photoshop_bridge_practice\` | 不提交 |
 | 主体抠图 PNG | `output\photoshop_bridge_practice\` | 不提交 |
 | 临时测试图 | `output\photoshop_bridge_practice\` | 不提交 |
@@ -165,18 +195,30 @@ powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\extra
 - 源图、导出图、抠图结果、桌面路径、真实项目输出。
 - 任何需要登录、订阅、验证码、OAuth 或人工授权的信息。
 
-## 八、后续优化路线
+## 八、故障排查表
+
+| 现象 | 常见原因 | 处理方式 |
+| --- | --- | --- |
+| `needs_configuration` | 未安装 Photoshop，或 COM 没注册 | 安装并打开一次 Photoshop，再运行 `diagnose_local.ps1 -ProbeCom` |
+| `com_registered` 但不是 `ready` | COM 注册存在，但还没实际创建对象 | 运行 `diagnose_local.ps1 -ProbeCom`，观察 `com_probe.error` |
+| `New-Object -ComObject` 报错 | Photoshop 授权、安装或 COM 注册异常 | 手动打开 Photoshop，确认能正常进入主界面 |
+| `document_info.ps1` 没有活动文档 | Photoshop 已打开但没有文档 | 先打开或创建一个文档，再运行脚本 |
+| 主体抠图带出背景 | 背景复杂、文字干扰、主体边界不清 | 换干净输入图，或人工二次修边、羽化蒙版 |
+| 报告生成失败 | PowerShell 子脚本失败或 JSON 输出异常 | 先单独运行诊断脚本，确认哪个环节失败 |
+
+## 九、后续优化路线
 
 | 优先级 | 任务 |
 | --- | --- |
-| 高 | 让 `run_local_practice.ps1` 输出更详细的中文诊断 |
+| 已完成 | 生成 Photoshop 本机接入 Markdown / JSON 报告 |
+| 高 | 让 `write_practice_report.py` 汇总更多图片质量检查指标 |
 | 已完成 | 增加 Photoshop 当前文档信息读取脚本 |
 | 已完成 | 增加 Photoshop 本机环境诊断脚本 |
 | 中 | 把 `extract_subject`、`export_png` 封装成本机 MCP 工具 |
 | 中 | 增加二次蒙版、边缘羽化和人工确认流程 |
 | 低 | 评估 UXP 面板，把当前文档、图层、选择区暴露给本地桥 |
 
-## 九、最短执行路径
+## 十、最短执行路径
 
 如果只想确认 Codex 已经能接入本机 Photoshop，执行：
 
@@ -185,3 +227,9 @@ powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\run_l
 ```
 
 看到 `ok: true`，并且输出目录里出现探针 PNG 和主体抠图 PNG，就说明本机 Photoshop 桥已经跑通。
+
+如果想留下可读记录，执行：
+
+```powershell
+python examples\photoshop_bridge\write_practice_report.py --run-practice
+```

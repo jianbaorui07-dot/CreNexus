@@ -15,6 +15,7 @@
 | --- | --- |
 | `docs/photoshop-codex-bridge.md` | Photoshop 本地桥详细方案 |
 | `examples/photoshop_bridge/README.md` | Photoshop 示例说明 |
+| `examples/photoshop_bridge/write_practice_report.py` | 生成本机接入 Markdown / JSON 报告 |
 | `examples/photoshop_bridge/scripts/diagnose_local.ps1` | 本机诊断：安装线索、COM 注册、进程和可选 COM 探测 |
 | `examples/photoshop_bridge/scripts/document_info.ps1` | 当前文档信息：名称、尺寸、模式、图层数量 |
 | `examples/photoshop_bridge/scripts/run_local_practice.ps1` | 一键本机实操：COM 探针、测试图生成、主体抠图 |
@@ -50,6 +51,12 @@ powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\run_l
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\document_info.ps1
+```
+
+生成本机接入报告：
+
+```powershell
+python examples\photoshop_bridge\write_practice_report.py --run-practice
 ```
 
 单独运行 COM 探针：

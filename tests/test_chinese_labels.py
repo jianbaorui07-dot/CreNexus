@@ -52,6 +52,8 @@ class ChineseLabelCoverageTest(unittest.TestCase):
         self.assertIn("diagnose_local.ps1", protocol)
         self.assertIn("document_info.ps1", protocol)
         self.assertIn("run_local_practice.ps1", protocol)
+        self.assertIn("write_practice_report.py", protocol)
+        self.assertIn("故障排查表", protocol)
         self.assertIn("星桥链接协议入口", index)
 
 

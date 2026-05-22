@@ -47,7 +47,27 @@ output\photoshop_bridge_practice\
 powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\document_info.ps1
 ```
 
-## 区域五：COM 探针
+## 区域五：生成本机接入报告
+
+生成中文 Markdown 和 JSON 报告：
+
+```powershell
+python examples\photoshop_bridge\write_practice_report.py
+```
+
+把一键实操结果也写进报告：
+
+```powershell
+python examples\photoshop_bridge\write_practice_report.py --run-practice
+```
+
+默认输出到：
+
+```text
+output\photoshop_bridge_report\
+```
+
+## 区域六：COM 探针
 
 创建一个测试文档并导出 PNG：
 
@@ -57,7 +77,7 @@ powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\com_p
 
 返回结果为 JSON，包含 Photoshop 版本、输出路径、文档尺寸和图层数。
 
-## 区域六：主体抠图
+## 区域七：主体抠图
 
 从输入图里尝试提取主体，并导出透明 PNG：
 
@@ -67,7 +87,7 @@ powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\extra
 
 脚本使用 Photoshop 的主体选择能力。复杂海报、文字背景、线稿背景可能会带出背景残留，适合作为半自动起点，不保证一次达到商业级精修。
 
-## 区域七：安全边界
+## 区域八：安全边界
 
 - 不覆盖原图，只输出新文件。
 - 不提交输入图、输出图、PSD、字体、笔刷、素材库或账号信息。
