@@ -59,7 +59,9 @@ powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\docum
 python examples\photoshop_bridge\write_practice_report.py --run-practice
 ```
 
-报告会包含环境诊断、COM 探测、当前文档、一键实操和图片产物清单。产物清单会记录 PNG 是否存在、文件大小、图片尺寸和 SHA256 摘要。
+报告会包含环境诊断、COM 探测、当前文档、一键实操和图片产物清单。产物清单会记录 PNG 是否存在、文件大小、图片尺寸、透明像素统计、主体边界和 SHA256 摘要。
+
+一键实操会先清理本轮固定产物文件，避免旧图误入报告。遇到 Photoshop 忙碌时会短暂重试；即使仍然失败，报告也会按固定文件名回收本轮已生成的本地产物。
 
 单独运行 COM 探针：
 

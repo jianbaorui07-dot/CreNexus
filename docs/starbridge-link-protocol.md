@@ -146,7 +146,9 @@ output\photoshop_bridge_report\
 | COM 探测 | Photoshop 版本和当前文档数量 |
 | 当前文档 | 活动文档名称、尺寸、模式、图层数量 |
 | 一键实操 | 探针图、测试图、抠图方法和抠图输出 |
-| 产物清单 | PNG 是否存在、文件大小、图片尺寸、SHA256 摘要 |
+| 产物清单 | PNG 是否存在、文件大小、图片尺寸、透明像素统计、主体边界、SHA256 摘要 |
+
+一键实操开始时会清理本轮固定产物文件，避免旧图误入报告。如果 Photoshop 临时忙碌，实操脚本会短暂等待并重试；如果仍然失败，报告仍会按固定输出目录回收本轮已经生成的探针图、测试图和抠图 PNG。
 
 ### 4.6 验收标准
 
@@ -159,6 +161,8 @@ output\photoshop_bridge_report\
 | 一键实操 | `run_local_practice.ps1` 返回 `ok: true` |
 | 报告留档 | `write_practice_report.py --run-practice` 生成 Markdown 和 JSON |
 | 图片产物 | 产物清单中探针图、测试图、抠图 PNG 都存在且有 PNG 尺寸 |
+| 透明 PNG | 主体抠图 PNG 有透明通道，并显示透明/半透明/不透明像素统计 |
+| 主体边界 | 主体抠图 PNG 显示 alpha 主体边界、四边边距和主体像素占比 |
 | Git 安全 | `output/` 中的图片和报告不进入 Git 提交 |
 
 ### 4.7 单独运行 COM 探针
@@ -229,6 +233,10 @@ powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\extra
 | 主体抠图带出背景 | 背景复杂、文字干扰、主体边界不清 | 换干净输入图，或人工二次修边、羽化蒙版 |
 | 报告生成失败 | PowerShell 子脚本失败或 JSON 输出异常 | 先单独运行诊断脚本，确认哪个环节失败 |
 | 产物清单缺尺寸 | 输出不是 PNG，或文件未生成完整 | 重新运行 `write_practice_report.py --run-practice`，检查 `practice\` 目录 |
+| 实操失败但有图片 | Photoshop 忙碌或中途异常，部分图片已经写出 | 报告会按固定文件名回收已生成产物；等待 Photoshop 空闲后再运行一次 |
+| 抠图 PNG 无透明通道 | Photoshop 没有正确隐藏背景或保存透明层 | 重新运行主体抠图，确认输出为 PNG 且背景图层不可见 |
+| 透明像素为 0 | 主体选择没有产生透明背景，或整张图被视为主体 | 换更干净的输入图，或人工建立选区后再导出 |
+| 主体边界贴边 | 主体被裁掉，或输入图主体超出画面 | 换留白更充足的输入图，或先扩展画布再运行主体选择 |
 
 ## 九、后续优化路线
 
@@ -236,7 +244,8 @@ powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\extra
 | --- | --- |
 | 已完成 | 生成 Photoshop 本机接入 Markdown / JSON 报告 |
 | 已完成 | 让 `write_practice_report.py` 汇总图片大小、尺寸和哈希摘要 |
-| 高 | 增加 Photoshop 输出透明通道检查和边界盒质量指标 |
+| 已完成 | 增加 Photoshop 输出透明通道检查和 alpha 像素统计 |
+| 已完成 | 增加主体边界盒质量指标 |
 | 已完成 | 增加 Photoshop 当前文档信息读取脚本 |
 | 已完成 | 增加 Photoshop 本机环境诊断脚本 |
 | 中 | 把 `extract_subject`、`export_png` 封装成本机 MCP 工具 |

@@ -56,6 +56,8 @@ class ChineseLabelCoverageTest(unittest.TestCase):
         self.assertIn("故障排查表", protocol)
         self.assertIn("产物清单", protocol)
         self.assertIn("验收标准", protocol)
+        self.assertIn("透明像素统计", protocol)
+        self.assertIn("主体边界", protocol)
         self.assertIn("星桥链接协议入口", index)
 
 

@@ -6,6 +6,7 @@ import json
 import struct
 import subprocess
 import sys
+import zlib
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -15,6 +16,12 @@ BRIDGE_ROOT = Path(__file__).resolve().parent
 REPO_ROOT = BRIDGE_ROOT.parents[1]
 SCRIPTS = BRIDGE_ROOT / "scripts"
 DEFAULT_OUTPUT_DIR = REPO_ROOT / "output" / "photoshop_bridge_report"
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+PRACTICE_ARTIFACT_FILENAMES = {
+    "probe_output": "codex_photoshop_probe.png",
+    "subject_input": "subject_input_clean.png",
+    "subject_cutout_output": "subject_cutout_clean.png",
+}
 
 
 def run_powershell(script_name: str, *args: str) -> dict[str, Any]:
@@ -68,16 +75,211 @@ def status_text(report: dict[str, Any]) -> str:
     return "需要继续配置 Photoshop"
 
 
-def png_dimensions(path: Path) -> tuple[int, int] | None:
+def png_chunks(path: Path) -> list[tuple[bytes, bytes]]:
     try:
         with path.open("rb") as file:
-            header = file.read(24)
+            if file.read(8) != PNG_SIGNATURE:
+                return []
+            chunks = []
+            while True:
+                length_bytes = file.read(4)
+                if len(length_bytes) != 4:
+                    break
+                length = struct.unpack(">I", length_bytes)[0]
+                chunk_type = file.read(4)
+                data = file.read(length)
+                file.read(4)  # CRC
+                if len(chunk_type) != 4 or len(data) != length:
+                    break
+                chunks.append((chunk_type, data))
+                if chunk_type == b"IEND":
+                    break
+            return chunks
     except OSError:
-        return None
+        return []
 
-    if len(header) < 24 or header[:8] != b"\x89PNG\r\n\x1a\n" or header[12:16] != b"IHDR":
+
+def png_header(path: Path) -> dict[str, int] | None:
+    for chunk_type, data in png_chunks(path):
+        if chunk_type == b"IHDR" and len(data) >= 13:
+            width, height, bit_depth, color_type, compression, filter_method, interlace = struct.unpack(
+                ">IIBBBBB", data[:13]
+            )
+            return {
+                "width": width,
+                "height": height,
+                "bit_depth": bit_depth,
+                "color_type": color_type,
+                "compression": compression,
+                "filter_method": filter_method,
+                "interlace": interlace,
+            }
+    return None
+
+
+def png_dimensions(path: Path) -> tuple[int, int] | None:
+    header = png_header(path)
+    if not header:
         return None
-    return struct.unpack(">II", header[16:24])
+    return header["width"], header["height"]
+
+
+def paeth_predictor(left: int, above: int, upper_left: int) -> int:
+    estimate = left + above - upper_left
+    left_distance = abs(estimate - left)
+    above_distance = abs(estimate - above)
+    upper_left_distance = abs(estimate - upper_left)
+    if left_distance <= above_distance and left_distance <= upper_left_distance:
+        return left
+    if above_distance <= upper_left_distance:
+        return above
+    return upper_left
+
+
+def unfilter_png_rows(raw: bytes, width: int, height: int, bytes_per_pixel: int) -> list[bytes]:
+    stride = width * bytes_per_pixel
+    offset = 0
+    previous = bytearray(stride)
+    rows: list[bytes] = []
+
+    for _ in range(height):
+        if offset >= len(raw):
+            raise ValueError("PNG scanline data ended early.")
+        filter_type = raw[offset]
+        offset += 1
+        scanline = raw[offset : offset + stride]
+        offset += stride
+        if len(scanline) != stride:
+            raise ValueError("PNG scanline length is incomplete.")
+
+        reconstructed = bytearray(stride)
+        for index, value in enumerate(scanline):
+            left = reconstructed[index - bytes_per_pixel] if index >= bytes_per_pixel else 0
+            above = previous[index]
+            upper_left = previous[index - bytes_per_pixel] if index >= bytes_per_pixel else 0
+
+            if filter_type == 0:
+                reconstructed[index] = value
+            elif filter_type == 1:
+                reconstructed[index] = (value + left) & 0xFF
+            elif filter_type == 2:
+                reconstructed[index] = (value + above) & 0xFF
+            elif filter_type == 3:
+                reconstructed[index] = (value + ((left + above) // 2)) & 0xFF
+            elif filter_type == 4:
+                reconstructed[index] = (value + paeth_predictor(left, above, upper_left)) & 0xFF
+            else:
+                raise ValueError(f"Unsupported PNG filter type: {filter_type}")
+
+        rows.append(bytes(reconstructed))
+        previous = reconstructed
+
+    return rows
+
+
+def png_alpha_summary(path: Path) -> dict[str, Any]:
+    header = png_header(path)
+    if not header:
+        return {"supported": False, "error": "not a readable PNG"}
+
+    width = header["width"]
+    height = header["height"]
+    total_pixels = width * height
+    color_type = header["color_type"]
+    bit_depth = header["bit_depth"]
+
+    if bit_depth != 8 or header["interlace"] != 0:
+        return {
+            "supported": False,
+            "error": "only 8-bit non-interlaced PNG files are supported",
+            "total_pixels": total_pixels,
+        }
+
+    if color_type == 2:
+        return {
+            "supported": True,
+            "has_alpha_channel": False,
+            "total_pixels": total_pixels,
+            "transparent_pixels": 0,
+            "translucent_pixels": 0,
+            "opaque_pixels": total_pixels,
+        }
+
+    if color_type not in {4, 6}:
+        return {
+            "supported": False,
+            "error": f"unsupported PNG color type: {color_type}",
+            "total_pixels": total_pixels,
+        }
+
+    bytes_per_pixel = 2 if color_type == 4 else 4
+    alpha_offset = 1 if color_type == 4 else 3
+    idat = b"".join(data for chunk_type, data in png_chunks(path) if chunk_type == b"IDAT")
+    if not idat:
+        return {"supported": False, "error": "PNG has no IDAT data", "total_pixels": total_pixels}
+
+    try:
+        rows = unfilter_png_rows(zlib.decompress(idat), width, height, bytes_per_pixel)
+    except (OSError, ValueError, zlib.error) as exc:
+        return {"supported": False, "error": str(exc), "total_pixels": total_pixels}
+
+    transparent = 0
+    translucent = 0
+    opaque = 0
+    visible = 0
+    min_x = width
+    min_y = height
+    max_x = -1
+    max_y = -1
+    for y, row in enumerate(rows):
+        for x, index in enumerate(range(alpha_offset, len(row), bytes_per_pixel)):
+            alpha = row[index]
+            if alpha == 0:
+                transparent += 1
+            elif alpha == 255:
+                opaque += 1
+            else:
+                translucent += 1
+            if alpha > 0:
+                visible += 1
+                min_x = min(min_x, x)
+                min_y = min(min_y, y)
+                max_x = max(max_x, x)
+                max_y = max(max_y, y)
+
+    visible_bbox = None
+    if visible:
+        bbox_width = max_x - min_x + 1
+        bbox_height = max_y - min_y + 1
+        bbox_area = bbox_width * bbox_height
+        visible_bbox = {
+            "left": min_x,
+            "top": min_y,
+            "right": max_x,
+            "bottom": max_y,
+            "width": bbox_width,
+            "height": bbox_height,
+            "area": bbox_area,
+            "visible_pixels": visible,
+            "coverage_ratio": round(visible / total_pixels, 6),
+            "bbox_fill_ratio": round(visible / bbox_area, 6),
+            "edge_margins": {
+                "left": min_x,
+                "top": min_y,
+                "right": width - 1 - max_x,
+                "bottom": height - 1 - max_y,
+            },
+        }
+
+    return {
+        "supported": True,
+        "has_alpha_channel": True,
+        "total_pixels": total_pixels,
+        "transparent_pixels": transparent,
+        "translucent_pixels": translucent,
+        "opaque_pixels": opaque,
+        "visible_bbox": visible_bbox,
+    }
 
 
 def sha256_file(path: Path) -> str | None:
@@ -112,7 +314,16 @@ def artifact_info(role: str, path_value: str | None) -> dict[str, Any]:
         dimensions = png_dimensions(path)
         if dimensions:
             info["png_width"], info["png_height"] = dimensions
+            info["alpha_summary"] = png_alpha_summary(path)
     return info
+
+
+def add_expected_practice_paths(practice: dict[str, Any], output_dir: Path) -> dict[str, Any]:
+    practice.setdefault("output_dir", str(output_dir))
+    for key, filename in PRACTICE_ARTIFACT_FILENAMES.items():
+        if not practice.get(key):
+            practice[key] = str(output_dir / filename)
+    return practice
 
 
 def collect_artifacts(report: dict[str, Any]) -> list[dict[str, Any]]:
@@ -130,19 +341,54 @@ def render_artifact_table(artifacts: list[dict[str, Any]]) -> list[str]:
     if not artifacts:
         return ["本次没有记录图片产物。需要完整闭环时加 `--run-practice`。"]
 
-    rows = ["| 产物 | 是否存在 | 大小 | 图片尺寸 | SHA256 摘要 | 路径 |", "| --- | --- | --- | --- | --- | --- |"]
+    rows = [
+        "| 产物 | 是否存在 | 大小 | 图片尺寸 | 透明统计 | 主体边界 | SHA256 摘要 | 路径 |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- |",
+    ]
     for item in artifacts:
         size = item.get("bytes")
         dimensions = "-"
         if item.get("png_width") and item.get("png_height"):
             dimensions = f"{item['png_width']} x {item['png_height']}"
+        alpha = item.get("alpha_summary") or {}
+        if alpha.get("supported") and alpha.get("has_alpha_channel"):
+            alpha_text = "透明 {transparent} / 半透明 {translucent} / 不透明 {opaque}".format(
+                transparent=alpha.get("transparent_pixels", 0),
+                translucent=alpha.get("translucent_pixels", 0),
+                opaque=alpha.get("opaque_pixels", 0),
+            )
+            bbox = alpha.get("visible_bbox")
+            if bbox:
+                margins = bbox.get("edge_margins", {})
+                bbox_text = "{width} x {height}，边距 {left}/{top}/{right}/{bottom}，占比 {coverage:.2%}".format(
+                    width=bbox.get("width", 0),
+                    height=bbox.get("height", 0),
+                    left=margins.get("left", 0),
+                    top=margins.get("top", 0),
+                    right=margins.get("right", 0),
+                    bottom=margins.get("bottom", 0),
+                    coverage=bbox.get("coverage_ratio", 0),
+                )
+            else:
+                bbox_text = "未发现主体"
+        elif alpha.get("supported"):
+            alpha_text = "无透明通道"
+            bbox_text = "无透明通道"
+        elif alpha:
+            alpha_text = f"未检查：{alpha.get('error')}"
+            bbox_text = "未检查"
+        else:
+            alpha_text = "-"
+            bbox_text = "-"
         sha = item.get("sha256") or ""
         rows.append(
-            "| {role} | {exists} | {size} | {dimensions} | `{sha}` | `{path}` |".format(
+            "| {role} | {exists} | {size} | {dimensions} | {alpha_text} | {bbox_text} | `{sha}` | `{path}` |".format(
                 role=item["role"],
                 exists=yes_no(item.get("exists")),
                 size=f"{size} bytes" if size is not None else "-",
                 dimensions=dimensions,
+                alpha_text=alpha_text,
+                bbox_text=bbox_text,
                 sha=sha[:16],
                 path=item.get("path") or "-",
             )
@@ -256,7 +502,10 @@ def main() -> None:
 
     if args.run_practice:
         practice_dir = output_dir / "practice"
-        report["practice"] = run_powershell("run_local_practice.ps1", "-OutputDir", str(practice_dir))
+        report["practice"] = add_expected_practice_paths(
+            run_powershell("run_local_practice.ps1", "-OutputDir", str(practice_dir)),
+            practice_dir,
+        )
 
     report["artifacts"] = collect_artifacts(report)
 

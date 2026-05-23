@@ -67,7 +67,9 @@ python examples\photoshop_bridge\write_practice_report.py --run-practice
 output\photoshop_bridge_report\
 ```
 
-报告会列出探针图、测试输入图、主体抠图 PNG 的文件大小、PNG 尺寸和 SHA256 摘要，方便确认产物真实生成。
+报告会列出探针图、测试输入图、主体抠图 PNG 的文件大小、PNG 尺寸、透明像素统计、主体边界和 SHA256 摘要，方便确认产物真实生成，并确认抠图结果确实有透明背景。
+
+一键实操会先清理本轮固定产物文件，避免旧图误入报告。如果 Photoshop 临时忙碌，实操脚本会自动短暂重试；如果仍然失败，报告也会按固定文件名回收本轮已经写出的本地产物。
 
 ## 区域六：验收标准
 
@@ -77,6 +79,8 @@ output\photoshop_bridge_report\
 | 一键实操 | `run_local_practice.ps1` 返回 `ok: true` |
 | 报告留档 | `write_practice_report.py --run-practice` 生成 Markdown 和 JSON |
 | 图片产物 | 产物清单中的 PNG 都存在，并显示尺寸 |
+| 透明抠图 | 主体抠图 PNG 显示透明/半透明/不透明像素统计 |
+| 主体边界 | 主体抠图 PNG 显示 alpha 主体边界、四边边距和主体像素占比 |
 | Git 安全 | `output/` 目录没有进入 Git 提交 |
 
 ## 区域七：COM 探针
