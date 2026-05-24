@@ -19,6 +19,7 @@
 ```powershell
 python examples\bridge_status.py
 python examples\bridge_status.py --json
+python examples\bridge_status.py --json --redact-paths --soft-exit
 python examples\bridge_status.py --probe-executables
 ```
 
@@ -26,6 +27,7 @@ python examples\bridge_status.py --probe-executables
 
 ```powershell
 npm.cmd run bridge:status:json
+npm.cmd run bridge:status:safe
 ```
 
 如果 PowerShell 拦截 `npm.ps1`，优先使用 `npm.cmd`。
@@ -85,9 +87,10 @@ npm.cmd run bridge:status:json
 | ComfyUI 启动脚本 | `COMFY_LAUNCHER` 或 `COMFY_START_SCRIPT` |
 | ComfyUI 根目录 | `COMFY_ROOT` 或 `COMFYUI_PATH` |
 | ComfyUI 输出目录 | `COMFY_OUTPUT_DIR` |
-| Blender 可执行文件 | `BLENDER_EXE` |
-| Blender MCP 目录 | `BLENDER_MCP_DIR` |
-| AutoCAD 可执行文件 | `AUTOCAD_EXE` |
+| Blender 可执行文件 | `STARBRIDGE_BLENDER_EXE` 或 `BLENDER_EXE` |
+| Blender MCP 目录 | `STARBRIDGE_BLENDER_MCP_DIR` 或 `BLENDER_MCP_DIR` |
+| AutoCAD 可执行文件 | `STARBRIDGE_AUTOCAD_EXE` 或 `AUTOCAD_EXE` |
+| CAD 模式标记 | `STARBRIDGE_CAD_MODE` |
 | Photoshop 可执行文件 | `PHOTOSHOP_EXE` |
 | Illustrator 可执行文件 | `ILLUSTRATOR_EXE` |
 | 剪映可执行文件 | `JIANYING_EXE` |
@@ -105,7 +108,17 @@ npm.cmd run bridge:status:json
 ```powershell
 python examples\bridge_status.py
 python examples\bridge_status.py --json
+python examples\bridge_status.py --json --redact-paths --soft-exit
 python examples\bridge_status.py --probe-executables
+```
+
+### 发布前体检
+
+```powershell
+python scripts\starbridge_preflight.py --markdown
+python scripts\starbridge_preflight.py --json
+python scripts\starbridge_preflight.py --write-report --soft-exit
+python scripts\security_check.py
 ```
 
 ### ComfyUI
@@ -149,12 +162,14 @@ powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\extra
 
 ```powershell
 npm.cmd test
+npm.cmd run preflight
 ```
 
 或直接运行：
 
 ```powershell
 python -m unittest discover -s tests
+python scripts\starbridge_preflight.py --markdown
 ```
 
 ## 不发布内容
