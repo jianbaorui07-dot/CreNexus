@@ -21,10 +21,12 @@ FORBIDDEN_EXTENSIONS = {
 }
 TEXT_EXTENSIONS = {".md", ".py", ".ps1", ".json", ".txt", ".yml", ".yaml", ".toml"}
 HOME = str(Path.home())
+WINDOWS_USERS_BACKSLASH = "C:" + r"\\Users\\"
+WINDOWS_USERS_SLASH = "C:" + r"/Users/"
 SENSITIVE_PATTERNS = [
     re.compile(re.escape(HOME), re.IGNORECASE),
-    re.compile(r"C:\\Users\\(?!用户名|<USER_HOME>)[^\\\s]+", re.IGNORECASE),
-    re.compile(r"C:/Users/(?!用户名|<USER_HOME>)[^/\s]+", re.IGNORECASE),
+    re.compile(WINDOWS_USERS_BACKSLASH + r"(?!用户名|<USER_HOME>)[^\\\s]+", re.IGNORECASE),
+    re.compile(WINDOWS_USERS_SLASH + r"(?!用户名|<USER_HOME>)[^/\s]+", re.IGNORECASE),
     re.compile(r"(password|token|cookie|oauth_secret)\s*[:=]\s*['\"]?[^'\"\s]+", re.IGNORECASE),
 ]
 

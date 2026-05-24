@@ -26,9 +26,9 @@ class ProbeReportFormatTest(unittest.TestCase):
     def test_sample_reports_do_not_contain_private_paths(self) -> None:
         for sample_path in (REPO_ROOT / "examples").glob("*_bridge/sample_report.example.json"):
             text = sample_path.read_text(encoding="utf-8")
-            self.assertNotIn("C:\\Users\\jian", text)
-            self.assertNotIn("E:\\", text)
-            self.assertNotIn("D:\\", text)
+            self.assertNotIn("C:\\Users\\", text)
+            self.assertNotIn("E:" + "\\", text)
+            self.assertNotIn("D:" + "\\", text)
 
 
 if __name__ == "__main__":

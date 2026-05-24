@@ -1,0 +1,19 @@
+{
+  "bridge_id": "photoshop",
+  "name": "Photoshop",
+  "status": "experimental",
+  "platform": ["Windows"],
+  "requires": ["Adobe Photoshop desktop", "PowerShell", "Photoshop.Application COM"],
+  "entrypoints": {
+    "diagnose": "powershell -ExecutionPolicy Bypass -File examples/photoshop_bridge/scripts/diagnose_local.ps1",
+    "probe": "powershell -ExecutionPolicy Bypass -File examples/photoshop_bridge/probe.ps1",
+    "run": "powershell -ExecutionPolicy Bypass -File examples/photoshop_bridge/scripts/run_local_practice.ps1"
+  },
+  "supported_tasks": ["local diagnosis", "COM probe", "document info", "subject extraction experiment"],
+  "unsupported_tasks": ["stable production retouching workflow", "batch PSD processing", "UXP panel", "Photoshop MCP server"],
+  "safety_notes": [
+    "Do not commit PSD files, source images, exported images, commercial fonts, brushes, or Creative Cloud caches.",
+    "Input and output paths must be passed as parameters.",
+    "Keep PHOTOSHOP_EXE and local asset paths outside the repository."
+  ]
+}

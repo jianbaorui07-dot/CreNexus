@@ -1,0 +1,19 @@
+{
+  "bridge_id": "cad_autocad",
+  "name": "CAD / AutoCAD",
+  "status": "experimental",
+  "platform": ["Windows"],
+  "requires": ["Python 3.10+", "AutoCAD desktop", "pywin32", "AutoCAD MCP project"],
+  "entrypoints": {
+    "probe": "python examples/cad_bridge/probe.py",
+    "test": "python scripts/test_autocad_mcp.py",
+    "run": "python scripts/draw_connection_plate_from_spec.py"
+  },
+  "supported_tasks": ["probe", "basic scripted drawing", "AutoCAD MCP smoke test"],
+  "unsupported_tasks": ["standardized export pipeline", "CI execution against real AutoCAD", "customer DWG processing"],
+  "safety_notes": [
+    "Do not commit customer drawings, commercial DWG files, license files, or real project outputs.",
+    "Use public demo geometry only.",
+    "Keep local AutoCAD paths in AUTOCAD_EXE or other local configuration."
+  ]
+}

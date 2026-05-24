@@ -1,0 +1,17 @@
+{
+  "bridge_id": "illustrator",
+  "name": "Illustrator / AI vector files",
+  "status": "planned",
+  "platform": ["Windows"],
+  "requires": ["Adobe Illustrator desktop", "PowerShell", "Illustrator.Application COM"],
+  "entrypoints": {
+    "probe": "powershell -ExecutionPolicy Bypass -File examples/illustrator_bridge/probe.ps1"
+  },
+  "supported_tasks": ["environment probe", "COM availability check"],
+  "unsupported_tasks": ["Image Trace automation", "SVG export", "PDF export", "PNG export", "private .ai project processing"],
+  "safety_notes": [
+    "Do not commit customer .ai files, source images, exported SVG/PDF/PNG files, commercial fonts, or brushes.",
+    "Input image and export paths must be passed as parameters.",
+    "Keep ILLUSTRATOR_EXE and local artwork paths outside the repository."
+  ]
+}

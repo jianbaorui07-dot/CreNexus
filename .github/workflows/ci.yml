@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Run tests
+        run: python -m unittest discover -s tests
+
+      - name: Run security check
+        run: python scripts/security_check.py
+
+      - name: Collect bridge manifest
+        run: python scripts/collect_bridge_status.py --json
+
+      - name: Run safe local status check
+        run: python examples/bridge_status.py --json
+        continue-on-error: true

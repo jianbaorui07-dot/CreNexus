@@ -300,13 +300,13 @@ powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\extra
 
 ## 十一、最短执行路径
 
-如果只想确认 Codex 已经能接入本机 Photoshop，执行：
+如果只想确认本机 Photoshop 实验桥是否跑通，执行：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\run_local_practice.ps1
 ```
 
-看到 `ok: true`，并且输出目录里出现探针 PNG 和主体抠图 PNG，就说明本机 Photoshop 桥已经跑通。
+看到 `ok: true`，并且输出目录里出现探针 PNG 和主体抠图 PNG，只能说明本机 Photoshop 实验桥跑通；它还不是生产级完整自动化工作流。
 
 如果想留下可读记录，执行：
 
