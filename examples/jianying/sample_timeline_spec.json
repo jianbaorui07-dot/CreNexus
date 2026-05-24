@@ -1,0 +1,46 @@
+{
+  "name": "starbridge_safe_demo_plan",
+  "duration_ms": 9000,
+  "canvas": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 30
+  },
+  "clips": [
+    {
+      "id": "clip_001",
+      "source": "<placeholder-image-1>",
+      "start_ms": 0,
+      "duration_ms": 3000
+    },
+    {
+      "id": "clip_002",
+      "source": "<placeholder-image-2>",
+      "start_ms": 3000,
+      "duration_ms": 3000
+    }
+  ],
+  "texts": [
+    {
+      "text": "StarBridge safe draft plan",
+      "start_ms": 0,
+      "duration_ms": 2500,
+      "position": "center"
+    }
+  ],
+  "audio": [
+    {
+      "source": "<placeholder-audio>",
+      "start_ms": 0,
+      "duration_ms": 9000,
+      "volume": 0.5
+    }
+  ],
+  "subtitles": [
+    {
+      "text": "This is a planning artifact only.",
+      "start_ms": 1000,
+      "duration_ms": 3000
+    }
+  ]
+}
