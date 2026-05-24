@@ -4,9 +4,12 @@
   "scripts": {
     "bridge:status": "python scripts/collect_bridge_status.py --markdown",
     "bridge:status:json": "python scripts/collect_bridge_status.py --json",
+    "bridge:status:safe": "python examples/bridge_status.py --json --redact-paths --soft-exit",
     "bridge:status:probe": "python examples/bridge_status.py --probe-executables",
     "comfy:probe": "python examples/comfy_bridge/comfy_probe.py",
     "photoshop:probe": "powershell -ExecutionPolicy Bypass -File examples/photoshop_bridge/probe.ps1",
+    "preflight": "python scripts/starbridge_preflight.py --markdown",
+    "preflight:json": "python scripts/starbridge_preflight.py --json",
     "security:check": "python scripts/security_check.py",
     "test": "python -m unittest discover -s tests"
   }
