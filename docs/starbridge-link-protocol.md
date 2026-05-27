@@ -1,15 +1,15 @@
 # 星桥链接协议
 
-这个文件是 **StarBridge / 星桥** 的公开入口页。旧链接仍然指向这里，所以这里不再只做跳转，而是直接说明：这个项目怎么读、本地软件桥怎么分工、Codex 如何在本机接入 Photoshop 和 AI 矢量文件，以及哪些内容不能进入 GitHub。
+这个文件是 **StarBridge / 星桥** 的公开入口页。旧链接仍然指向这里，所以这里不再只做跳转，而是直接说明：这个项目怎么读、本地软件桥怎么分工、Codex 如何通过 StarBridge 探针和 MCP stdio tools 接入本机创意软件，以及哪些内容不能进入 GitHub。
 
 ## 一、这个协议解决什么问题
 
-星桥链接协议把 Codex 和本机创作软件连成一条可检查、可复用、可公开协作的工作链：
+星桥链接协议把 Codex 和本机创作软件连成一条可检查、可复用、可公开协作的工作链。现在这条链有两层：StarBridge 负责统一状态、探针和脱敏输出；MCP stdio server 负责把安全收敛后的能力暴露成 `tools/list` / `tools/call`。
 
 | 角色 | 中文说明 |
 | --- | --- |
-| Codex | 写脚本、跑检查、整理说明、调用本机软件 |
-| GitHub | 只保存公开安全的文档、脚本、workflow 和测试 |
+| Codex | 写脚本、跑检查、整理说明、通过 MCP tools 调用本机桥 |
+| GitHub | 只保存公开安全的文档、脚本、workflow、MCP server 和测试 |
 | ComfyUI | 本地图像生成、修复、放大和 prompt 实验 |
 | Blender | 本机三维场景、灯光、相机、材质和渲染 |
 | CAD / AutoCAD | 工程制图、孔位、尺寸、图层和 DWG 输出 |
@@ -17,7 +17,7 @@
 | Illustrator | 矢量图形、线稿矢量化、SVG/PDF 导出 |
 | 剪映 / CapCut | 短视频草稿、模板、字幕、时间线和导出确认 |
 
-一句话：**Codex 负责连接和自动化，专业软件负责生成和处理，私有资产只留本机。**
+一句话：**StarBridge 管安全边界，MCP 管工具调用，专业软件管真实生产，私有资产只留本机。**
 
 ## 二、先看哪些文件
 
@@ -26,6 +26,7 @@
 | `README.md` | 仓库总览、区域标注、快速检查命令 |
 | `docs/中文介绍.md` | 星桥总协议，说明多条本地软件桥的完整路线 |
 | `docs/中文用途索引.md` | 每个主要文件的中文用途索引 |
+| `docs/local-mcp-setup.md` | 本地 MCP stdio server 配置和工具清单 |
 | `docs/中文标注规范.md` | 区域命名、脚本输出和 CAD 图纸中文标注规则 |
 | `docs/05-codex-illustrator.md` | Codex 接入 Illustrator / AI 矢量文件的中文说明 |
 | `docs/06-codex-jianying.md` | Codex 接入剪映 / CapCut 的调研和本地草稿桥路线 |
@@ -35,12 +36,12 @@
 
 | 区域 | 目录或文件 | 当前能力 |
 | --- | --- | --- |
-| 图像生成桥 | `examples/comfy_bridge/` | 检查 ComfyUI、列出 checkpoint、提交文生图 workflow |
-| 三维场景桥 | `docs/04-codex-blender.md` | 记录 Blender 接入方式和后续脚本方向 |
-| 工程制图桥 | `cad-mcp-autocad/`、`scripts/` | AutoCAD MCP、COM 绘图、中文区域标注示例图 |
-| Photoshop 修图桥 | `examples/photoshop_bridge/` | COM 探针、测试文档导出、主体抠图、一键本机实操 |
-| AI 矢量文件桥 | `docs/05-codex-illustrator.md` | 说明 Illustrator `.ai` 文件、线稿矢量化、SVG/PDF 导出和安全边界 |
-| 剪映/CapCut 短视频剪辑桥 | `docs/06-codex-jianying.md` | 调研本地草稿生成、模板替换、字幕导入和 MCP 封装路线 |
+| 图像生成桥 | `examples/comfy_bridge/` | MCP `comfyui.system_probe`、`comfyui.workflow_validate`，以及文生图 workflow |
+| 三维场景桥 | `docs/04-codex-blender.md`、`examples/blender_bridge/` | MCP `blender.environment_probe` 和后续安全脚本方向 |
+| 工程制图桥 | `cad-mcp-autocad/`、`examples/cad/`、`scripts/` | MCP `cad_autocad.environment_probe`、`autocad_dxf.*`、AutoCAD MCP 子项目 |
+| Photoshop 修图桥 | `examples/photoshop_bridge/` | MCP `photoshop.session_info`、COM 探针、测试文档导出、主体抠图 |
+| AI 矢量文件桥 | `docs/05-codex-illustrator.md`、`examples/illustrator_bridge/` | MCP `illustrator.document_info`、Illustrator `.ai` 路线和安全边界 |
+| 剪映/CapCut 短视频剪辑桥 | `docs/06-codex-jianying.md`、`examples/capcut_jianying_bridge/` | MCP `jianying_capcut.draft_probe`、本地草稿桥调研和安全边界 |
 
 ### 3.1 AI 矢量文件桥怎么理解
 

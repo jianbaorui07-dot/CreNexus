@@ -1,8 +1,8 @@
 # 星桥三联：Codex 本地创作软件接入仓库
 
-这个仓库整理 **Codex 接入本机创作软件** 的公开方案。它不替代 ComfyUI、Blender、CAD、Photoshop、Illustrator 或剪映，而是让 Codex 负责写脚本、跑检查、调用本地接口、记录流程；让专业软件继续负责图像生成、三维场景、工程制图、修图抠图、矢量设计和短视频剪辑。
+这个仓库整理 **Codex 接入本机创作软件** 的公开方案。它不替代 ComfyUI、Blender、CAD、Photoshop、Illustrator 或剪映，而是在本机和 AI 助手之间放一层安全桥：先用 StarBridge 探针确认软件、环境和隐私边界，再用真正 MCP stdio tools 把成熟的只读检查、workflow 校验和受保护 DXF 能力交给 Codex / Cursor / Claude Code 调用。
 
-公开仓库只保存说明、协议、示例脚本、workflow、真正 MCP stdio server 和安全检查。不保存个人路径、账号、模型、素材、生成图、客户图纸、授权信息或本机缓存。
+公开仓库只保存说明、协议、示例脚本、workflow、MCP stdio server、工具注册表和安全检查。不保存个人路径、账号、模型、素材、生成图、客户图纸、授权信息或本机缓存。
 
 ## 中文阅读指南
 
@@ -38,14 +38,14 @@ npm.cmd run bridge:status:safe
 
 | 软件桥 | Codex 负责 | 本地软件负责 | 当前状态 |
 | --- | --- | --- | --- |
-| ComfyUI 图像生成桥 | 调用 API、提交 workflow、记录输出路径 | 文生图、图生图、修复、放大 | 已有探针和文生图示例 |
-| Blender 三维场景桥 | 生成脚本、组织场景参数、沉淀流程 | 建模、材质、灯光、相机、渲染 | 已有接入说明，待补公开安全脚本 |
-| CAD 工程制图桥 | 解析规格、生成绘图脚本、调用 MCP/COM | 精确线条、孔位、尺寸、图层、DWG | 已有 AutoCAD MCP 子项目和绘图脚本 |
-| Photoshop 修图桥 | 调用 COM/脚本、读取文档、导出结果 | 主体选择、抠图、图层处理、PNG 导出 | 已有诊断、探针和主体抠图实验 |
-| AI 矢量文件桥 | 整理矢量化任务、生成脚本参数、检查导出流程 | Illustrator `.ai`、Image Trace、SVG/PDF/PNG 导出 | 已补中文接入说明，状态检查支持 `ILLUSTRATOR_EXE` / COM 探测 |
-| 剪映/CapCut 短视频剪辑桥 | 生成或检查本地草稿、整理字幕和镜头表 | 时间线剪辑、模板、字幕、导出 | 已有接入调研和本地草稿桥路线 |
+| ComfyUI 图像生成桥 | MCP 工具读取系统/节点信息、校验 API workflow | 文生图、图生图、修复、放大 | 已挂 `comfyui.system_probe` / `comfyui.workflow_validate` |
+| Blender 三维场景桥 | MCP 工具检查可执行文件和环境线索 | 建模、材质、灯光、相机、渲染 | 已挂 `blender.environment_probe`，待补安全场景脚本 |
+| CAD 工程制图桥 | MCP 工具检查 AutoCAD 环境；离线生成/校验 DXF plan | 精确线条、孔位、尺寸、图层、DWG | 已挂 `cad_autocad.environment_probe` 和 `autocad_dxf.*` |
+| Photoshop 修图桥 | MCP 工具检查 COM/session 线索，脚本读取文档信息 | 主体选择、抠图、图层处理、PNG 导出 | 已挂 `photoshop.session_info`，写入动作仍需确认 |
+| AI 矢量文件桥 | MCP 工具检查 Illustrator COM/session 线索 | Illustrator `.ai`、Image Trace、SVG/PDF/PNG 导出 | 已挂 `illustrator.document_info`，导出脚本未开放 |
+| 剪映/CapCut 短视频剪辑桥 | MCP 工具检查可执行文件和草稿目录配置 | 时间线剪辑、模板、字幕、导出 | 已挂 `jianying_capcut.draft_probe`，不读草稿内容 |
 
-一句话原则：**Codex 连接和自动化，专业软件生成和处理，私有资产只留本机。**
+一句话原则：**StarBridge 管安全边界，MCP 管工具调用，专业软件管真实生产，私有资产只留本机。**
 
 ## 按目标选择入口
 
