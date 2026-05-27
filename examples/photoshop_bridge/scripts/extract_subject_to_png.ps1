@@ -114,7 +114,8 @@ foreach ($part in ($raw -split ";")) {
 [pscustomobject]@{
     ok = $fields["ok"] -eq "true"
     method = $fields["method"]
-    output = $fields["output"]
+    output = [System.IO.Path]::GetFileName($OutputPath)
+    output_dir = "local output directory"
     width = $fields["width"]
     height = $fields["height"]
     layers = $fields["layers"]

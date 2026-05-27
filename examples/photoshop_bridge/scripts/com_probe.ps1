@@ -60,6 +60,7 @@ foreach ($part in ($raw -split ";")) {
     width = $fields["width"]
     height = $fields["height"]
     layers = $fields["layers"]
-    output = $fields["output"]
+    output = [System.IO.Path]::GetFileName($OutputPath)
+    output_dir = "local output directory"
     exists = (Test-Path -LiteralPath $OutputPath)
 } | ConvertTo-Json -Depth 6

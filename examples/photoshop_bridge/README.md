@@ -41,7 +41,7 @@ powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\diagn
 
 ## 区域三：一键本机实操
 
-运行一次完整闭环：连接 Photoshop、创建测试文档、生成公开安全测试图、执行主体抠图、输出 JSON 结果。
+运行一次实验闭环：连接 Photoshop、创建测试文档、生成公开安全测试图、执行主体抠图、输出 JSON 结果。
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\run_local_practice.ps1

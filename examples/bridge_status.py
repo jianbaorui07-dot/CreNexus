@@ -15,6 +15,11 @@ from pathlib import Path
 DEFAULT_COMFY_URL = "http://127.0.0.1:8188"
 BASIC_COMFY_NODES = ["CheckpointLoaderSimple", "CLIPTextEncode", "KSampler", "VAEDecode", "SaveImage"]
 REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from starbridge_mcp.core.security import sanitize_details, sanitize_text  # noqa: E402
+
 DOWNLOAD_INBOX = os.environ.get("STARBRIDGE_DOWNLOAD_INBOX")
 STATUS_LABELS = {
     "ok": "正常",
@@ -22,6 +27,10 @@ STATUS_LABELS = {
     "missing": "未找到",
     "error": "错误",
 }
+
+
+def safe_value(value):
+    return sanitize_details(value)
 
 
 def unique_paths(paths: list[Path]) -> list[Path]:
@@ -41,8 +50,8 @@ def status(name: str, state: str, details: list[str], data: dict | None = None, 
         "label": label or name,
         "status": state,
         "status_label": STATUS_LABELS.get(state, state),
-        "details": details,
-        "data": data or {},
+        "details": safe_value(details),
+        "data": safe_value(data or {}),
     }
 
 
@@ -462,7 +471,7 @@ def print_text_report(results: list[dict]) -> None:
     for result in results:
         print(f"\n[{result['status_label']}] {result['label']}")
         for detail in result["details"]:
-            print(f"- {detail}")
+            print(f"- {sanitize_text(str(detail))}")
 
 
 def main() -> None:
@@ -482,6 +491,7 @@ def main() -> None:
         help="对已找到的软件运行轻量版本探测；部分商业软件可能启动较慢。",
     )
     parser.add_argument("--json", action="store_true", help="输出机器可读 JSON。")
+    parser.add_argument("--strict", action="store_true", help="任一 bridge 未通过时返回退出码 1。")
     args = parser.parse_args()
 
     results = [
@@ -494,13 +504,11 @@ def main() -> None:
     ]
 
     if args.json:
-        print(json.dumps({"results": results}, ensure_ascii=False, indent=2))
+        print(json.dumps(sanitize_details({"results": results}), ensure_ascii=False, indent=2))
     else:
         print_text_report(results)
 
-    if any(result["status"] == "error" for result in results):
-        raise SystemExit(2)
-    if any(result["status"] in {"missing", "warn"} for result in results):
+    if args.strict and any(result["status"] in {"error", "missing", "warn"} for result in results):
         raise SystemExit(1)
 
 

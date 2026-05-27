@@ -9,24 +9,69 @@ import time
 import urllib.error
 import urllib.request
 from pathlib import Path
+from typing import Any
 
 
-DEFAULT_BASE_URL = os.environ.get("STARBRIDGE_COMFYUI_URL") or os.environ.get("COMFY_BASE_URL", "http://127.0.0.1:8188")
+BRIDGE_ID = "comfyui"
+DEFAULT_BASE_URL = os.environ.get("STARBRIDGE_COMFYUI_URL") or os.environ.get(
+    "COMFY_BASE_URL",
+    "http://127.0.0.1:8188",
+)
 BRIDGE_ROOT = Path(__file__).resolve().parent
 WORKFLOW_PATH = BRIDGE_ROOT / "workflows" / "txt2img_basic_api.json"
 DEFAULT_COMFY_OUTPUT = Path(os.environ.get("COMFY_OUTPUT_DIR", str(Path.cwd() / "output" / "comfyui")))
+REQUIRED_NODE_CLASSES = {
+    "3": "KSampler",
+    "4": "CheckpointLoaderSimple",
+    "5": "EmptyLatentImage",
+    "6": "CLIPTextEncode",
+    "7": "CLIPTextEncode",
+    "8": "VAEDecode",
+    "9": "SaveImage",
+}
+
+
+class BridgeError(Exception):
+    def __init__(self, error: str, message: str, suggestion: str, exit_code: int = 1) -> None:
+        super().__init__(message)
+        self.error = error
+        self.message = message
+        self.suggestion = suggestion
+        self.exit_code = exit_code
+
+    def to_payload(self) -> dict[str, Any]:
+        return {
+            "ok": False,
+            "bridge": BRIDGE_ID,
+            "error": self.error,
+            "message": self.message,
+            "suggestion": self.suggestion,
+        }
+
+
+class JsonArgumentParser(argparse.ArgumentParser):
+    def error(self, message: str) -> None:
+        raise BridgeError(
+            "invalid_arguments",
+            message,
+            "Run with --help to see required txt2img arguments.",
+        )
+
+
+def print_json(payload: dict[str, Any]) -> None:
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
 
 
 def build_url(base_url: str, path: str) -> str:
     return f"{base_url.rstrip('/')}{path}"
 
 
-def get_json(base_url: str, path: str, timeout: int):
+def get_json(base_url: str, path: str, timeout: int) -> dict[str, Any]:
     with urllib.request.urlopen(build_url(base_url, path), timeout=timeout) as response:
         return json.loads(response.read().decode("utf-8"))
 
 
-def post_json(base_url: str, path: str, payload: dict, timeout: int):
+def post_json(base_url: str, path: str, payload: dict[str, Any], timeout: int) -> dict[str, Any]:
     data = json.dumps(payload).encode("utf-8")
     request = urllib.request.Request(
         build_url(base_url, path),
@@ -38,35 +83,126 @@ def post_json(base_url: str, path: str, payload: dict, timeout: int):
         return json.loads(response.read().decode("utf-8"))
 
 
+def load_workflow(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        raise BridgeError(
+            "workflow_not_found",
+            f"Workflow file does not exist: {path}",
+            "Use examples/comfy_bridge/workflows/txt2img_basic_api.json or pass --workflow.",
+        )
+    try:
+        workflow = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise BridgeError(
+            "invalid_workflow_json",
+            f"Workflow JSON is invalid: {exc}",
+            "Export or repair the workflow JSON before submitting it to ComfyUI.",
+        ) from exc
+    if not isinstance(workflow, dict):
+        raise BridgeError(
+            "invalid_workflow",
+            "Workflow root must be a JSON object keyed by node id.",
+            "Use the ComfyUI API workflow format, not the visual workflow wrapper.",
+        )
+    validate_workflow(workflow)
+    return workflow
+
+
+def validate_workflow(workflow: dict[str, Any]) -> None:
+    for node_id, expected_class in REQUIRED_NODE_CLASSES.items():
+        node = workflow.get(node_id)
+        if node is None:
+            raise BridgeError(
+                "missing_node",
+                f"Workflow missing node {node_id} for {expected_class}.",
+                "Use bundled txt2img_basic_api.json or update the node mapping.",
+            )
+        if not isinstance(node, dict):
+            raise BridgeError(
+                "invalid_node",
+                f"Workflow node {node_id} must be a JSON object.",
+                "Check the workflow export format.",
+            )
+        actual_class = node.get("class_type")
+        if actual_class != expected_class:
+            raise BridgeError(
+                "invalid_node_class",
+                f"Workflow node {node_id} expected {expected_class}, got {actual_class!r}.",
+                "Use bundled txt2img_basic_api.json or update the node mapping.",
+            )
+
+
+def node_inputs(workflow: dict[str, Any], node_id: str) -> dict[str, Any]:
+    inputs = workflow[node_id].setdefault("inputs", {})
+    if not isinstance(inputs, dict):
+        raise BridgeError(
+            "invalid_node_inputs",
+            f"Workflow node {node_id} has invalid inputs.",
+            "Re-export the workflow or repair the node inputs object.",
+        )
+    return inputs
+
+
 def get_checkpoint_names(base_url: str, timeout: int) -> list[str]:
     loader = get_json(base_url, "/object_info/CheckpointLoaderSimple", timeout)
-    return loader["CheckpointLoaderSimple"]["input"]["required"]["ckpt_name"][0]
+    names = (
+        loader.get("CheckpointLoaderSimple", {})
+        .get("input", {})
+        .get("required", {})
+        .get("ckpt_name", [[]])[0]
+    )
+    if not isinstance(names, list):
+        raise BridgeError(
+            "checkpoint_schema_changed",
+            "ComfyUI returned checkpoint metadata in an unexpected shape.",
+            "Check /object_info/CheckpointLoaderSimple in your local ComfyUI instance.",
+        )
+    return [str(name) for name in names]
 
 
-def resolve_checkpoint(args: argparse.Namespace) -> str:
+def resolve_checkpoint(args: argparse.Namespace, checkpoints: list[str]) -> str:
     if args.ckpt:
+        if args.ckpt not in checkpoints:
+            raise BridgeError(
+                "checkpoint_not_found",
+                f"Checkpoint not found in ComfyUI: {args.ckpt}",
+                "Run comfy_probe.py to list available checkpoints, then pass --ckpt with an exact name.",
+            )
         return args.ckpt
 
-    checkpoints = get_checkpoint_names(args.comfy_url, args.request_timeout)
+    if not args.allow_first_checkpoint:
+        raise BridgeError(
+            "missing_checkpoint",
+            "No checkpoint was specified.",
+            "Pass --ckpt with an exact checkpoint name, or add --allow-first-checkpoint to opt in to the first available checkpoint.",
+        )
+
     if not checkpoints:
-        raise SystemExit("ComfyUI 没有返回可用 checkpoint。请先安装或启用至少一个模型。")
+        raise BridgeError(
+            "no_checkpoint",
+            "ComfyUI did not report any available checkpoints.",
+            "Install or enable at least one checkpoint before running txt2img.",
+        )
     return checkpoints[0]
 
 
-def build_prompt(args: argparse.Namespace, checkpoint: str) -> dict:
-    workflow = json.loads(WORKFLOW_PATH.read_text(encoding="utf-8"))
+def build_prompt(args: argparse.Namespace, workflow: dict[str, Any], checkpoint: str) -> tuple[dict[str, Any], int]:
     prompt = copy.deepcopy(workflow)
+    seed = args.seed if args.seed is not None else random.randint(1, 2**48)
 
-    prompt["4"]["inputs"]["ckpt_name"] = checkpoint
-    prompt["5"]["inputs"]["width"] = args.width
-    prompt["5"]["inputs"]["height"] = args.height
-    prompt["6"]["inputs"]["text"] = args.prompt
-    prompt["7"]["inputs"]["text"] = args.negative
-    prompt["3"]["inputs"]["steps"] = args.steps
-    prompt["3"]["inputs"]["cfg"] = args.cfg
-    prompt["3"]["inputs"]["seed"] = args.seed if args.seed is not None else random.randint(1, 2**48)
-    prompt["9"]["inputs"]["filename_prefix"] = args.prefix
-    return prompt
+    node_inputs(prompt, "4")["ckpt_name"] = checkpoint
+    node_inputs(prompt, "5")["width"] = args.width
+    node_inputs(prompt, "5")["height"] = args.height
+    node_inputs(prompt, "6")["text"] = args.prompt
+    node_inputs(prompt, "7")["text"] = args.negative
+    sampler_inputs = node_inputs(prompt, "3")
+    sampler_inputs["steps"] = args.steps
+    sampler_inputs["cfg"] = args.cfg
+    sampler_inputs["seed"] = seed
+    sampler_inputs["sampler_name"] = args.sampler
+    sampler_inputs["scheduler"] = args.scheduler
+    node_inputs(prompt, "9")["filename_prefix"] = args.prefix
+    return prompt, seed
 
 
 def wait_for_outputs(
@@ -87,54 +223,115 @@ def wait_for_outputs(
                     outputs.append(output_dir / subfolder / image["filename"])
             return outputs
         time.sleep(2)
-    raise TimeoutError(f"Timed out waiting for ComfyUI prompt {prompt_id}")
+    raise BridgeError(
+        "timeout",
+        f"Timed out waiting for ComfyUI prompt {prompt_id}.",
+        "Check the ComfyUI queue, GPU memory, and workflow errors in the ComfyUI console.",
+    )
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="向本机 ComfyUI 提交基础文生图 workflow。", add_help=False)
-    parser.add_argument("-h", "--help", action="help", help="显示帮助并退出。")
-    parser.add_argument("--comfy-url", default=DEFAULT_BASE_URL, help="ComfyUI API 地址。")
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = JsonArgumentParser(description="Submit a safe txt2img workflow to local ComfyUI.")
+    parser.add_argument("--comfy-url", default=DEFAULT_BASE_URL, help="ComfyUI API base URL.")
+    parser.add_argument("--workflow", type=Path, default=WORKFLOW_PATH, help="ComfyUI API workflow JSON path.")
     parser.add_argument(
         "--output-dir",
         type=Path,
         default=DEFAULT_COMFY_OUTPUT,
-        help="ComfyUI 输出目录，用来打印最终图片路径。",
+        help="Local ComfyUI output directory used only to report expected output paths.",
     )
-    parser.add_argument("--prompt", required=True, help="正向提示词，必填。")
-    parser.add_argument("--negative", default="low quality, blurry, distorted, watermark, text", help="反向提示词。")
-    parser.add_argument("--ckpt", default=None, help="checkpoint 名称；不传时自动使用 ComfyUI 返回的第一个 checkpoint。")
-    parser.add_argument("--width", type=int, default=512, help="输出宽度。")
-    parser.add_argument("--height", type=int, default=512, help="输出高度。")
-    parser.add_argument("--steps", type=int, default=12, help="采样步数。")
-    parser.add_argument("--cfg", type=float, default=7.0, help="提示词引导强度。")
-    parser.add_argument("--seed", type=int, default=None, help="随机种子；不传时自动生成。")
-    parser.add_argument("--prefix", default="codex_txt2img", help="输出文件前缀。")
-    parser.add_argument("--timeout", type=int, default=600, help="等待任务完成的最长时间，单位秒。")
-    parser.add_argument("--request-timeout", type=int, default=30, help="单次 HTTP 请求超时时间，单位秒。")
-    args = parser.parse_args()
+    parser.add_argument("--prompt", required=True, help="Positive prompt.")
+    parser.add_argument("--negative", default="low quality, blurry, distorted, watermark, text", help="Negative prompt.")
+    parser.add_argument("--ckpt", default=None, help="Exact checkpoint name from ComfyUI.")
+    parser.add_argument(
+        "--allow-first-checkpoint",
+        action="store_true",
+        help="Explicitly allow using the first checkpoint reported by ComfyUI when --ckpt is omitted.",
+    )
+    parser.add_argument("--width", type=int, default=512, help="Output width.")
+    parser.add_argument("--height", type=int, default=512, help="Output height.")
+    parser.add_argument("--steps", type=int, default=20, help="Sampling steps.")
+    parser.add_argument("--cfg", type=float, default=7.0, help="Classifier-free guidance scale.")
+    parser.add_argument("--sampler", default="euler", help="ComfyUI sampler_name for KSampler.")
+    parser.add_argument("--scheduler", default="normal", help="ComfyUI scheduler for KSampler.")
+    parser.add_argument("--seed", type=int, default=None, help="Random seed. Omit to generate one locally.")
+    parser.add_argument("--prefix", default="codex_txt2img", help="Output filename prefix.")
+    parser.add_argument("--timeout", type=int, default=600, help="Maximum wait time in seconds.")
+    parser.add_argument("--request-timeout", type=int, default=30, help="Single HTTP request timeout in seconds.")
+    return parser.parse_args(argv)
 
+
+def run(args: argparse.Namespace) -> dict[str, Any]:
+    workflow = load_workflow(args.workflow)
+    stats = get_json(args.comfy_url, "/system_stats", args.request_timeout)
+    checkpoint = resolve_checkpoint(args, get_checkpoint_names(args.comfy_url, args.request_timeout))
+    prompt, seed = build_prompt(args, workflow, checkpoint)
+    response = post_json(args.comfy_url, "/prompt", {"prompt": prompt}, args.request_timeout)
+    prompt_id = response.get("prompt_id")
+    if not prompt_id:
+        raise BridgeError(
+            "missing_prompt_id",
+            "ComfyUI did not return a prompt_id.",
+            "Check the /prompt response and the ComfyUI console for workflow errors.",
+        )
+
+    outputs = wait_for_outputs(str(prompt_id), args.timeout, args.comfy_url, args.request_timeout, args.output_dir)
+    return {
+        "ok": True,
+        "bridge": BRIDGE_ID,
+        "task": "txt2img",
+        "prompt_id": str(prompt_id),
+        "workflow": str(args.workflow),
+        "checkpoint": checkpoint,
+        "seed": seed,
+        "steps": args.steps,
+        "cfg": args.cfg,
+        "sampler": args.sampler,
+        "scheduler": args.scheduler,
+        "width": args.width,
+        "height": args.height,
+        "comfyui_version": stats.get("system", {}).get("comfyui_version"),
+        "outputs": [str(path) for path in outputs],
+    }
+
+
+def main(argv: list[str] | None = None) -> int:
     try:
-        stats = get_json(args.comfy_url, "/system_stats", args.request_timeout)
+        payload = run(parse_args(argv))
+    except BridgeError as exc:
+        print_json(exc.to_payload())
+        return exc.exit_code
+    except urllib.error.HTTPError as exc:
+        print_json(
+            BridgeError(
+                "http_error",
+                f"ComfyUI HTTP error {exc.code}: {exc.reason}",
+                "Check the ComfyUI console and confirm the workflow is compatible with your installed nodes.",
+            ).to_payload()
+        )
+        return 1
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
-        raise SystemExit(f"无法连接 ComfyUI：{args.comfy_url}，错误信息：{exc}") from exc
+        print_json(
+            BridgeError(
+                "comfyui_unavailable",
+                f"Unable to connect to ComfyUI at the configured URL: {exc}",
+                "Start local ComfyUI, then retry with --comfy-url or STARBRIDGE_COMFYUI_URL.",
+            ).to_payload()
+        )
+        return 1
+    except Exception as exc:  # noqa: BLE001 - CLI must return structured JSON.
+        print_json(
+            BridgeError(
+                "unexpected_error",
+                str(exc),
+                "Run comfy_probe.py first, then retry with explicit --workflow and --ckpt values.",
+            ).to_payload()
+        )
+        return 1
 
-    checkpoint = resolve_checkpoint(args)
-    print("ComfyUI 版本:", stats["system"].get("comfyui_version"))
-    print("接口地址:", args.comfy_url)
-    print("使用 checkpoint:", checkpoint)
-    result = post_json(args.comfy_url, "/prompt", {"prompt": build_prompt(args, checkpoint)}, args.request_timeout)
-    prompt_id = result["prompt_id"]
-    print("已提交任务 ID:", prompt_id)
-
-    outputs = wait_for_outputs(prompt_id, args.timeout, args.comfy_url, args.request_timeout, args.output_dir)
-    if not outputs:
-        print("任务已结束，但 ComfyUI 没有返回图片输出。")
-        return
-
-    print("输出图片路径:")
-    for path in outputs:
-        print(path)
+    print_json(payload)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

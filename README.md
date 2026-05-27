@@ -2,7 +2,7 @@
 
 这个仓库整理 **Codex 接入本机创作软件** 的公开方案。它不替代 ComfyUI、Blender、CAD、Photoshop、Illustrator 或剪映，而是让 Codex 负责写脚本、跑检查、调用本地接口、记录流程；让专业软件继续负责图像生成、三维场景、工程制图、修图抠图、矢量设计和短视频剪辑。
 
-公开仓库只保存说明、协议、示例脚本、workflow 和安全检查。不保存个人路径、账号、模型、素材、生成图、客户图纸、授权信息或本机缓存。
+公开仓库只保存说明、协议、示例脚本、workflow、真正 MCP stdio server 和安全检查。不保存个人路径、账号、模型、素材、生成图、客户图纸、授权信息或本机缓存。
 
 ## 中文阅读指南
 
@@ -121,6 +121,17 @@ python scripts\starbridge_preflight.py --write-report --soft-exit
 python scripts\security_check.py
 ```
 
+### StarBridge MCP
+
+```powershell
+python -m starbridge_mcp.server --json
+python -m starbridge_mcp.server tools --json --safe-only
+python -m starbridge_mcp.mcp_server
+npm.cmd run starbridge:mcp
+```
+
+MCP 客户端可发现首批安全工具：`starbridge.status`、`starbridge.probe`、`starbridge.tools`、`comfyui.workflow_validate`、`autocad_dxf.status`、`autocad_dxf.validate_cad_plan`、`autocad_dxf.create_dxf_plan`、`autocad_dxf.summarize_plan` 和 `autocad_dxf.write_dxf`。
+
 ### ComfyUI
 
 ```powershell
@@ -190,9 +201,9 @@ python scripts\starbridge_preflight.py --markdown
 | 优先级 | 任务 |
 | --- | --- |
 | 高 | 给 Blender 增加公开安全的基础场景生成脚本 |
-| 高 | 给 ComfyUI 增加 `img2img`、inpaint、upscale 和 workflow 校验示例 |
+| 高 | 给 ComfyUI 增加 `img2img`、inpaint、upscale 和 job/asset 生命周期摘要 |
 | 高 | 给 CAD 增加更清楚的 JSON 参数格式和标准零件示例 |
-| 中 | 把 Photoshop 的 `extract_subject`、`export_png`、`document_info` 封装成本机 MCP 工具 |
+| 中 | 把 Photoshop 的 `extract_subject`、`export_png`、`document_info` 封装成安全 MCP 工具 |
 | 中 | 给 Illustrator 增加只读文档信息、测试画板和 `trace_image_to_vector` 参数化示例 |
 | 中 | 给剪映增加只读草稿目录探针，再验证最小测试草稿生成 |
 | 中 | 为 Penpot/Figma、Krita 建立接入评估表，先记录许可、依赖、账号要求和安全边界 |

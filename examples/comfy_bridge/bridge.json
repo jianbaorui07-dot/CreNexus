@@ -1,0 +1,18 @@
+{
+  "bridge_id": "comfyui",
+  "name": "ComfyUI",
+  "status": "experimental",
+  "platform": ["Windows"],
+  "requires": ["Python 3.10+", "ComfyUI local server", "ComfyUI HTTP API"],
+  "entrypoints": {
+    "probe": "python examples/comfy_bridge/comfy_probe.py",
+    "run": "python examples/comfy_bridge/run_txt2img.py"
+  },
+  "supported_tasks": ["probe", "txt2img"],
+  "unsupported_tasks": ["img2img", "inpaint", "upscale", "workflow graph validation beyond bundled txt2img"],
+  "safety_notes": [
+    "Do not commit generated images.",
+    "Do not commit checkpoint, LoRA, VAE, ControlNet, or local model paths.",
+    "Keep ComfyUI output paths in local environment variables."
+  ]
+}

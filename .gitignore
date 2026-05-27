@@ -1,5 +1,6 @@
 # 依赖目录
 node_modules/
+dist/
 
 # Python 缓存
 __pycache__/
@@ -16,9 +17,13 @@ venv/
 output/
 outputs/
 reports/
+!examples/cad/output/
+!examples/cad/output/.gitkeep
 **/outputs/
 **/reports/
 scratch/
+research_repos/
+third_party_research/
 docx_render_check/
 .codex_video_deps/
 .codex_video_frames/
@@ -28,6 +33,14 @@ docx_render_check/
 src/
 virtual-pet/
 overtime-analysis-deck/
+/index.html
+/bing_test.html
+/main.py
+/vite.config.js
+/package-lock.json
+/_local_demo/
+/examples/example_plan.json
+/examples/example_prompt.txt
 _codex_reference_contact_sheet.jpg
 codex_doll_four_modes.png
 build_aigc_research_report.py
@@ -41,6 +54,13 @@ scripts/create_art_plugin_recommendations_doc.py
 scripts/enhance_github_report_cn.py
 scripts/expand_ai_art_workflow_doc.py
 scripts/generate_github_hot_report.py
+
+# 旧版根目录 CAD 实验文件保留在本机，不进入公开仓库
+/autocad_bridge.py
+/cad_schema.py
+/dxf_writer.py
+/image_trace_to_cad_json.py
+/requirements.txt
 
 # 日志和临时文件
 *.log
@@ -56,10 +76,20 @@ scripts/generate_github_hot_report.py
 *.pth
 *.psd
 *.dwg
+*.dxf
 *.ai
+*.ait
 *.aep
 *.mp4
 *.mov
+*.mkv
+*.avi
+*.webm
+*.prproj
+*.aepx
+draft_content.json
+draft_info.json
+*.srt.bak
 !*.example.json
 
 # 系统和编辑器噪音

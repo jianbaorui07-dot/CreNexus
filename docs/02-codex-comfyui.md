@@ -1,27 +1,26 @@
 # 2. Codex 接入 ComfyUI
 
-这份文档说明 Codex 如何接入 ComfyUI。用户口中的 “comful / comfy” 在本仓库统一写作 **ComfyUI**。公开仓库只保存 workflow 示例和 API 调用脚本，不保存模型、LoRA、VAE、ControlNet、生成图或本机路径。
+这份文档说明 ComfyUI 桥的真实状态。当前仓库已有只读探针和基础 txt2img API 示例，状态是 `experimental`，不是完整图像生成平台封装。公开仓库只保存 workflow 示例和 API 调用脚本，不保存模型、LoRA、VAE、ControlNet、生成图或本机路径。
 
-## 接入目标
+## 当前可运行
 
-- 让 Codex 通过 `http://127.0.0.1:8188` 调用本地 ComfyUI。
-- 读取系统状态、显卡信息、checkpoint 列表和队列状态。
-- 提交 workflow JSON，完成文生图、图生图、修复、放大等任务。
-- 后续封装成 MCP 工具，让 Codex 可以稳定调用本地图像生成能力。
+| 能力 | 入口 | 说明 |
+| --- | --- | --- |
+| 只读探针 | `examples/comfy_bridge/comfy_probe.py` | 读取本机 ComfyUI 状态、设备和 checkpoint 信息 |
+| 总状态探测 | `examples/bridge_status.py` | 作为所有软件桥的一部分检查 ComfyUI |
+| txt2img 示例 | `examples/comfy_bridge/run_txt2img.py` | 提交基础文生图 workflow，成功和失败都输出标准 JSON |
+| workflow 示例 | `examples/comfy_bridge/workflows/txt2img_basic_api.json` | API 格式 workflow |
 
-## 当前入口
+`run_txt2img.py` 已做离线 workflow 节点存在性检查、节点 `class_type` 检查、checkpoint 检查和 CLI 参数化。脚本不会默认选择第一个 checkpoint；必须传 `--ckpt`，或显式加 `--allow-first-checkpoint`。
 
-| 文件或目录 | 用途 |
-| --- | --- |
-| `examples/comfy_bridge/README.md` | ComfyUI 桥接说明 |
-| `examples/comfy_bridge/comfy_probe.py` | 只读探针，读取状态和 checkpoint |
-| `examples/comfy_bridge/run_txt2img.py` | 基础文生图提交脚本 |
-| `examples/comfy_bridge/workflows/txt2img_basic_api.json` | API workflow |
-| `examples/comfy_bridge/workflows/txt2img_basic_visual.json` | 可视化 workflow |
+## 需要本机安装什么
 
-## 本地配置
+- Python 3.10+。
+- 本机 ComfyUI server，默认 API 地址 `http://127.0.0.1:8188`。
+- 至少一个可用 checkpoint。
+- 如果要查看输出路径，需要本机配置或确认 ComfyUI 输出目录。
 
-用环境变量记录本机路径，不写进 Git：
+建议环境变量：
 
 ```powershell
 $env:STARBRIDGE_COMFYUI_URL="http://127.0.0.1:8188"
@@ -32,7 +31,12 @@ $env:COMFY_OUTPUT_DIR="<path-to-ComfyUI-output>"
 
 ## 验证命令
 
-先手动启动 ComfyUI，然后运行：
+```powershell
+npm.cmd run comfy:probe
+npm.cmd run status:probe:json
+```
+
+直接运行：
 
 ```powershell
 python examples\comfy_bridge\comfy_probe.py
@@ -43,21 +47,56 @@ python examples\bridge_status.py --json
 提交一个基础文生图任务：
 
 ```powershell
-python examples\comfy_bridge\run_txt2img.py --prompt "a quiet futuristic tea house in a garden"
+npm.cmd run comfy:txt2img -- --prompt "a quiet futuristic tea house in a garden" --ckpt "<checkpoint-name>"
 ```
 
-默认会使用 ComfyUI 返回的第一个 checkpoint；需要指定模型时加 `--ckpt "<checkpoint-name>"`。
+或直接运行：
 
-## 安全边界
+```powershell
+python examples\comfy_bridge\run_txt2img.py --prompt "a quiet futuristic tea house in a garden" --ckpt "<checkpoint-name>"
+```
 
-- 不提交模型文件、LoRA、VAE、ControlNet、checkpoint、生成输出。
-- 不提交浏览器资料、token、账号、付费 API key。
-- workflow 示例必须能公开复现，不依赖私有模型路径。
-- 输出路径由本机环境变量控制，不写入公开仓库。
+常用参数：
 
-## 后续优化
+```powershell
+python examples\comfy_bridge\run_txt2img.py `
+  --prompt "clean product render on white background" `
+  --negative "low quality, blurry, watermark" `
+  --ckpt "<checkpoint-name>" `
+  --seed 123456 `
+  --steps 20 `
+  --cfg 7 `
+  --sampler euler `
+  --scheduler normal `
+  --width 512 `
+  --height 512
+```
 
-- 增加 `img2img`、inpaint、upscale、批量 prompt 示例。
-- 增加 workflow 校验，避免节点缺失时直接提交失败。
-- 增加输出结果索引 JSON，但只保存本机路径，不提交图片。
-- 评估轻量 MCP 封装，而不是一开始引入过重第三方包。
+失败时会输出类似：
+
+```json
+{
+  "ok": false,
+  "bridge": "comfyui",
+  "error": "missing_checkpoint",
+  "message": "No checkpoint was specified.",
+  "suggestion": "Pass --ckpt with an exact checkpoint name, or add --allow-first-checkpoint to opt in to the first available checkpoint."
+}
+```
+
+成功时会输出 `prompt_id`、workflow、checkpoint、seed、steps、sampler、scheduler、width、height 和输出路径列表。
+
+## 不能做什么
+
+- 不能提交模型、checkpoint、LoRA、VAE、ControlNet 或生成图片。
+- 不能把本机 ComfyUI 根目录、输出目录或模型路径写进仓库。
+- 当前没有公开 `img2img`、inpaint、upscale 示例。
+- 当前 workflow 校验只覆盖 bundled txt2img 节点映射，不是通用 ComfyUI 图校验器。
+
+## 下一步
+
+1. 增加 `img2img`、inpaint、upscale 的公开安全 workflow。
+2. 扩展 workflow 校验，覆盖输入引用、节点类型和常见错误。
+3. 把 ComfyUI 队列错误和历史记录错误转成统一 JSON。
+4. 增加输出结果索引 JSON，但只保存本机路径，不提交图片。
+5. 评估轻量 MCP 封装，先从稳定的 txt2img 开始。

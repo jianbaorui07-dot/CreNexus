@@ -23,7 +23,7 @@ class CollectBridgeStatusTest(unittest.TestCase):
 
     def test_default_outputs_markdown_table(self) -> None:
         completed = self.run_script()
-        self.assertIn("| bridge_id | display_name | maturity |", completed.stdout)
+        self.assertIn("| bridge_id | name | status |", completed.stdout)
         self.assertIn("comfyui", completed.stdout)
         self.assertIn("capcut_jianying", completed.stdout)
 
@@ -33,6 +33,10 @@ class CollectBridgeStatusTest(unittest.TestCase):
         bridge_ids = {bridge["bridge_id"] for bridge in data["bridges"]}
         self.assertIn("photoshop", bridge_ids)
         self.assertIn("illustrator", bridge_ids)
+        for bridge in data["bridges"]:
+            self.assertIn("_path", bridge)
+            self.assertTrue(bridge["_path"].endswith("bridge.json"))
+            self.assertIn(bridge["status"], {"stable", "experimental", "research", "planned"})
 
     def test_markdown_flag_outputs_table(self) -> None:
         completed = self.run_script("--markdown")

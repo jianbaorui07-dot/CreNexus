@@ -1,0 +1,18 @@
+{
+  "units": "mm",
+  "layers": [
+    {"name": "OUTLINE", "color": 7},
+    {"name": "AUX", "color": 8},
+    {"name": "TEXT", "color": 2},
+    {"name": "FURNITURE", "color": 3}
+  ],
+  "entities": [
+    {"type": "rectangle", "layer": "OUTLINE", "x": 0, "y": 0, "width": 5000, "height": 3000},
+    {"type": "line", "layer": "AUX", "start": [2500, 0], "end": [2500, 3000]},
+    {"type": "line", "layer": "AUX", "start": [0, 1500], "end": [5000, 1500]},
+    {"type": "circle", "layer": "FURNITURE", "center": [1400, 1000], "radius": 220},
+    {"type": "polyline", "layer": "FURNITURE", "points": [[3400, 700], [4300, 700], [4300, 1200], [3400, 1200]], "closed": true},
+    {"type": "text", "layer": "TEXT", "position": [200, 3300], "height": 180, "value": "安全 DXF 计划示例"}
+  ],
+  "output": "safe_example.dxf"
+}

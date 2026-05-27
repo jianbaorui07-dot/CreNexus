@@ -1,0 +1,17 @@
+{
+  "bridge_id": "capcut_jianying",
+  "name": "Jianying / CapCut",
+  "status": "research",
+  "platform": ["Windows"],
+  "requires": ["Jianying Pro or CapCut desktop", "local draft folder"],
+  "entrypoints": {
+    "probe": "python examples/capcut_jianying_bridge/probe.py"
+  },
+  "supported_tasks": ["environment and draft-folder research"],
+  "unsupported_tasks": ["stable official desktop API automation", "draft writing", "template validation", "automatic export"],
+  "safety_notes": [
+    "Do not commit draft folders, draft_content.json, cached media, subtitles, exported videos, or account data.",
+    "Do not automate login, paid features, publishing, or official online services.",
+    "Keep JIANYING_DRAFTS_DIR and CAPCUT_DRAFTS_DIR outside the repository."
+  ]
+}
