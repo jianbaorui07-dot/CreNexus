@@ -47,7 +47,14 @@ class McpStdioServerTests(unittest.TestCase):
         names = {tool["name"] for tool in tools}
         self.assertIn("starbridge.status", names)
         self.assertIn("starbridge.tools", names)
+        self.assertIn("comfyui.system_probe", names)
+        self.assertIn("blender.environment_probe", names)
+        self.assertIn("cad_autocad.environment_probe", names)
+        self.assertIn("photoshop.session_info", names)
+        self.assertIn("illustrator.document_info", names)
+        self.assertIn("jianying_capcut.draft_probe", names)
         self.assertIn("autocad_dxf.validate_cad_plan", names)
+        self.assertTrue(all("inputSchema" in tool for tool in tools))
         self.assert_no_private_paths(response)
 
     def test_tools_call_returns_structured_content(self) -> None:
@@ -61,6 +68,37 @@ class McpStdioServerTests(unittest.TestCase):
         self.assertFalse(result["isError"])
         self.assertEqual("tools", result["structuredContent"]["action"])
         self.assertTrue(all(item["safe_default"] for item in result["structuredContent"]["capabilities"]))
+        self.assert_no_private_paths(response)
+
+    def test_direct_bridge_probe_tools_return_structured_content(self) -> None:
+        tool_calls = [
+            ("blender.environment_probe", {}),
+            ("cad_autocad.environment_probe", {}),
+            ("jianying_capcut.draft_probe", {}),
+            ("photoshop.session_info", {"probe_com": False}),
+            ("illustrator.document_info", {"probe_com": False}),
+        ]
+        for tool_name, arguments in tool_calls:
+            with self.subTest(tool=tool_name):
+                response = request(30, "tools/call", {"name": tool_name, "arguments": arguments})
+                structured = response["result"]["structuredContent"]
+
+                self.assertIn("ok", structured)
+                self.assertIn("bridge", structured)
+                self.assertFalse(response["result"]["isError"])
+                self.assert_no_private_paths(response)
+
+    def test_comfyui_system_probe_is_mcp_tool_even_when_service_is_down(self) -> None:
+        response = request(
+            31,
+            "tools/call",
+            {"name": "comfyui.system_probe", "arguments": {"comfy_url": "http://127.0.0.1:9", "timeout": 1}},
+        )
+        structured = response["result"]["structuredContent"]
+
+        self.assertEqual("comfyui", structured["bridge"])
+        self.assertEqual("system_probe", structured["action"])
+        self.assertFalse(response["result"]["isError"])
         self.assert_no_private_paths(response)
 
     def test_dxf_write_requires_confirmation_for_real_write(self) -> None:

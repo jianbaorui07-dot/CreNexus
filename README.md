@@ -130,7 +130,7 @@ python -m starbridge_mcp.mcp_server
 npm.cmd run starbridge:mcp
 ```
 
-MCP 客户端可发现首批安全工具：`starbridge.status`、`starbridge.probe`、`starbridge.tools`、`comfyui.workflow_validate`、`autocad_dxf.status`、`autocad_dxf.validate_cad_plan`、`autocad_dxf.create_dxf_plan`、`autocad_dxf.summarize_plan` 和 `autocad_dxf.write_dxf`。
+MCP 客户端可发现首批安全工具：`starbridge.status`、`starbridge.probe`、`starbridge.tools`、`comfyui.system_probe`、`comfyui.workflow_validate`、`blender.environment_probe`、`cad_autocad.environment_probe`、`photoshop.session_info`、`illustrator.document_info`、`jianying_capcut.draft_probe`、`autocad_dxf.status`、`autocad_dxf.validate_cad_plan`、`autocad_dxf.create_dxf_plan`、`autocad_dxf.summarize_plan` 和 `autocad_dxf.write_dxf`。
 
 ### ComfyUI
 

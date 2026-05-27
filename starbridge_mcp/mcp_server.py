@@ -45,12 +45,41 @@ def _object_schema(properties: JsonObject, required: list[str] | None = None) ->
     return schema
 
 
+STARBRIDGE_OUTPUT_SCHEMA: JsonObject = {"type": "object", "additionalProperties": True}
+
+
+def _safe_read_annotations() -> JsonObject:
+    return {"readOnlyHint": True, "destructiveHint": False, "openWorldHint": False}
+
+
+def _guarded_write_annotations() -> JsonObject:
+    return {"readOnlyHint": False, "destructiveHint": False, "openWorldHint": False}
+
+
+def _standard_tool(
+    *,
+    name: str,
+    title: str,
+    description: str,
+    input_schema: JsonObject,
+    read_only: bool = True,
+) -> JsonObject:
+    return {
+        "name": name,
+        "title": title,
+        "description": description,
+        "inputSchema": input_schema,
+        "outputSchema": STARBRIDGE_OUTPUT_SCHEMA,
+        "annotations": _safe_read_annotations() if read_only else _guarded_write_annotations(),
+    }
+
+
 TOOL_DEFINITIONS: list[JsonObject] = [
-    {
-        "name": "starbridge.status",
-        "title": "StarBridge Status",
-        "description": "返回全部或单个本地创意软件 bridge 的统一状态。只读，不打开用户文件。",
-        "inputSchema": _object_schema(
+    _standard_tool(
+        name="starbridge.status",
+        title="StarBridge Status",
+        description="返回全部或单个本地创意软件 bridge 的统一状态。只读，不打开用户文件。",
+        input_schema=_object_schema(
             {
                 "bridge": {
                     "type": "string",
@@ -70,13 +99,12 @@ TOOL_DEFINITIONS: list[JsonObject] = [
                 },
             }
         ),
-        "annotations": {"readOnlyHint": True, "destructiveHint": False, "openWorldHint": False},
-    },
-    {
-        "name": "starbridge.probe",
-        "title": "StarBridge Probe",
-        "description": "对单个 bridge 做只读探针检查。等价于 status + bridge filter。",
-        "inputSchema": _object_schema(
+    ),
+    _standard_tool(
+        name="starbridge.probe",
+        title="StarBridge Probe",
+        description="对单个 bridge 做只读探针检查。等价于 status + bridge filter。",
+        input_schema=_object_schema(
             {
                 "bridge": {"type": "string", "enum": [item for item in BRIDGE_ENUM if item != "all"]},
                 "timeout": {"type": "integer", "minimum": 1, "maximum": 60, "default": 8},
@@ -85,8 +113,7 @@ TOOL_DEFINITIONS: list[JsonObject] = [
             },
             required=["bridge"],
         ),
-        "annotations": {"readOnlyHint": True, "destructiveHint": False, "openWorldHint": False},
-    },
+    ),
     {
         "name": "starbridge.tools",
         "title": "StarBridge Tool Registry",
@@ -101,13 +128,27 @@ TOOL_DEFINITIONS: list[JsonObject] = [
                 },
             }
         ),
-        "annotations": {"readOnlyHint": True, "destructiveHint": False, "openWorldHint": False},
+        "annotations": _safe_read_annotations(),
     },
-    {
-        "name": "comfyui.workflow_validate",
-        "title": "Validate ComfyUI Workflow",
-        "description": "只读校验 ComfyUI workflow JSON 是否为 /prompt API format；不提交生成任务。",
-        "inputSchema": _object_schema(
+    _standard_tool(
+        name="comfyui.system_probe",
+        title="Probe ComfyUI",
+        description="读取 ComfyUI /system_stats 与 /object_info，确认服务和基础节点是否可用。不提交生成任务。",
+        input_schema=_object_schema(
+            {
+                "comfy_url": {
+                    "type": "string",
+                    "description": "可选 ComfyUI API 地址；默认读取环境变量或 http://127.0.0.1:8188。",
+                },
+                "timeout": {"type": "integer", "minimum": 1, "maximum": 60, "default": 8},
+            }
+        ),
+    ),
+    _standard_tool(
+        name="comfyui.workflow_validate",
+        title="Validate ComfyUI Workflow",
+        description="只读校验 ComfyUI workflow JSON 是否为 /prompt API format；不提交生成任务。",
+        input_schema=_object_schema(
             {
                 "workflow_path": {
                     "type": "string",
@@ -115,27 +156,58 @@ TOOL_DEFINITIONS: list[JsonObject] = [
                 }
             }
         ),
-        "annotations": {"readOnlyHint": True, "destructiveHint": False, "openWorldHint": False},
-    },
-    {
-        "name": "autocad_dxf.status",
-        "title": "AutoCAD DXF Status",
-        "description": "检查离线 DXF bridge 是否可用于 plan 校验和 dry-run。",
-        "inputSchema": _object_schema({}),
-        "annotations": {"readOnlyHint": True, "destructiveHint": False, "openWorldHint": False},
-    },
-    {
-        "name": "autocad_dxf.validate_cad_plan",
-        "title": "Validate CAD Plan",
-        "description": "校验 CAD JSON plan 的单位、图层和实体结构。不写文件。",
-        "inputSchema": _object_schema({"plan": {"type": "object"}}, required=["plan"]),
-        "annotations": {"readOnlyHint": True, "destructiveHint": False, "openWorldHint": False},
-    },
-    {
-        "name": "autocad_dxf.create_dxf_plan",
-        "title": "Create DXF Plan",
-        "description": "从结构化 spec 或简单 prompt 生成可审查 CAD plan。不写文件。",
-        "inputSchema": _object_schema(
+    ),
+    _standard_tool(
+        name="blender.environment_probe",
+        title="Probe Blender",
+        description="检查 Blender 可执行文件和可选环境配置。不打开 .blend，不运行脚本。",
+        input_schema=_object_schema({}),
+    ),
+    _standard_tool(
+        name="cad_autocad.environment_probe",
+        title="Probe CAD / AutoCAD",
+        description="检查 AutoCAD 可执行文件、COM 注册和 pywin32 线索。不打开 DWG/DXF。",
+        input_schema=_object_schema({}),
+    ),
+    _standard_tool(
+        name="photoshop.session_info",
+        title="Probe Photoshop Session",
+        description="通过状态探针检查 Photoshop COM 线索；只读，不打开 PSD，不保存导出。",
+        input_schema=_object_schema(
+            {"probe_com": {"type": "boolean", "default": True, "description": "是否尝试连接已打开的 Photoshop COM 对象。"}}
+        ),
+    ),
+    _standard_tool(
+        name="illustrator.document_info",
+        title="Probe Illustrator Document",
+        description="通过状态探针检查 Illustrator COM 线索；只读，不打开私有 .ai 文件。",
+        input_schema=_object_schema(
+            {"probe_com": {"type": "boolean", "default": True, "description": "是否尝试连接已打开的 Illustrator COM 对象。"}}
+        ),
+    ),
+    _standard_tool(
+        name="jianying_capcut.draft_probe",
+        title="Probe Jianying / CapCut Drafts",
+        description="检查剪映/CapCut 可执行文件和草稿目录环境变量。不读取草稿内容，不导出视频。",
+        input_schema=_object_schema({}),
+    ),
+    _standard_tool(
+        name="autocad_dxf.status",
+        title="AutoCAD DXF Status",
+        description="检查离线 DXF bridge 是否可用于 plan 校验和 dry-run。",
+        input_schema=_object_schema({}),
+    ),
+    _standard_tool(
+        name="autocad_dxf.validate_cad_plan",
+        title="Validate CAD Plan",
+        description="校验 CAD JSON plan 的单位、图层和实体结构。不写文件。",
+        input_schema=_object_schema({"plan": {"type": "object"}}, required=["plan"]),
+    ),
+    _standard_tool(
+        name="autocad_dxf.create_dxf_plan",
+        title="Create DXF Plan",
+        description="从结构化 spec 或简单 prompt 生成可审查 CAD plan。不写文件。",
+        input_schema=_object_schema(
             {
                 "prompt_or_spec": {
                     "description": "自然语言 prompt 或结构化 CAD plan。",
@@ -144,20 +216,18 @@ TOOL_DEFINITIONS: list[JsonObject] = [
             },
             required=["prompt_or_spec"],
         ),
-        "annotations": {"readOnlyHint": True, "destructiveHint": False, "openWorldHint": False},
-    },
-    {
-        "name": "autocad_dxf.summarize_plan",
-        "title": "Summarize CAD Plan",
-        "description": "汇总 CAD plan 的图层、实体数量和实体类型。不写文件。",
-        "inputSchema": _object_schema({"plan": {"type": "object"}}, required=["plan"]),
-        "annotations": {"readOnlyHint": True, "destructiveHint": False, "openWorldHint": False},
-    },
-    {
-        "name": "autocad_dxf.write_dxf",
-        "title": "Write Test DXF",
-        "description": "将 CAD plan 写为测试 DXF；默认 dry_run=True，真实写入需要 confirm_write=true 且输出位于 examples/cad/output。",
-        "inputSchema": _object_schema(
+    ),
+    _standard_tool(
+        name="autocad_dxf.summarize_plan",
+        title="Summarize CAD Plan",
+        description="汇总 CAD plan 的图层、实体数量和实体类型。不写文件。",
+        input_schema=_object_schema({"plan": {"type": "object"}}, required=["plan"]),
+    ),
+    _standard_tool(
+        name="autocad_dxf.write_dxf",
+        title="Write Test DXF",
+        description="将 CAD plan 写为测试 DXF；默认 dry_run=True，真实写入需要 confirm_write=true 且输出位于 examples/cad/output。",
+        input_schema=_object_schema(
             {
                 "plan": {"type": "object"},
                 "output_path": {"type": "string"},
@@ -170,8 +240,8 @@ TOOL_DEFINITIONS: list[JsonObject] = [
             },
             required=["plan", "output_path"],
         ),
-        "annotations": {"readOnlyHint": False, "destructiveHint": False, "openWorldHint": False},
-    },
+        read_only=False,
+    ),
 ]
 
 
@@ -199,6 +269,75 @@ def _handle_probe(arguments: JsonObject) -> JsonObject:
 def _handle_tools(arguments: JsonObject) -> JsonObject:
     bridge = BRIDGE_ALIASES.get(str(arguments.get("bridge") or "all"), str(arguments.get("bridge") or "all"))
     return capability_summary(bridge=bridge, include_guarded=not bool(arguments.get("safe_only", False)))
+
+
+def _report_to_result(*, bridge: str, action: str, report: JsonObject, display_name: str) -> JsonObject:
+    errors = report.get("errors", [])
+    raw_warnings = report.get("warnings", [])
+    warnings = []
+    for warning in raw_warnings if isinstance(raw_warnings, list) else []:
+        if isinstance(warning, dict):
+            warnings.append(str(warning.get("message") or warning.get("code") or warning))
+        else:
+            warnings.append(str(warning))
+    next_steps = []
+    for error in errors if isinstance(errors, list) else []:
+        if isinstance(error, dict):
+            next_steps.append(str(error.get("message") or error.get("code") or error))
+        else:
+            next_steps.append(str(error))
+    return sanitize(
+        {
+            "ok": bool(report.get("ok")),
+            "bridge": bridge,
+            "action": action,
+            "message": f"{display_name}: {'ok' if report.get('ok') else 'not ready'}",
+            "details": {"report": report},
+            "warnings": warnings,
+            "next_steps": next_steps,
+        }
+    )
+
+
+def _handle_comfy_system_probe(arguments: JsonObject) -> JsonObject:
+    from examples.comfy_bridge.probe import DEFAULT_BASE_URL, probe
+
+    base_url = str(arguments.get("comfy_url") or DEFAULT_BASE_URL)
+    timeout = int(arguments.get("timeout") or 8)
+    return _report_to_result(
+        bridge="comfyui",
+        action="system_probe",
+        report=probe(base_url, timeout),
+        display_name="ComfyUI 图像生成桥",
+    )
+
+
+def _handle_python_probe(*, bridge: str, action: str, display_name: str, module_name: str) -> JsonObject:
+    module = __import__(module_name, fromlist=["probe"])
+    return _report_to_result(
+        bridge=bridge,
+        action=action,
+        report=module.probe(),
+        display_name=display_name,
+    )
+
+
+def _handle_bridge_probe_tool(arguments: JsonObject, bridge: str) -> JsonObject:
+    probe_com = bool(arguments.get("probe_com", True))
+    response = build_response(
+        argparse.Namespace(
+            action="status",
+            bridge=bridge,
+            comfy_url=arguments.get("comfy_url"),
+            timeout=int(arguments.get("timeout") or 8),
+            probe_executables=probe_com,
+            safe_only=False,
+        )
+    )
+    results = response.get("results", [])
+    if isinstance(results, list) and len(results) == 1 and isinstance(results[0], dict):
+        return results[0]
+    return response
 
 
 def _handle_workflow_validate(arguments: JsonObject) -> JsonObject:
@@ -238,7 +377,28 @@ TOOL_HANDLERS: dict[str, ToolHandler] = {
     "starbridge.status": _handle_status,
     "starbridge.probe": _handle_probe,
     "starbridge.tools": _handle_tools,
+    "comfyui.system_probe": _handle_comfy_system_probe,
     "comfyui.workflow_validate": _handle_workflow_validate,
+    "blender.environment_probe": lambda _arguments: _handle_python_probe(
+        bridge="blender",
+        action="environment_probe",
+        display_name="Blender 三维场景桥",
+        module_name="examples.blender_bridge.probe",
+    ),
+    "cad_autocad.environment_probe": lambda _arguments: _handle_python_probe(
+        bridge="cad_autocad",
+        action="environment_probe",
+        display_name="CAD / AutoCAD 工程制图桥",
+        module_name="examples.cad_bridge.probe",
+    ),
+    "photoshop.session_info": lambda arguments: _handle_bridge_probe_tool(arguments, "photoshop"),
+    "illustrator.document_info": lambda arguments: _handle_bridge_probe_tool(arguments, "illustrator"),
+    "jianying_capcut.draft_probe": lambda _arguments: _handle_python_probe(
+        bridge="jianying_capcut",
+        action="draft_probe",
+        display_name="剪映/CapCut 草稿桥",
+        module_name="examples.capcut_jianying_bridge.probe",
+    ),
     "autocad_dxf.status": lambda _arguments: autocad_dxf.status(),
     "autocad_dxf.validate_cad_plan": lambda arguments: autocad_dxf.validate_cad_plan(arguments.get("plan")),
     "autocad_dxf.create_dxf_plan": lambda arguments: autocad_dxf.create_dxf_plan(arguments.get("prompt_or_spec")),

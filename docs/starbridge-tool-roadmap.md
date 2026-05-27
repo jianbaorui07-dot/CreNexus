@@ -13,7 +13,7 @@
 | `export_result` | 导出 PNG/SVG/PDF/DXF/视频草稿等结果 | 只导出到参数指定目录或本机忽略目录 |
 | `run_script` | 执行小型参数化自动化脚本 | 默认关闭；必须限制脚本来源、参数和输出目录 |
 
-所有 status/probe JSON 输出必须经过 StarBridge sanitizer。普通 `--json` 不因本机软件未安装或未启动而失败；`--strict` 才用于失败退出码。当前第一台电脑只维护核心状态入口、统一 schema 和安全输出，不扩展 ComfyUI 或剪映 / CapCut bridge。
+所有 status/probe JSON 输出必须经过 StarBridge sanitizer。普通 `--json` 不因本机软件未安装或未启动而失败；`--strict` 才用于失败退出码。当前 MCP stdio server 已把各桥的安全探针挂成直接 tools，写入类动作仍然需要默认 dry-run 或显式确认。
 
 ## Bridge 路线图
 
@@ -25,6 +25,26 @@
 | `blender` | 已有：检查 `BLENDER_EXE` 和可选 MCP 目录 | 已有：可选 `blender --version` | P2：只打开用户显式传入 `.blend` | P1：读取 scene/object/camera/render 摘要 | P1：渲染到本机忽略目录 | P3：任意 Python 风险高，先只允许仓库内脚本 |
 | `autocad` | 已有：检查 MCP 子项目、`AUTOCAD_EXE`、win32com | 已有：AutoCAD 可执行文件/COM 线索 | P2：只打开用户显式传入 DWG/DXF | P1：读取图层、实体数量、单位摘要 | P0：离线 DXF 生成优先；真实 CAD 导出需确认 | P2：只允许参数化 CAD 动作，不执行任意命令 |
 | `jianying_capcut` | 已有：检查可执行文件和草稿目录环境变量 | 已有：只读配置探测 | P3：暂不自动打开草稿 | P1：只读草稿结构摘要，不输出素材路径 | P2：生成安全测试草稿；视频导出由用户手动确认 | P3：不做桌面自动点击和账号相关脚本 |
+
+## 已挂入 MCP stdio 的工具
+
+| MCP tool | Bridge | 安全边界 |
+| --- | --- | --- |
+| `starbridge.status` | all | 统一状态摘要，只读 |
+| `starbridge.probe` | all | 单桥只读探针 |
+| `starbridge.tools` | all | 能力注册表 |
+| `comfyui.system_probe` | ComfyUI | 只读 `/system_stats` 和 `/object_info`，不提交 prompt |
+| `comfyui.workflow_validate` | ComfyUI | 只读 workflow JSON 校验 |
+| `blender.environment_probe` | Blender | 不打开 `.blend`，不运行 Python |
+| `cad_autocad.environment_probe` | AutoCAD / CAD | 不打开 DWG/DXF，不控制 CAD |
+| `photoshop.session_info` | Photoshop | 只读 COM/session 线索，不保存导出 |
+| `illustrator.document_info` | Illustrator | 只读 COM/session 线索，不打开私有 `.ai` |
+| `jianying_capcut.draft_probe` | 剪映 / CapCut | 不读取草稿内容，不导出视频 |
+| `autocad_dxf.status` | DXF | 离线 DXF bridge 状态 |
+| `autocad_dxf.validate_cad_plan` | DXF | 只校验传入 JSON |
+| `autocad_dxf.create_dxf_plan` | DXF | 生成可审查 plan，不写文件 |
+| `autocad_dxf.summarize_plan` | DXF | 汇总 plan，不写文件 |
+| `autocad_dxf.write_dxf` | DXF | 默认 dry-run；真实写入需 `confirm_write=true` 且限制在 `examples/cad/output` |
 
 ## 优先级
 

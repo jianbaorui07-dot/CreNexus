@@ -81,7 +81,13 @@ MCP stdio 配置：
 - `starbridge.status`：全部或单个 bridge 的统一状态。
 - `starbridge.probe`：单个 bridge 的只读探针。
 - `starbridge.tools`：能力注册表，可用 `safe_only=true` 过滤。
+- `comfyui.system_probe`：读取 `/system_stats` 和 `/object_info`，不提交生成任务。
 - `comfyui.workflow_validate`：只读校验 ComfyUI API workflow。
+- `blender.environment_probe`：检查 Blender 可执行文件和环境线索。
+- `cad_autocad.environment_probe`：检查 AutoCAD 可执行文件、COM 注册和 pywin32 线索。
+- `photoshop.session_info`：检查 Photoshop COM/session 线索，不打开 PSD、不导出。
+- `illustrator.document_info`：检查 Illustrator COM/session 线索，不打开私有 `.ai`。
+- `jianying_capcut.draft_probe`：检查剪映/CapCut 可执行文件和草稿目录配置，不读取草稿内容。
 - `autocad_dxf.status`：检查离线 DXF bridge。
 - `autocad_dxf.validate_cad_plan`：校验 CAD JSON plan。
 - `autocad_dxf.create_dxf_plan`：从 prompt 或 spec 生成 CAD plan。
@@ -110,7 +116,7 @@ MCP stdio 配置：
 
 1. `starbridge.status`：返回所有桥统一状态。
 2. `starbridge.probe(bridge)`：返回单桥探针结果。
-3. `comfyui.workflow_validate` 已实现；下一步再做 job/asset 摘要，不直接公开生成图路径。
-4. `photoshop.get_document_info` / `illustrator.get_document_info`：只读当前文档。
-5. `cad.generate_dxf`：离线 DXF 生成优先，AutoCAD COM 作为可选。
-6. `capcut.inspect_drafts`：只读草稿目录结构摘要，不输出素材路径。
+3. `comfyui.system_probe` / `comfyui.workflow_validate` 已实现；下一步再做 job/asset 摘要，不直接公开生成图路径。
+4. `photoshop.session_info` / `illustrator.document_info` 已挂入 MCP；下一步把只读当前文档摘要做细。
+5. `cad_autocad.environment_probe` / `autocad_dxf.*` 已挂入 MCP；真实 AutoCAD COM 仍作为可选。
+6. `jianying_capcut.draft_probe` 已挂入 MCP；下一步只读草稿目录结构摘要，不输出素材路径。
