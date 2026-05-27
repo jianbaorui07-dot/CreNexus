@@ -21,6 +21,7 @@ class PackageScriptsTest(unittest.TestCase):
                 "starbridge:status:strict",
                 "starbridge:tools",
                 "starbridge:tools:safe",
+                "starbridge:mcp",
                 "status:manifest",
                 "status:manifest:json",
                 "status:probe",

@@ -2,7 +2,7 @@
 
 StarBridge 是一个面向 Codex、Cursor、Claude Code 等 AI 编程助手的本地创意软件桥接框架。它的目标不是保存素材或项目成品，而是把 ComfyUI、Blender、AutoCAD/CAD、Photoshop、Illustrator、剪映/CapCut 等本机软件的状态检查、参数化动作和未来 MCP tools 统一到一个安全、可扩展的入口。
 
-当前仓库仍处在 MVP 阶段：已经有统一 status/probe 入口、若干软件的本机探针和公开安全示例；还没有把所有软件动作都封装成完整 MCP server。
+当前仓库仍处在 MVP 阶段：已经有统一 status/probe 入口、真正 MCP stdio server、若干软件的本机探针和公开安全示例；还没有把所有软件动作都封装成稳定写入工具。
 
 ## 三分钟验证
 
@@ -90,6 +90,25 @@ python -m starbridge_mcp.server tools --json
 python -m starbridge_mcp.server tools --json --safe-only
 ```
 
+启动真正 MCP stdio server：
+
+```powershell
+python -m starbridge_mcp.mcp_server
+npm.cmd run starbridge:mcp
+```
+
+MCP 客户端可发现这些首批工具：
+
+- `starbridge.status`
+- `starbridge.probe`
+- `starbridge.tools`
+- `comfyui.workflow_validate`
+- `autocad_dxf.status`
+- `autocad_dxf.validate_cad_plan`
+- `autocad_dxf.create_dxf_plan`
+- `autocad_dxf.summarize_plan`
+- `autocad_dxf.write_dxf`
+
 ## 统一返回格式
 
 StarBridge 新入口统一返回：
@@ -151,7 +170,7 @@ StarBridge 新入口统一返回：
 
 仍然明确保留的缺口：
 
-- 当前 `starbridge_mcp.server` 还是 CLI JSON 入口，不是完整 MCP stdio server。
+- 当前 MCP stdio server 只暴露安全 MVP 工具，还没有把 Photoshop、Illustrator、Blender、剪映/CapCut 的写入类动作做成稳定 tool。
 - ComfyUI 尚未做 job/asset lifecycle；生成图片路径仍只应留在本机。
 - Photoshop、Illustrator、AutoCAD 写入类动作仍需要参数化路径、输出目录限制和用户确认。
 
@@ -159,8 +178,8 @@ StarBridge 新入口统一返回：
 
 1. 保持 `starbridge_mcp.server` 的统一 status/probe 稳定。
 2. 把旧 `examples/bridge_status.py` 逐步迁移到 StarBridge core，但保留兼容入口。
-3. 增加真正 MCP stdio server：`starbridge.status`、`starbridge.probe`。
-4. 优先封装只读动作：Photoshop/Illustrator 当前文档信息、ComfyUI system/object_info、CAD 离线 DXF 状态。
+3. 扩展 MCP stdio server：优先补 `photoshop.document_info`、`illustrator.document_info`、`blender.scene_probe` 的只读实现。
+4. 补 ComfyUI job/asset lifecycle，但输出路径和生成图片继续只留本机。
 5. 再封装写入动作，并为每个动作增加输入路径、输出路径、素材类型和隐私检查。
 
 ## 验证

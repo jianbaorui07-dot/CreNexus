@@ -1,6 +1,6 @@
 # StarBridge 本地 MCP 接入说明
 
-StarBridge 当前实现的是最小统一状态入口：先让 Codex、Cursor、Claude Code 或其他 MCP 客户端能用同一套 JSON 查看各软件桥状态。后续再逐步把稳定动作封装成 MCP tools。
+StarBridge 当前已经提供真正 MCP stdio server：Codex、Cursor、Claude Code 或其他 MCP 客户端可以通过同一套 tools 查看各软件桥状态，并调用首批安全只读/受保护 DXF 工具。
 
 ## 1. 本机准备
 
@@ -46,9 +46,9 @@ $env:JIANYING_DRAFTS_DIR="<path-to-jianying-drafts>"
 $env:CAPCUT_DRAFTS_DIR="<path-to-capcut-drafts>"
 ```
 
-## 3. Codex / Cursor / Claude Code 配置方向
+## 3. Codex / Cursor / Claude Code 配置
 
-当前 `starbridge_mcp.server` 是 CLI-style JSON 状态入口，还不是完整 MCP stdio server。MCP 客户端可以先用“本地命令工具”或 workspace 脚本调用它；后续会把同一套 schema 挂到真正 MCP tool registry。
+CLI-style JSON 状态入口仍然保留：
 
 当前可直接调用的本地命令：
 
@@ -56,32 +56,50 @@ $env:CAPCUT_DRAFTS_DIR="<path-to-capcut-drafts>"
 npm.cmd run starbridge:status
 npm.cmd run starbridge:tools
 npm.cmd run starbridge:tools:safe
+npm.cmd run starbridge:mcp
 npm.cmd run cad:dxf:dry-run
 npm.cmd run comfy:workflow:validate
 ```
 
-建议的未来 MCP 配置形态：
+MCP stdio 配置：
 
 ```json
 {
   "mcpServers": {
     "starbridge": {
       "command": "python",
-      "args": ["-m", "starbridge_mcp.server", "--json"]
+      "args": ["-m", "starbridge_mcp.mcp_server"]
     }
   }
 }
 ```
 
-如果客户端严格要求 stdio MCP 协议，这个配置需要等下一轮补 `mcp` SDK server 后再启用。当前可执行验证命令是：
+如果客户端需要从指定仓库目录启动，可使用绝对 `cwd` 或在客户端配置里指定工作目录；不要把本机用户名、安装路径或素材目录写进公开文档。
+
+当前 MCP server 暴露的首批工具：
+
+- `starbridge.status`：全部或单个 bridge 的统一状态。
+- `starbridge.probe`：单个 bridge 的只读探针。
+- `starbridge.tools`：能力注册表，可用 `safe_only=true` 过滤。
+- `comfyui.workflow_validate`：只读校验 ComfyUI API workflow。
+- `autocad_dxf.status`：检查离线 DXF bridge。
+- `autocad_dxf.validate_cad_plan`：校验 CAD JSON plan。
+- `autocad_dxf.create_dxf_plan`：从 prompt 或 spec 生成 CAD plan。
+- `autocad_dxf.summarize_plan`：汇总 CAD plan。
+- `autocad_dxf.write_dxf`：默认 dry-run；真实写入必须 `confirm_write=true` 且输出在 `examples/cad/output`。
+
+可用一个最小 stdio 请求检查初始化：
 
 ```powershell
-python -m starbridge_mcp.server --json
+@'
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"manual-test","version":"1"}}}
+{"jsonrpc":"2.0","id":2,"method":"tools/list"}
+'@ | python -m starbridge_mcp.mcp_server
 ```
 
 ## 4. 安全边界
 
-- 状态入口只读，不自动打开客户文件，不写真实素材。
+- 状态入口和默认 MCP tools 只读，不自动打开客户文件，不写真实素材。
 - 输出会脱敏用户目录、token、Cookie、OAuth、PSD/AI/DWG/DXF、模型文件、剪映草稿和导出视频。
 - `output/`、`scratch/`、`third_party_research/`、模型、PSD、AI、DWG、DXF、视频和草稿文件已加入 `.gitignore`。
 - 需要登录、订阅、验证码、OAuth、Adobe 授权、AutoCAD 授权或 GitHub 授权时，必须由用户手动处理。
@@ -92,7 +110,7 @@ python -m starbridge_mcp.server --json
 
 1. `starbridge.status`：返回所有桥统一状态。
 2. `starbridge.probe(bridge)`：返回单桥探针结果。
-3. `comfyui.validate_workflow` / `comfyui.submit_txt2img`：只用 API workflow，不提交模型或输出图。
+3. `comfyui.workflow_validate` 已实现；下一步再做 job/asset 摘要，不直接公开生成图路径。
 4. `photoshop.get_document_info` / `illustrator.get_document_info`：只读当前文档。
 5. `cad.generate_dxf`：离线 DXF 生成优先，AutoCAD COM 作为可选。
 6. `capcut.inspect_drafts`：只读草稿目录结构摘要，不输出素材路径。

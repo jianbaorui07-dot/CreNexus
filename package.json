@@ -6,6 +6,7 @@
     "starbridge:status:strict": "python -m starbridge_mcp.server --json --strict",
     "starbridge:tools": "python -m starbridge_mcp.server tools --json",
     "starbridge:tools:safe": "python -m starbridge_mcp.server tools --json --safe-only",
+    "starbridge:mcp": "python -m starbridge_mcp.mcp_server",
     "status:manifest": "python scripts/collect_bridge_status.py --markdown",
     "status:manifest:json": "python scripts/collect_bridge_status.py --json",
     "status:probe": "python examples/bridge_status.py --probe-executables",
