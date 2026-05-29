@@ -23,6 +23,12 @@ npm.cmd run photoshop:demo
 
 See [docs/demo-illustrator.md](docs/demo-illustrator.md) and [docs/demo-photoshop.md](docs/demo-photoshop.md). Real outputs go to `examples/output/` and are ignored by Git.
 
+## Release Readiness
+
+* Visual evidence: [docs/adobe-demo-gallery.md](docs/adobe-demo-gallery.md)
+* Local smoke test: [docs/adobe-demo-smoke-test.md](docs/adobe-demo-smoke-test.md)
+* Draft release notes: [RELEASE_NOTES_DRAFT.md](RELEASE_NOTES_DRAFT.md)
+
 **English quick summary:** StarBridge is a Windows-first, local-first MCP stdio server and safety bridge for connecting AI coding agents to creative desktop software: ComfyUI, Blender, AutoCAD / DXF, Photoshop, Illustrator, and CapCut / Jianying. It focuses on safe probes, workflow validation, redacted status reports, and guarded automation examples instead of uploading private assets or replacing the creative tools.
 
 **Search keywords:** MCP, Model Context Protocol, Codex, AI agent, creative software automation, ComfyUI workflow, Blender automation, AutoCAD DXF, Photoshop COM, Illustrator scripting, CapCut Jianying, local-first AI tools.
