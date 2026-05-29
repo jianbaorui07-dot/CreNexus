@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Callable
@@ -178,12 +179,101 @@ TOOL_DEFINITIONS: list[JsonObject] = [
         ),
     ),
     _standard_tool(
+        name="photoshop.document_info",
+        title="Photoshop Document Info",
+        description="Read the active Photoshop document summary through COM without opening private PSD files.",
+        input_schema=_object_schema({"probe_com": {"type": "boolean", "default": True}}),
+    ),
+    _standard_tool(
+        name="photoshop.create_demo_document",
+        title="Create Photoshop Sandbox Demo",
+        description="Create a public safe sandbox PSD with named layers. Defaults to dry-run and requires confirm_write for real output.",
+        input_schema=_object_schema(
+            {
+                "dry_run": {"type": "boolean", "default": True},
+                "confirm_write": {"type": "boolean", "default": False},
+                "output_dir": {"type": "string", "default": "examples/output/photoshop"},
+                "width": {"type": "integer", "default": 1080, "minimum": 64, "maximum": 4096},
+                "height": {"type": "integer", "default": 1080, "minimum": 64, "maximum": 4096},
+                "dpi": {"type": "integer", "default": 72, "minimum": 36, "maximum": 600},
+            }
+        ),
+        read_only=False,
+    ),
+    _standard_tool(
+        name="photoshop.export_demo_preview",
+        title="Export Photoshop Sandbox Preview",
+        description="Export PNG and JPG previews only from the sandbox Photoshop demo. Defaults to dry-run and requires confirm_export.",
+        input_schema=_object_schema(
+            {
+                "dry_run": {"type": "boolean", "default": True},
+                "confirm_export": {"type": "boolean", "default": False},
+                "output_dir": {"type": "string", "default": "examples/output/photoshop"},
+            }
+        ),
+        read_only=False,
+    ),
+    _standard_tool(
+        name="photoshop.run_demo",
+        title="Run Photoshop Sandbox Demo",
+        description="Run the guarded Photoshop sandbox PSD creation, preview export, and manifest flow. Defaults to dry-run.",
+        input_schema=_object_schema(
+            {
+                "dry_run": {"type": "boolean", "default": True},
+                "confirm_write": {"type": "boolean", "default": False},
+                "confirm_export": {"type": "boolean", "default": False},
+            }
+        ),
+        read_only=False,
+    ),
+    _standard_tool(
         name="illustrator.document_info",
         title="Probe Illustrator Document",
-        description="通过状态探针检查 Illustrator COM 线索；只读，不打开私有 .ai 文件。",
+        description="Read the active Illustrator document summary through COM without opening private AI files.",
         input_schema=_object_schema(
             {"probe_com": {"type": "boolean", "default": True, "description": "是否尝试连接已打开的 Illustrator COM 对象。"}}
         ),
+    ),
+    _standard_tool(
+        name="illustrator.create_demo_artboard",
+        title="Create Illustrator Sandbox Demo",
+        description="Create a public safe vector artboard demo. Defaults to dry-run and requires confirm_write for real AI output.",
+        input_schema=_object_schema(
+            {
+                "dry_run": {"type": "boolean", "default": True},
+                "confirm_write": {"type": "boolean", "default": False},
+                "output_dir": {"type": "string", "default": "examples/output/illustrator"},
+                "width": {"type": "integer", "default": 1080, "minimum": 64, "maximum": 4096},
+                "height": {"type": "integer", "default": 1080, "minimum": 64, "maximum": 4096},
+            }
+        ),
+        read_only=False,
+    ),
+    _standard_tool(
+        name="illustrator.export_demo_assets",
+        title="Export Illustrator Sandbox Assets",
+        description="Export SVG, PNG, and PDF only from the sandbox Illustrator demo. Defaults to dry-run and requires confirm_export.",
+        input_schema=_object_schema(
+            {
+                "dry_run": {"type": "boolean", "default": True},
+                "confirm_export": {"type": "boolean", "default": False},
+                "output_dir": {"type": "string", "default": "examples/output/illustrator"},
+            }
+        ),
+        read_only=False,
+    ),
+    _standard_tool(
+        name="illustrator.run_demo",
+        title="Run Illustrator Sandbox Demo",
+        description="Run the guarded Illustrator demo artboard creation, export, and manifest flow. Defaults to dry-run.",
+        input_schema=_object_schema(
+            {
+                "dry_run": {"type": "boolean", "default": True},
+                "confirm_write": {"type": "boolean", "default": False},
+                "confirm_export": {"type": "boolean", "default": False},
+            }
+        ),
+        read_only=False,
     ),
     _standard_tool(
         name="jianying_capcut.draft_probe",
@@ -373,6 +463,249 @@ def _handle_write_dxf(arguments: JsonObject) -> JsonObject:
     )
 
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _sandbox_output_dir(arguments: JsonObject, bridge: str) -> str:
+    default = f"examples/output/{bridge}"
+    requested = str(arguments.get("output_dir") or default)
+    base = (REPO_ROOT / default).resolve()
+    candidate = Path(requested)
+    if not candidate.is_absolute():
+        candidate = REPO_ROOT / candidate
+    candidate = candidate.resolve()
+    try:
+        candidate.relative_to(base)
+    except ValueError as exc:
+        raise ValueError(f"output_dir must stay inside {default}") from exc
+    return candidate.relative_to(REPO_ROOT).as_posix()
+
+
+def _run_powershell_json(script_relative: str, extra_args: list[str] | None = None) -> JsonObject:
+    script_path = REPO_ROOT / script_relative
+    if not script_path.exists():
+        raise ValueError(f"missing script: {script_relative}")
+    completed = subprocess.run(
+        ["powershell", "-ExecutionPolicy", "Bypass", "-File", str(script_path), *(extra_args or [])],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=120,
+    )
+    stdout = completed.stdout.strip()
+    if not stdout:
+        return sanitize(
+            {
+                "ok": False,
+                "bridge": "adobe",
+                "task": "script_call",
+                "warnings": ["PowerShell script returned no JSON output."],
+                "next_steps": ["Run the matching npm.cmd script locally to inspect the environment error."],
+            }
+        )
+    try:
+        return sanitize(json.loads(stdout))
+    except json.JSONDecodeError:
+        return sanitize(
+            {
+                "ok": False,
+                "bridge": "adobe",
+                "task": "script_call",
+                "warnings": ["PowerShell script output was not valid JSON."],
+                "next_steps": ["Run the matching npm.cmd script locally and check stdout."],
+            }
+        )
+
+
+def _adobe_refusal(*, bridge: str, task: str, confirm_key: str) -> JsonObject:
+    return sanitize(
+        {
+            "ok": False,
+            "bridge": bridge,
+            "task": task,
+            "dry_run": False,
+            confirm_key: False,
+            "warnings": [f"Refusing real {bridge} write/export without {confirm_key}=true."],
+            "next_steps": ["Run the dry-run plan first, then call again with explicit confirmation for sandbox output."],
+        }
+    )
+
+
+def _handle_adobe_document_info(arguments: JsonObject, bridge: str, script_relative: str) -> JsonObject:
+    if not bool(arguments.get("probe_com", True)):
+        return sanitize(
+            {
+                "ok": False,
+                "bridge": bridge,
+                "task": "document_info",
+                "active_document": False,
+                "warnings": ["COM probing was skipped by request."],
+                "next_steps": [f"Run the {bridge}:info npm script on a Windows machine with the Adobe app available."],
+            }
+        )
+    return _run_powershell_json(script_relative)
+
+
+def _handle_illustrator_create(arguments: JsonObject) -> JsonObject:
+    output_dir = _sandbox_output_dir(arguments, "illustrator")
+    width = int(arguments.get("width") or 1080)
+    height = int(arguments.get("height") or 1080)
+    dry_run = bool(arguments.get("dry_run", True))
+    confirm_write = bool(arguments.get("confirm_write", False))
+    result = {
+        "ok": True,
+        "bridge": "illustrator",
+        "task": "create_demo_artboard",
+        "dry_run": dry_run,
+        "confirm_write": confirm_write,
+        "document": {"name": "starbridge_ai_demo.ai", "width": width, "height": height, "color_space": "RGB"},
+        "artboards": [{"index": 0, "width": width, "height": height}],
+        "layers": ["background", "foreground"],
+        "objects_created": ["background rectangle", "title text", "subtitle text", "circle", "rectangle", "line", "path"],
+        "output_ai_path": f"{output_dir}/starbridge_ai_demo.ai",
+        "warnings": [],
+        "next_steps": ["Call again with dry_run=false and confirm_write=true to create the sandbox demo document."],
+    }
+    if dry_run:
+        return sanitize(result)
+    if not confirm_write:
+        return _adobe_refusal(bridge="illustrator", task="create_demo_artboard", confirm_key="confirm_write")
+    return _run_powershell_json(
+        "examples/illustrator_bridge/scripts/create_demo_artboard.ps1",
+        ["-Width", str(width), "-Height", str(height), "-OutputDir", output_dir, "-ConfirmWrite"],
+    )
+
+
+def _handle_illustrator_export(arguments: JsonObject) -> JsonObject:
+    output_dir = _sandbox_output_dir(arguments, "illustrator")
+    dry_run = bool(arguments.get("dry_run", True))
+    confirm_export = bool(arguments.get("confirm_export", False))
+    result = {
+        "ok": True,
+        "bridge": "illustrator",
+        "task": "export_demo_assets",
+        "dry_run": dry_run,
+        "confirm_export": confirm_export,
+        "exported_files": [
+            f"{output_dir}/starbridge_ai_demo.svg",
+            f"{output_dir}/starbridge_ai_demo.png",
+            f"{output_dir}/starbridge_ai_demo.pdf",
+        ],
+        "svg_path": f"{output_dir}/starbridge_ai_demo.svg",
+        "png_path": f"{output_dir}/starbridge_ai_demo.png",
+        "pdf_path": f"{output_dir}/starbridge_ai_demo.pdf",
+        "warnings": [],
+        "next_steps": ["Call again with dry_run=false and confirm_export=true after creating the sandbox demo document."],
+    }
+    if dry_run:
+        return sanitize(result)
+    if not confirm_export:
+        return _adobe_refusal(bridge="illustrator", task="export_demo_assets", confirm_key="confirm_export")
+    return _run_powershell_json(
+        "examples/illustrator_bridge/scripts/export_demo_assets.ps1",
+        ["-OutputDir", output_dir, "-ConfirmExport"],
+    )
+
+
+def _handle_illustrator_run(arguments: JsonObject) -> JsonObject:
+    dry_run = bool(arguments.get("dry_run", True))
+    if dry_run:
+        return sanitize(
+            {
+                "ok": True,
+                "bridge": "illustrator",
+                "task": "sandbox_vector_demo",
+                "dry_run": True,
+                "commands": ["npm.cmd run illustrator:demo:plan", "npm.cmd run illustrator:demo", "npm.cmd run illustrator:manifest"],
+                "warnings": [],
+                "next_steps": ["Call again with dry_run=false, confirm_write=true, and confirm_export=true to run the local demo."],
+            }
+        )
+    if not bool(arguments.get("confirm_write", False)):
+        return _adobe_refusal(bridge="illustrator", task="sandbox_vector_demo", confirm_key="confirm_write")
+    if not bool(arguments.get("confirm_export", False)):
+        return _adobe_refusal(bridge="illustrator", task="sandbox_vector_demo", confirm_key="confirm_export")
+    return _run_powershell_json("examples/illustrator_bridge/scripts/run_demo.ps1")
+
+
+def _handle_photoshop_create(arguments: JsonObject) -> JsonObject:
+    output_dir = _sandbox_output_dir(arguments, "photoshop")
+    width = int(arguments.get("width") or 1080)
+    height = int(arguments.get("height") or 1080)
+    dpi = int(arguments.get("dpi") or 72)
+    dry_run = bool(arguments.get("dry_run", True))
+    confirm_write = bool(arguments.get("confirm_write", False))
+    result = {
+        "ok": True,
+        "bridge": "photoshop",
+        "task": "create_demo_document",
+        "dry_run": dry_run,
+        "confirm_write": confirm_write,
+        "document": {"name": "starbridge_ps_demo.psd", "width": width, "height": height, "dpi": dpi, "color_mode": "RGB"},
+        "layers_created": ["background", "color_block_left", "color_block_right", "title_text", "subtitle_text"],
+        "output_psd_path": f"{output_dir}/starbridge_ps_demo.psd",
+        "warnings": [],
+        "next_steps": ["Call again with dry_run=false and confirm_write=true to create the sandbox demo PSD."],
+    }
+    if dry_run:
+        return sanitize(result)
+    if not confirm_write:
+        return _adobe_refusal(bridge="photoshop", task="create_demo_document", confirm_key="confirm_write")
+    return _run_powershell_json(
+        "examples/photoshop_bridge/scripts/create_demo_document.ps1",
+        ["-Width", str(width), "-Height", str(height), "-Dpi", str(dpi), "-OutputDir", output_dir, "-ConfirmWrite"],
+    )
+
+
+def _handle_photoshop_export(arguments: JsonObject) -> JsonObject:
+    output_dir = _sandbox_output_dir(arguments, "photoshop")
+    dry_run = bool(arguments.get("dry_run", True))
+    confirm_export = bool(arguments.get("confirm_export", False))
+    result = {
+        "ok": True,
+        "bridge": "photoshop",
+        "task": "export_demo_preview",
+        "dry_run": dry_run,
+        "confirm_export": confirm_export,
+        "exported_files": [f"{output_dir}/starbridge_ps_demo.png", f"{output_dir}/starbridge_ps_demo.jpg"],
+        "width": 1080,
+        "height": 1080,
+        "layer_count": None,
+        "warnings": [],
+        "next_steps": ["Call again with dry_run=false and confirm_export=true after creating the sandbox demo PSD."],
+    }
+    if dry_run:
+        return sanitize(result)
+    if not confirm_export:
+        return _adobe_refusal(bridge="photoshop", task="export_demo_preview", confirm_key="confirm_export")
+    return _run_powershell_json(
+        "examples/photoshop_bridge/scripts/export_demo_preview.ps1",
+        ["-OutputDir", output_dir, "-ConfirmExport"],
+    )
+
+
+def _handle_photoshop_run(arguments: JsonObject) -> JsonObject:
+    dry_run = bool(arguments.get("dry_run", True))
+    if dry_run:
+        return sanitize(
+            {
+                "ok": True,
+                "bridge": "photoshop",
+                "task": "sandbox_ps_demo",
+                "dry_run": True,
+                "commands": ["npm.cmd run photoshop:demo:plan", "npm.cmd run photoshop:demo", "npm.cmd run photoshop:manifest"],
+                "warnings": [],
+                "next_steps": ["Call again with dry_run=false, confirm_write=true, and confirm_export=true to run the local demo."],
+            }
+        )
+    if not bool(arguments.get("confirm_write", False)):
+        return _adobe_refusal(bridge="photoshop", task="sandbox_ps_demo", confirm_key="confirm_write")
+    if not bool(arguments.get("confirm_export", False)):
+        return _adobe_refusal(bridge="photoshop", task="sandbox_ps_demo", confirm_key="confirm_export")
+    return _run_powershell_json("examples/photoshop_bridge/scripts/run_demo.ps1")
+
+
 TOOL_HANDLERS: dict[str, ToolHandler] = {
     "starbridge.status": _handle_status,
     "starbridge.probe": _handle_probe,
@@ -392,7 +725,22 @@ TOOL_HANDLERS: dict[str, ToolHandler] = {
         module_name="examples.cad_bridge.probe",
     ),
     "photoshop.session_info": lambda arguments: _handle_bridge_probe_tool(arguments, "photoshop"),
-    "illustrator.document_info": lambda arguments: _handle_bridge_probe_tool(arguments, "illustrator"),
+    "photoshop.document_info": lambda arguments: _handle_adobe_document_info(
+        arguments,
+        "photoshop",
+        "examples/photoshop_bridge/scripts/document_info.ps1",
+    ),
+    "photoshop.create_demo_document": _handle_photoshop_create,
+    "photoshop.export_demo_preview": _handle_photoshop_export,
+    "photoshop.run_demo": _handle_photoshop_run,
+    "illustrator.document_info": lambda arguments: _handle_adobe_document_info(
+        arguments,
+        "illustrator",
+        "examples/illustrator_bridge/scripts/document_info.ps1",
+    ),
+    "illustrator.create_demo_artboard": _handle_illustrator_create,
+    "illustrator.export_demo_assets": _handle_illustrator_export,
+    "illustrator.run_demo": _handle_illustrator_run,
     "jianying_capcut.draft_probe": lambda _arguments: _handle_python_probe(
         bridge="jianying_capcut",
         action="draft_probe",

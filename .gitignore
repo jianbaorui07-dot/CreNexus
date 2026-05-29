@@ -24,10 +24,23 @@ reports/
 scratch/
 research_repos/
 third_party_research/
+external_references/
 docx_render_check/
 .codex_video_deps/
 .codex_video_frames/
 .skill-build/
+examples/output/**/*.png
+examples/output/**/*.jpg
+examples/output/**/*.jpeg
+examples/output/**/*.webp
+examples/output/**/*.psd
+examples/output/**/*.ai
+examples/output/**/*.svg
+examples/output/**/*.pdf
+examples/output/**/*.json
+!examples/output/
+!examples/output/.gitkeep
+!examples/output/README.md
 
 # 不属于 GitHub 发布范围的本地 demo、报告脚本和研究素材
 src/

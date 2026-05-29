@@ -12,39 +12,35 @@ function Write-JsonResult {
 if (-not $ProbeCom) {
     Write-JsonResult @{
         ok = $false
-        bridge = "photoshop"
+        bridge = "illustrator"
         task = "document_info"
         active_document = $false
         warnings = @("COM probing was skipped by request.")
-        next_steps = @("Run without ProbeCom=false on a Windows machine with Photoshop available.")
+        next_steps = @("Run without ProbeCom=false on a Windows machine with Illustrator available.")
     }
     exit 0
 }
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..\..")).Path
-$jsxPath = Join-Path $repoRoot "examples\photoshop_bridge\jsx\document_info.jsx"
+$jsxPath = Join-Path $repoRoot "examples\illustrator_bridge\jsx\document_info.jsx"
 
 try {
-    $app = New-Object -ComObject Photoshop.Application
+    $app = New-Object -ComObject Illustrator.Application
     $jsx = Get-Content -Raw -Path $jsxPath
     $raw = $app.DoJavaScript($jsx)
-    $raw | ConvertFrom-Json | ConvertTo-Json -Depth 12
+    $parsed = $raw | ConvertFrom-Json
+    $parsed | ConvertTo-Json -Depth 12
 } catch {
     Write-JsonResult @{
         ok = $false
-        bridge = "photoshop"
+        bridge = "illustrator"
         task = "document_info"
         active_document = $false
-        width = $null
-        height = $null
-        color_mode = $null
-        layer_count = 0
-        path = $null
-        warnings = @("Could not connect to Photoshop.Application COM or run the document info JSX.")
+        warnings = @("Could not connect to Illustrator.Application COM or run the document info JSX.")
         next_steps = @(
-            "Start an authorized Photoshop desktop session.",
+            "Start an authorized Illustrator desktop session.",
             "Open a document manually if you want current document metadata.",
-            "Run npm.cmd run photoshop:info again."
+            "Run npm.cmd run illustrator:info again."
         )
         error_type = $_.Exception.GetType().Name
     }

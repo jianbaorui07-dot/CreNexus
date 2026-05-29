@@ -1,6 +1,6 @@
 # 3. Codex 接入 Photoshop
 
-这份文档说明 Photoshop 桥的真实状态。当前仓库已有诊断、COM 探针、当前文档信息读取、主体抠图实验和本机接入报告，状态是 `experimental`。它还不是稳定的生产级修图自动化工作流。
+这份文档说明 Photoshop 桥的真实状态。当前仓库已有诊断、COM 探针、当前文档信息读取、主体抠图实验、本机接入报告和 sandbox PSD/layer demo，状态是 `experimental demo available`。它还不是稳定的生产级修图自动化工作流。
 
 公开仓库只保存通用协议、参数化脚本和安全边界，不保存 Photoshop 安装路径、账号、授权信息、PSD、素材路径、源图文件名或桌面输出路径。
 
@@ -11,6 +11,9 @@
 | 本机诊断 | `examples/photoshop_bridge/scripts/diagnose_local.ps1` | 检查安装线索、COM 注册、进程和可选 COM 探测 |
 | 只读探针 | `examples/photoshop_bridge/probe.ps1` | 输出安全的 probe report |
 | 当前文档信息 | `examples/photoshop_bridge/scripts/document_info.ps1` | 读取当前文档名称、尺寸、模式和图层数量 |
+| sandbox PSD demo | `examples/photoshop_bridge/scripts/create_demo_document.ps1` | 默认 dry-run；确认后创建公开安全测试 PSD 和命名图层 |
+| sandbox preview export | `examples/photoshop_bridge/scripts/export_demo_preview.ps1` | 确认后只从 demo PSD 导出 PNG / JPG preview |
+| demo manifest | `examples/photoshop_bridge/write_demo_manifest.py` | 汇总本地 demo 输出，manifest 本身不提交 |
 | COM 探针 | `examples/photoshop_bridge/scripts/com_probe.ps1` | 创建测试文档并导出 PNG |
 | 主体抠图实验 | `examples/photoshop_bridge/scripts/extract_subject_to_png.ps1` | 输入和输出路径都由参数传入 |
 | 本机接入报告 | `examples/photoshop_bridge/write_practice_report.py` | 汇总诊断、实操结果和 PNG 元数据 |
@@ -35,6 +38,7 @@ $env:PHOTOSHOP_EXE="<path-to-Photoshop.exe>"
 
 ```powershell
 npm.cmd run photoshop:diagnose
+npm.cmd run photoshop:demo:plan
 ```
 
 直接运行：
@@ -65,6 +69,16 @@ python examples\photoshop_bridge\write_practice_report.py --run-practice
 
 报告会记录环境诊断、COM 探测、当前文档、一键实操和图片产物清单，包括 PNG 是否存在、文件大小、图片尺寸、透明像素统计、主体边界和 SHA256 摘要。
 
+sandbox demo 命令：
+
+```powershell
+npm.cmd run photoshop:demo:plan
+npm.cmd run photoshop:demo
+npm.cmd run photoshop:manifest
+```
+
+真实输出只写入 `examples/output/photoshop/`，生成的 PSD、PNG、JPG 和 manifest JSON 不提交。
+
 四联科技六边形海报实验：
 
 ```powershell
@@ -81,6 +95,7 @@ powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\experiments\4
 - 不能提交源图路径、桌面路径或导出结果。
 - 不能承诺复杂商业海报、复杂文字背景、线稿背景都能自动抠好。
 - 不能把实验脚本说成稳定生产级工作流。
+- 复杂商业修图、主体抠图和真实项目 PSD 仍然需要人工确认。
 
 ## 下一步
 
