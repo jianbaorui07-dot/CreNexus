@@ -112,6 +112,7 @@ def main() -> None:
     parser.add_argument("--comfy-url", default=default_url, help="ComfyUI API 地址，默认读取 STARBRIDGE_COMFYUI_URL。")
     parser.add_argument("--timeout", type=int, default=8, help="HTTP 请求超时时间，单位秒。")
     parser.add_argument("--json", action="store_true", help="只向 stdout 输出 JSON。")
+    parser.add_argument("--soft-exit", action="store_true", help="ComfyUI 不在线时仍返回 0，供 CI / preflight 使用。")
     parser.add_argument(
         "--report-path",
         default=str(Path(__file__).resolve().parent / "reports" / "comfyui_probe_report.json"),
@@ -126,7 +127,7 @@ def main() -> None:
     else:
         print_text(report)
 
-    if not report["ok"]:
+    if not report["ok"] and not args.soft_exit:
         raise SystemExit(1)
 
 

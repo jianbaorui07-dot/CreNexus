@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import argparse
 import copy
+import hashlib
 import json
 import os
 import random
 import time
 import urllib.error
 import urllib.request
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -18,8 +20,9 @@ DEFAULT_BASE_URL = os.environ.get("STARBRIDGE_COMFYUI_URL") or os.environ.get(
     "http://127.0.0.1:8188",
 )
 BRIDGE_ROOT = Path(__file__).resolve().parent
+REPO_ROOT = BRIDGE_ROOT.parents[1]
 WORKFLOW_PATH = BRIDGE_ROOT / "workflows" / "txt2img_basic_api.json"
-DEFAULT_COMFY_OUTPUT = Path(os.environ.get("COMFY_OUTPUT_DIR", str(Path.cwd() / "output" / "comfyui")))
+DEFAULT_MANIFEST_PATH = REPO_ROOT / "examples" / "output" / "comfyui" / "demo_manifest.json"
 REQUIRED_NODE_CLASSES = {
     "3": "KSampler",
     "4": "CheckpointLoaderSimple",
@@ -60,6 +63,25 @@ class JsonArgumentParser(argparse.ArgumentParser):
 
 def print_json(payload: dict[str, Any]) -> None:
     print(json.dumps(payload, ensure_ascii=False, indent=2))
+
+
+def utc_now() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def short_hash(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()[:16]
+
+
+def safe_workflow_name(path: Path) -> str:
+    try:
+        return str(path.resolve().relative_to(REPO_ROOT)).replace("\\", "/")
+    except ValueError:
+        return path.name
+
+
+def output_basename(value: str) -> str:
+    return Path(str(value).replace("\\", "/")).name
 
 
 def build_url(base_url: str, path: str) -> str:
@@ -205,23 +227,30 @@ def build_prompt(args: argparse.Namespace, workflow: dict[str, Any], checkpoint:
     return prompt, seed
 
 
-def wait_for_outputs(
+def output_filenames_from_history(prompt_id: str, history: dict[str, Any]) -> list[str]:
+    prompt_history = history.get(prompt_id, {}) if isinstance(history, dict) else {}
+    filenames: list[str] = []
+    for node in prompt_history.get("outputs", {}).values():
+        if not isinstance(node, dict):
+            continue
+        for image in node.get("images", []):
+            if isinstance(image, dict) and image.get("filename"):
+                filenames.append(output_basename(str(image["filename"])))
+    return filenames
+
+
+def wait_for_job_status(
     prompt_id: str,
     timeout: int,
     base_url: str,
     request_timeout: int,
-    output_dir: Path,
-) -> list[Path]:
+) -> dict[str, Any]:
     deadline = time.time() + timeout
     while time.time() < deadline:
         history = get_json(base_url, f"/history/{prompt_id}", request_timeout)
         if prompt_id in history:
-            outputs = []
-            for node in history[prompt_id].get("outputs", {}).values():
-                for image in node.get("images", []):
-                    subfolder = image.get("subfolder") or ""
-                    outputs.append(output_dir / subfolder / image["filename"])
-            return outputs
+            filenames = output_filenames_from_history(prompt_id, history)
+            return {"status": "completed", "output_count": len(filenames), "output_filenames": filenames}
         time.sleep(2)
     raise BridgeError(
         "timeout",
@@ -230,16 +259,38 @@ def wait_for_outputs(
     )
 
 
+def build_manifest(
+    *,
+    workflow_path: Path,
+    prompt: str,
+    job_status: str,
+    output_filenames: list[str] | None = None,
+    errors: list[str] | None = None,
+) -> dict[str, Any]:
+    filenames = [output_basename(name) for name in output_filenames or []]
+    return {
+        "bridge_name": "ComfyUI",
+        "workflow_file": safe_workflow_name(workflow_path),
+        "prompt_hash": short_hash(prompt),
+        "job_status": job_status,
+        "output_count": len(filenames),
+        "output_filenames": filenames,
+        "created_at": utc_now(),
+        "errors": errors or [],
+        "safe_to_commit": False,
+    }
+
+
+def write_manifest(manifest: dict[str, Any], path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = JsonArgumentParser(description="Submit a safe txt2img workflow to local ComfyUI.")
     parser.add_argument("--comfy-url", default=DEFAULT_BASE_URL, help="ComfyUI API base URL.")
     parser.add_argument("--workflow", type=Path, default=WORKFLOW_PATH, help="ComfyUI API workflow JSON path.")
-    parser.add_argument(
-        "--output-dir",
-        type=Path,
-        default=DEFAULT_COMFY_OUTPUT,
-        help="Local ComfyUI output directory used only to report expected output paths.",
-    )
+    parser.add_argument("--manifest-path", type=Path, default=DEFAULT_MANIFEST_PATH, help="Local ignored evidence manifest path.")
     parser.add_argument("--prompt", required=True, help="Positive prompt.")
     parser.add_argument("--negative", default="low quality, blurry, distorted, watermark, text", help="Negative prompt.")
     parser.add_argument("--ckpt", default=None, help="Exact checkpoint name from ComfyUI.")
@@ -258,6 +309,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--prefix", default="codex_txt2img", help="Output filename prefix.")
     parser.add_argument("--timeout", type=int, default=600, help="Maximum wait time in seconds.")
     parser.add_argument("--request-timeout", type=int, default=30, help="Single HTTP request timeout in seconds.")
+    parser.add_argument("--soft-exit", action="store_true", help="Return exit code 0 after writing an error manifest when ComfyUI is unavailable.")
     return parser.parse_args(argv)
 
 
@@ -275,14 +327,20 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             "Check the /prompt response and the ComfyUI console for workflow errors.",
         )
 
-    outputs = wait_for_outputs(str(prompt_id), args.timeout, args.comfy_url, args.request_timeout, args.output_dir)
+    job = wait_for_job_status(str(prompt_id), args.timeout, args.comfy_url, args.request_timeout)
+    manifest = build_manifest(
+        workflow_path=args.workflow,
+        prompt=args.prompt,
+        job_status=str(job["status"]),
+        output_filenames=list(job["output_filenames"]),
+    )
     return {
         "ok": True,
         "bridge": BRIDGE_ID,
         "task": "txt2img",
         "prompt_id": str(prompt_id),
-        "workflow": str(args.workflow),
-        "checkpoint": checkpoint,
+        "workflow": safe_workflow_name(args.workflow),
+        "checkpoint_hash": short_hash(checkpoint),
         "seed": seed,
         "steps": args.steps,
         "cfg": args.cfg,
@@ -291,44 +349,63 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "width": args.width,
         "height": args.height,
         "comfyui_version": stats.get("system", {}).get("comfyui_version"),
-        "outputs": [str(path) for path in outputs],
+        "job_status": job["status"],
+        "output_count": job["output_count"],
+        "output_filenames": job["output_filenames"],
+        "manifest_path": safe_workflow_name(args.manifest_path),
+        "manifest": manifest,
     }
 
 
 def main(argv: list[str] | None = None) -> int:
     try:
-        payload = run(parse_args(argv))
+        args = parse_args(argv)
     except BridgeError as exc:
         print_json(exc.to_payload())
         return exc.exit_code
-    except urllib.error.HTTPError as exc:
-        print_json(
-            BridgeError(
-                "http_error",
-                f"ComfyUI HTTP error {exc.code}: {exc.reason}",
-                "Check the ComfyUI console and confirm the workflow is compatible with your installed nodes.",
-            ).to_payload()
-        )
-        return 1
-    except (urllib.error.URLError, TimeoutError, OSError) as exc:
-        print_json(
-            BridgeError(
-                "comfyui_unavailable",
-                f"Unable to connect to ComfyUI at the configured URL: {exc}",
-                "Start local ComfyUI, then retry with --comfy-url or STARBRIDGE_COMFYUI_URL.",
-            ).to_payload()
-        )
-        return 1
-    except Exception as exc:  # noqa: BLE001 - CLI must return structured JSON.
-        print_json(
-            BridgeError(
-                "unexpected_error",
-                str(exc),
-                "Run comfy_probe.py first, then retry with explicit --workflow and --ckpt values.",
-            ).to_payload()
-        )
-        return 1
 
+    def error_payload(error: BridgeError) -> dict[str, Any]:
+        payload = error.to_payload()
+        payload["manifest"] = build_manifest(
+            workflow_path=args.workflow,
+            prompt=args.prompt,
+            job_status=error.error,
+            errors=[error.error],
+        )
+        write_manifest(payload["manifest"], args.manifest_path)
+        return payload
+
+    try:
+        payload = run(args)
+    except BridgeError as exc:
+        print_json(error_payload(exc))
+        return 0 if args.soft_exit else exc.exit_code
+    except urllib.error.HTTPError as exc:
+        error = BridgeError(
+            "http_error",
+            f"ComfyUI HTTP error {exc.code}: {exc.reason}",
+            "Check the ComfyUI console and confirm the workflow is compatible with your installed nodes.",
+        )
+        print_json(error_payload(error))
+        return 0 if args.soft_exit else 1
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        error = BridgeError(
+            "comfyui_unavailable",
+            f"Unable to connect to ComfyUI at the configured URL: {exc}",
+            "Start local ComfyUI, then retry with --comfy-url or STARBRIDGE_COMFYUI_URL.",
+        )
+        print_json(error_payload(error))
+        return 0 if args.soft_exit else 1
+    except Exception as exc:  # noqa: BLE001 - CLI must return structured JSON.
+        error = BridgeError(
+            "unexpected_error",
+            str(exc),
+            "Run comfy_probe.py first, then retry with explicit --workflow and --ckpt values.",
+        )
+        print_json(error_payload(error))
+        return 0 if args.soft_exit else 1
+
+    write_manifest(payload["manifest"], args.manifest_path)
     print_json(payload)
     return 0
 

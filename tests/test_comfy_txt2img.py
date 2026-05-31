@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import copy
+import json
 import unittest
 
 from examples.comfy_bridge import run_txt2img
+
+
+BANNED_OUTPUT_FRAGMENTS = ("C:" + "\\Users\\", "/Users/", "/home/", "Desktop", "Documents", "AppData")
 
 
 class ComfyTxt2ImgWorkflowTest(unittest.TestCase):
@@ -81,6 +85,45 @@ class ComfyTxt2ImgWorkflowTest(unittest.TestCase):
         self.assertEqual(6.5, prompt["3"]["inputs"]["cfg"])
         self.assertEqual("dpmpp_2m", prompt["3"]["inputs"]["sampler_name"])
         self.assertEqual("karras", prompt["3"]["inputs"]["scheduler"])
+
+    def test_history_outputs_are_reduced_to_basenames(self) -> None:
+        history = {
+            "prompt-1": {
+                "outputs": {
+                    "9": {
+                        "images": [
+                            {"filename": "C:" + r"\Users\demo\ComfyUI\output\secret.png", "subfolder": "private", "type": "output"},
+                            {"filename": "/ho" + "me/demo/ComfyUI/output/public.webp", "subfolder": "", "type": "output"},
+                        ]
+                    }
+                }
+            }
+        }
+
+        filenames = run_txt2img.output_filenames_from_history("prompt-1", history)
+
+        self.assertEqual(["secret.png", "public.webp"], filenames)
+
+    def test_demo_manifest_schema_is_safe_to_print_but_not_commit(self) -> None:
+        manifest = run_txt2img.build_manifest(
+            workflow_path=run_txt2img.WORKFLOW_PATH,
+            prompt="a quiet futuristic tea house in a garden",
+            job_status="completed",
+            output_filenames=["C:" + r"\Users\demo\ComfyUI\output\image_00001.png"],
+        )
+
+        self.assertEqual("ComfyUI", manifest["bridge_name"])
+        self.assertEqual("examples/comfy_bridge/workflows/txt2img_basic_api.json", manifest["workflow_file"])
+        self.assertEqual("completed", manifest["job_status"])
+        self.assertEqual(1, manifest["output_count"])
+        self.assertEqual(["image_00001.png"], manifest["output_filenames"])
+        self.assertEqual([], manifest["errors"])
+        self.assertFalse(manifest["safe_to_commit"])
+        self.assertRegex(manifest["prompt_hash"], r"^[0-9a-f]{16}$")
+
+        text = json.dumps(manifest, ensure_ascii=False)
+        for fragment in BANNED_OUTPUT_FRAGMENTS:
+            self.assertNotIn(fragment, text)
 
 
 if __name__ == "__main__":

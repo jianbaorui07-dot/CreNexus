@@ -19,7 +19,7 @@
     "status:probe": "python examples/bridge_status.py --probe-executables",
     "status:probe:json": "python examples/bridge_status.py --probe-executables --json",
     "cad:dxf:dry-run": "python examples/cad/generate_dxf_plan.py",
-    "comfy:probe": "python examples/comfy_bridge/comfy_probe.py",
+    "comfy:probe": "python examples/comfy_bridge/comfy_probe.py --soft-exit",
     "comfy:workflow:validate": "python examples/comfy_bridge/validate_workflow.py --json",
     "comfy:txt2img": "python examples/comfy_bridge/run_txt2img.py",
     "photoshop:probe": "powershell -ExecutionPolicy Bypass -File examples/photoshop_bridge/probe.ps1",

@@ -213,6 +213,8 @@ python examples\comfy_bridge\validate_workflow.py --json
 python examples\comfy_bridge\run_txt2img.py --prompt "a quiet futuristic tea house in a garden" --ckpt "<checkpoint-name>"
 ```
 
+ComfyUI closed loop demo: run `npm.cmd run comfy:probe` and `npm.cmd run comfy:workflow:validate` first. With local ComfyUI running, `python examples\comfy_bridge\run_txt2img.py --prompt "a quiet futuristic tea house in a garden" --ckpt "<checkpoint-name>"` submits txt2img, checks `/history/{prompt_id}`, and writes a redacted lifecycle manifest to `examples/output/comfyui/demo_manifest.json`; the manifest and generated images are ignored by Git.
+
 ### CAD / AutoCAD
 
 ```powershell
