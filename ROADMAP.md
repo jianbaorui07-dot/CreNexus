@@ -13,6 +13,7 @@
 * ComfyUI real txt2img closed loop
 * Manifest-based visual evidence
 * Better demo preview generation
+* Evidence manifest and job lifecycle vocabulary inspired by comparable ComfyUI MCP projects
 
 ## v0.3.0
 
