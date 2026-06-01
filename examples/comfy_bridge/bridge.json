@@ -16,13 +16,32 @@
   },
   "supported_tasks": [
     "probe",
-    "txt2img"
+    "txt2img",
+    "workflow_validate",
+    "img2img dry-run plan",
+    "inpaint dry-run plan",
+    "upscale dry-run plan",
+    "txt2img draft workflow",
+    "img2img draft workflow",
+    "inpaint draft workflow",
+    "upscale draft workflow",
+    "txt2img composed workflow",
+    "img2img composed workflow",
+    "inpaint composed workflow",
+    "upscale composed workflow",
+    "workflow template registry",
+    "txt2img from template",
+    "img2img from template",
+    "inpaint from template",
+    "upscale from template",
+    "complex creative poster from template"
   ],
   "unsupported_tasks": [
-    "img2img",
-    "inpaint",
-    "upscale",
-    "workflow graph validation beyond bundled txt2img"
+    "real img2img queue submission",
+    "real inpaint queue submission",
+    "real upscale queue submission",
+    "workflow graph validation against live custom node registry",
+    "template queue submission"
   ],
   "safety_notes": [
     "Do not commit generated images.",

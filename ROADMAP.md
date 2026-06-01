@@ -17,10 +17,14 @@
 | 任务 | 目标 | 验收标准 |
 | --- | --- | --- |
 | v0.2.0 ComfyUI txt2img closed loop | 当前已补最小闭环：读取 `STARBRIDGE_COMFYUI_URL`、校验 workflow、提交 `/prompt`、查询 `/history/{prompt_id}`、生成脱敏 `examples/output/comfyui/demo_manifest.json` | manifest 只含 workflow 文件名、prompt hash、job status、输出数量和输出 basename；真实图片、模型名、本机路径不提交 |
+| ComfyUI safe workflow loop | 已增强 `workflow_validate` 结构化报告，并为 `img2img`、inpaint、upscale 增加 plan-only dry-run 示例 | 不读取真实图片、模型目录或 output；不调用 `/prompt`；测试覆盖非法 JSON、缺字段和路径脱敏 |
+| ComfyUI workflow draft builder | 已新增 `comfy.workflow_draft`，可生成 `txt2img`、`img2img`、inpaint、upscale 的 API-like workflow 草案 | 草案包含 metadata，使用 placeholder model/assets，通过 `workflow_validate`，不读文件系统、不联网、不 submit |
+| ComfyUI workflow graph composer | 已新增 `comfy.workflow_compose`，可把 checkpoint、prompt、latent/image、sampler、decode/save、upscale、inpaint mask 等安全模块组合成 workflow graph | composed workflow 通过 `workflow_validate`，节点 id 不重复，metadata 含 `draft=true` 或 `safe_placeholder=true`，不读文件系统、不联网、不 submit |
+| ComfyUI workflow template registry | 已新增 `workflow_template_registry`，注册 `txt2img`、`img2img`、`inpaint`、`upscale` 和 `complex_creative_poster` 公开模板 | 模板 lint 检查唯一 id、version、composer modules、required inputs、forbidden pattern 和 validation status；MCP tools 全部 safe read-only，不读私有文件、不联网、不 submit |
 | Photoshop structured tools | 把 `document_info`、受保护导出和报告摘要继续收敛成安全 MCP 工具 | 写入类动作需要确认，路径必须参数传入 |
 | Illustrator read-only preflight | 增加画板、链接资源、颜色模式和导出风险摘要 | 不打开客户 `.ai`，不输出源素材路径 |
 | Blender scene summary | 增加安全 scene / render 摘要，避免任意 Python 执行 | 默认只读，渲染输出放在忽略目录 |
-| ComfyUI workflow lifecycle | 补 `img2img`、inpaint、upscale 和 job / asset 生命周期摘要 | 不提交模型、LoRA、VAE、ControlNet 或生成图 |
+| ComfyUI workflow lifecycle | 下一步把 composed workflow 迁移到经过审查的安全 template registry，再补 job / asset 生命周期摘要 | 不提交模型、LoRA、VAE、ControlNet 或生成图；真实队列调用必须显式确认 |
 | CapCut / Jianying draft probe | 继续只读草稿结构研究，不读取私有草稿内容 | 不自动导出视频，不操作账号或会员能力 |
 
 ## Blocked By Design

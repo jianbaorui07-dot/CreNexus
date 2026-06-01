@@ -1,0 +1,14 @@
+{
+  "template_id": "creative_poster_complex_v1",
+  "arguments": {
+    "prompt": "public creative poster concept, bold central composition, layered typography areas",
+    "negative_prompt": "private logo, real person, customer material, watermark",
+    "width": 1024,
+    "height": 1536,
+    "seed": 246813579,
+    "steps": 24,
+    "cfg": 7.5,
+    "sampler": "euler",
+    "scheduler": "normal"
+  }
+}

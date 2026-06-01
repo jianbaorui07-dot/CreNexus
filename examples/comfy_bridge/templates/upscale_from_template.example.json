@@ -1,0 +1,7 @@
+{
+  "template_id": "upscale_basic_v1",
+  "arguments": {
+    "prompt": "public placeholder upscale review",
+    "scale_by": 2.0
+  }
+}

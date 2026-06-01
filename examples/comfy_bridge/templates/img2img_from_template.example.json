@@ -1,0 +1,11 @@
+{
+  "template_id": "img2img_basic_v1",
+  "arguments": {
+    "prompt": "public placeholder image variation",
+    "negative_prompt": "low quality, watermark",
+    "denoise": 0.55,
+    "seed": 123456789,
+    "steps": 18,
+    "cfg": 6.5
+  }
+}

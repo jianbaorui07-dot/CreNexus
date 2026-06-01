@@ -161,11 +161,11 @@ TOOL_DEFINITIONS: list[JsonObject] = [
     _standard_tool(
         name="comfyui.workflow_build_plan",
         title="Plan ComfyUI Workflow Build",
-        description="Build a dry-run plan from a natural-language goal to a ComfyUI txt2img workflow shape without submitting a job.",
+        description="Build a dry-run plan for txt2img, img2img, inpaint, or upscale without reading files or submitting a job.",
         input_schema=_object_schema(
             {
                 "goal": {"type": "string"},
-                "workflow_type": {"type": "string", "default": "txt2img"},
+                "workflow_type": {"type": "string", "enum": ["txt2img", "img2img", "inpaint", "upscale"], "default": "txt2img"},
                 "style": {"type": "string"},
                 "width": {"type": "integer", "default": 1024, "minimum": 64, "maximum": 4096},
                 "height": {"type": "integer", "default": 1024, "minimum": 64, "maximum": 4096},
@@ -180,7 +180,7 @@ TOOL_DEFINITIONS: list[JsonObject] = [
         input_schema=_object_schema(
             {
                 "goal": {"type": "string"},
-                "workflow_type": {"type": "string", "default": "txt2img"},
+                "workflow_type": {"type": "string", "enum": ["txt2img", "img2img", "inpaint", "upscale"], "default": "txt2img"},
                 "style": {"type": "string"},
                 "positive_prompt": {"type": "string"},
                 "negative_prompt": {"type": "string"},
@@ -194,6 +194,108 @@ TOOL_DEFINITIONS: list[JsonObject] = [
                 "scheduler": {"type": "string", "default": "normal"},
             },
             required=["goal"],
+        ),
+    ),
+    _standard_tool(
+        name="comfy.workflow_draft",
+        title="Draft ComfyUI Workflow",
+        description="Generate API-like draft workflow JSON for txt2img, img2img, inpaint, or upscale. Draft only; no filesystem reads, network calls, or queue submission.",
+        input_schema=_object_schema(
+            {
+                "task_type": {"type": "string", "enum": ["txt2img", "img2img", "inpaint", "upscale"], "default": "txt2img"},
+                "prompt": {"type": "string"},
+                "positive_prompt": {"type": "string"},
+                "negative_prompt": {"type": "string"},
+                "width": {"type": "integer", "default": 1024, "minimum": 64, "maximum": 4096},
+                "height": {"type": "integer", "default": 1024, "minimum": 64, "maximum": 4096},
+                "seed": {"type": "integer"},
+                "steps": {"type": "integer", "default": 20, "minimum": 1, "maximum": 150},
+                "cfg": {"type": "number", "default": 7.0, "minimum": 1.0, "maximum": 30.0},
+                "sampler": {"type": "string", "default": "euler"},
+                "sampler_name": {"type": "string", "default": "euler"},
+                "scheduler": {"type": "string", "default": "normal"},
+                "denoise": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                "scale_by": {"type": "number", "default": 2.0, "minimum": 1.0, "maximum": 8.0},
+                "checkpoint": {"type": "string", "description": "Optional placeholder model name; real paths and checkpoint filenames are replaced with placeholders."},
+            },
+            required=["task_type"],
+        ),
+    ),
+    _standard_tool(
+        name="comfy.workflow_compose",
+        title="Compose ComfyUI Workflow Graph",
+        description="Compose API-like ComfyUI workflow JSON from safe placeholder graph modules for txt2img, img2img, inpaint, or upscale. No filesystem reads, network calls, or queue submission.",
+        input_schema=_object_schema(
+            {
+                "task_type": {"type": "string", "enum": ["txt2img", "img2img", "inpaint", "upscale"], "default": "txt2img"},
+                "prompt": {"type": "string", "description": "Positive prompt text used only inside the draft graph."},
+                "positive_prompt": {"type": "string", "description": "Alias for prompt."},
+                "negative_prompt": {"type": "string", "default": "low quality, blurry, distorted"},
+                "width": {"type": "integer", "default": 1024, "minimum": 64, "maximum": 4096},
+                "height": {"type": "integer", "default": 1024, "minimum": 64, "maximum": 4096},
+                "seed": {"type": "integer", "description": "Deterministic placeholder seed."},
+                "steps": {"type": "integer", "default": 20, "minimum": 1, "maximum": 150},
+                "cfg": {"type": "number", "default": 7.0, "minimum": 1.0, "maximum": 30.0},
+                "sampler": {"type": "string", "default": "euler"},
+                "sampler_name": {"type": "string", "default": "euler"},
+                "scheduler": {"type": "string", "default": "normal"},
+                "denoise": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                "scale": {"type": "number", "default": 2.0, "minimum": 1.0, "maximum": 8.0},
+                "scale_by": {"type": "number", "default": 2.0, "minimum": 1.0, "maximum": 8.0},
+                "checkpoint": {"type": "string", "description": "Optional placeholder model label; real paths and checkpoint filenames are replaced with placeholders."},
+            },
+            required=["task_type"],
+        ),
+    ),
+    _standard_tool(
+        name="comfy.workflow_template_list",
+        title="List ComfyUI Workflow Templates",
+        description="List bundled placeholder-only ComfyUI workflow templates and lint status. No private filesystem reads, network calls, or queue submission.",
+        input_schema=_object_schema({}),
+    ),
+    _standard_tool(
+        name="comfy.workflow_template_get",
+        title="Get ComfyUI Workflow Template",
+        description="Return one bundled placeholder-only ComfyUI workflow template by template_id. No private filesystem reads, network calls, or queue submission.",
+        input_schema=_object_schema(
+            {
+                "template_id": {
+                    "type": "string",
+                    "enum": [
+                        "txt2img_basic_v1",
+                        "img2img_basic_v1",
+                        "inpaint_basic_v1",
+                        "upscale_basic_v1",
+                        "creative_poster_complex_v1",
+                    ],
+                }
+            },
+            required=["template_id"],
+        ),
+    ),
+    _standard_tool(
+        name="comfy.workflow_from_template",
+        title="Compose ComfyUI Workflow From Template",
+        description="Compose placeholder-only API-like ComfyUI workflow JSON from a bundled template. Does not read model/image paths, use network, or submit queue jobs.",
+        input_schema=_object_schema(
+            {
+                "template_id": {
+                    "type": "string",
+                    "enum": [
+                        "txt2img_basic_v1",
+                        "img2img_basic_v1",
+                        "inpaint_basic_v1",
+                        "upscale_basic_v1",
+                        "creative_poster_complex_v1",
+                    ],
+                },
+                "arguments": {
+                    "type": "object",
+                    "additionalProperties": True,
+                    "description": "Optional placeholder composer arguments such as prompt, width, height, seed, steps, cfg, sampler, scheduler, denoise, or scale_by.",
+                },
+            },
+            required=["template_id"],
         ),
     ),
     _standard_tool(
@@ -220,7 +322,7 @@ TOOL_DEFINITIONS: list[JsonObject] = [
         input_schema=_object_schema(
             {
                 "goal": {"type": "string"},
-                "workflow_type": {"type": "string", "default": "txt2img"},
+                "workflow_type": {"type": "string", "enum": ["txt2img", "img2img", "inpaint", "upscale"], "default": "txt2img"},
                 "style": {"type": "string"},
                 "positive_prompt": {"type": "string"},
                 "negative_prompt": {"type": "string"},
@@ -535,6 +637,39 @@ def _handle_comfy_workflow_build(arguments: JsonObject) -> JsonObject:
     return workflow_build(arguments)
 
 
+def _handle_comfy_workflow_draft(arguments: JsonObject) -> JsonObject:
+    from examples.comfy_bridge.workflow_agent import workflow_draft
+
+    return workflow_draft(arguments)
+
+
+def _handle_comfy_workflow_compose(arguments: JsonObject) -> JsonObject:
+    from examples.comfy_bridge.workflow_agent import workflow_compose
+
+    return workflow_compose(arguments)
+
+
+def _handle_comfy_workflow_template_list(_arguments: JsonObject) -> JsonObject:
+    from examples.comfy_bridge.workflow_template_registry import list_workflow_templates
+
+    return list_workflow_templates()
+
+
+def _handle_comfy_workflow_template_get(arguments: JsonObject) -> JsonObject:
+    from examples.comfy_bridge.workflow_template_registry import get_workflow_template
+
+    return get_workflow_template(str(arguments.get("template_id") or ""))
+
+
+def _handle_comfy_workflow_from_template(arguments: JsonObject) -> JsonObject:
+    from examples.comfy_bridge.workflow_template_registry import compose_from_template
+
+    template_arguments = arguments.get("arguments") or {}
+    if not isinstance(template_arguments, dict):
+        raise ValueError("arguments must be an object when provided")
+    return compose_from_template(str(arguments.get("template_id") or ""), template_arguments)
+
+
 def _handle_comfy_workflow_repair(arguments: JsonObject) -> JsonObject:
     from examples.comfy_bridge.workflow_agent import workflow_repair
 
@@ -824,6 +959,11 @@ TOOL_HANDLERS: dict[str, ToolHandler] = {
     "comfyui.workflow_validate": _handle_workflow_validate,
     "comfyui.workflow_build_plan": _handle_comfy_workflow_build_plan,
     "comfyui.workflow_build": _handle_comfy_workflow_build,
+    "comfy.workflow_draft": _handle_comfy_workflow_draft,
+    "comfy.workflow_compose": _handle_comfy_workflow_compose,
+    "comfy.workflow_template_list": _handle_comfy_workflow_template_list,
+    "comfy.workflow_template_get": _handle_comfy_workflow_template_get,
+    "comfy.workflow_from_template": _handle_comfy_workflow_from_template,
     "comfyui.workflow_repair": _handle_comfy_workflow_repair,
     "comfyui.agent_run": _handle_comfy_agent_run,
     "blender.environment_probe": lambda _arguments: _handle_python_probe(

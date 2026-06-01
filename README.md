@@ -5,6 +5,19 @@
 ![MCP stdio](https://img.shields.io/badge/MCP-stdio-16a34a)
 ![Local first](https://img.shields.io/badge/local--first-safe-0f766e)
 
+## Current Capability Matrix
+
+| Bridge | Stable | Dry-run only | Experimental | Planned |
+| --- | --- | --- | --- | --- |
+| ComfyUI | Workflow JSON validation; safe status shape when service is offline. | None for validation. | Local HTTP probe and `txt2img` submit script require a running local ComfyUI and explicit checkpoint. | Full txt2img job lifecycle, img2img, inpaint, upscale, asset manifest. |
+| Blender | Environment probe for executable and optional MCP directory hints. | None. | No public write loop in this release. | Safe generated scene script and render manifest. |
+| AutoCAD/DXF | CAD plan validation, plan summary, DXF dry-run, sandbox output guard. | DXF export defaults to dry-run. | Real test DXF write only with `confirm_write=true`, optional `ezdxf`, and `examples/cad/output`. | Richer CAD entity schema and desktop AutoCAD evidence. |
+| Photoshop | Safe status/session metadata shape; no private PSD opening. | Sandbox demo plan defaults to dry-run. | Real COM document info and sandbox PSD/preview export require authorized local Photoshop and explicit confirmation. | Subject extraction MCP tool and reviewed local smoke evidence. |
+| Illustrator | Safe status/document metadata shape; no private `.ai` opening. | Sandbox artboard/export plan defaults to dry-run. | Real COM document info and sandbox AI/SVG/PDF/PNG export require authorized local Illustrator and explicit confirmation. | Preflight and image trace workflows. |
+| Jianying/CapCut | Draft directory probe shape only; no draft content read. | None. | Local executable/draft directory availability checks. | Safe draft skeleton and manifest research. |
+
+Photoshop, Illustrator, Blender, and CapCut write flows are experimental or planned unless a reviewed local run proves otherwise.
+
 **GitHub description 建议：** Codex Computer Use + StarBridge MCP + Safety Verification Layer for local creative software, with GUI inspection, structured tools, redacted checks, and CI validation.
 
 ## 项目状态：v0.1-alpha
@@ -33,6 +46,9 @@ v0.1-alpha 已有且可以验证：
 
 - [docs/CAPABILITY_MATRIX.md](docs/CAPABILITY_MATRIX.md)：逐桥能力矩阵，区分 reads/writes/dry-run/真实软件依赖。
 - [docs/RELEASE_V0_1_ALPHA.md](docs/RELEASE_V0_1_ALPHA.md)：v0.1-alpha 只承诺当前真实可运行能力。
+- [docs/comfyui-agent-workflow-protocol.md](docs/comfyui-agent-workflow-protocol.md)：ComfyUI 智能体自动搭建、修复、运行 workflow 的可视化协议。
+- [docs/client-compatibility.md](docs/client-compatibility.md)：Claude Desktop / Cursor / Codex / mock stdio 兼容状态。
+- [docs/windows-install.md](docs/windows-install.md)：Windows 本地开发安装说明。
 - [SECURITY.md](SECURITY.md)：公开仓库安全边界。
 
 最短运行路径：
@@ -50,6 +66,17 @@ python scripts\starbridge_preflight.py --markdown
 python scripts\starbridge_preflight.py --write-report --soft-exit
 python examples\bridge_status.py --json --redact-paths --soft-exit
 python examples\cad\generate_dxf_plan.py
+```
+
+CI 候选检查使用下面这些命令：
+
+```powershell
+python -m compileall .
+python -m unittest discover -s tests
+python scripts/security_check.py
+python scripts/collect_bridge_status.py --json
+python examples/bridge_status.py --json --redact-paths --soft-exit
+python -m starbridge_mcp.server tools --json --safe-only
 ```
 
 **English quick summary:** This repository is a v0.1-alpha Windows-first local MCP stdio prototype for creative desktop software. Stable scope is limited to the server, tool registry, status/probe, redacted safety checks, ComfyUI workflow validation, and guarded AutoCAD/DXF plan validation/export. Photoshop, Illustrator, Blender, and CapCut write flows are experimental or planned unless a real local E2E run proves otherwise.
@@ -210,10 +237,93 @@ MCP 客户端可发现首批安全工具：`starbridge.status`、`starbridge.pro
 ```powershell
 python examples\comfy_bridge\comfy_probe.py
 python examples\comfy_bridge\validate_workflow.py --json
+python examples\comfy_bridge\validate_workflow.py --workflow examples\comfy_bridge\workflows\minimal_api_workflow.json --json
 python examples\comfy_bridge\run_txt2img.py --prompt "a quiet futuristic tea house in a garden" --ckpt "<checkpoint-name>"
 ```
 
-ComfyUI closed loop demo: run `npm.cmd run comfy:probe` and `npm.cmd run comfy:workflow:validate` first. With local ComfyUI running, `python examples\comfy_bridge\run_txt2img.py --prompt "a quiet futuristic tea house in a garden" --ckpt "<checkpoint-name>"` submits txt2img, checks `/history/{prompt_id}`, and writes a redacted lifecycle manifest to `examples/output/comfyui/demo_manifest.json`; the manifest and generated images are ignored by Git.
+ComfyUI closed loop demo：先用 `npm.cmd run comfy:probe` 和 `npm.cmd run comfy:workflow:validate` 做只读检查；本机 ComfyUI 启动后，再运行 `python examples\comfy_bridge\run_txt2img.py --prompt "a quiet futuristic tea house in a garden" --ckpt "<checkpoint-name>"` 提交一次 txt2img。脚本会查询 `/history/{prompt_id}`，在 `examples/output/comfyui/demo_manifest.json` 写入脱敏 lifecycle 摘要；该 manifest 和真实生成图都被 `.gitignore` 忽略，不提交到 GitHub。
+
+### ComfyUI safe workflow loop
+
+本轮 ComfyUI 闭环只开放安全层能力，不真实调用生成队列：
+
+- `comfyui.workflow_validate`：只读校验 API-format workflow JSON，检查 node id、`class_type`、`inputs`、核心 link、输出节点和 prompt 节点，并返回 `valid`、`errors`、`warnings`、`node_count`、`detected_models`、`missing_or_suspicious_fields`。
+- `comfyui.workflow_build_plan`：为 `txt2img`、`img2img`、`inpaint`、`upscale` 生成 dry-run plan，包含 `task_type`、`input_requirements`、`workflow_requirements`、`safety_notes`、`expected_outputs`、`blocked_reasons`。
+- `comfy.workflow_draft`：为 `txt2img`、`img2img`、`inpaint`、`upscale` 生成 API-like workflow JSON 草案，并立即用 `workflow_validate` 校验。
+- `comfy.workflow_compose`：把安全 placeholder 模块组合成 API-like graph，覆盖 checkpoint、prompt encode、latent、load image、VAE encode、KSampler、decode、save、upscale、inpaint mask 等基础模块。
+- `img2img`、`inpaint`、`upscale` 当前支持 draft workflow；不会读取本机图片、模型目录或 ComfyUI output，也不会提交 `/prompt`。
+- 校验输出会经过 StarBridge sanitizer，真实路径、用户名和模型路径会脱敏。
+
+公开示例：
+
+| 示例 | 路径 |
+| --- | --- |
+| 最小 API workflow | `examples/comfy_bridge/workflows/minimal_api_workflow.json` |
+| img2img dry-run plan | `examples/comfy_bridge/plans/img2img_dry_run_plan.example.json` |
+| inpaint dry-run plan | `examples/comfy_bridge/plans/inpaint_dry_run_plan.example.json` |
+| upscale dry-run plan | `examples/comfy_bridge/plans/upscale_dry_run_plan.example.json` |
+| txt2img draft workflow | `examples/comfy_bridge/workflows/txt2img_draft_workflow.example.json` |
+| img2img draft workflow | `examples/comfy_bridge/workflows/img2img_draft_workflow.example.json` |
+| inpaint draft workflow | `examples/comfy_bridge/workflows/inpaint_draft_workflow.example.json` |
+| upscale draft workflow | `examples/comfy_bridge/workflows/upscale_draft_workflow.example.json` |
+| txt2img composed workflow | `examples/comfy_bridge/workflows/txt2img_composed_workflow.example.json` |
+| img2img composed workflow | `examples/comfy_bridge/workflows/img2img_composed_workflow.example.json` |
+| inpaint composed workflow | `examples/comfy_bridge/workflows/inpaint_composed_workflow.example.json` |
+| upscale composed workflow | `examples/comfy_bridge/workflows/upscale_composed_workflow.example.json` |
+| complex creative poster composed workflow | `examples/comfy_bridge/workflows/complex_creative_poster_composed_workflow.example.json` |
+
+### ComfyUI workflow draft builder
+
+`comfy.workflow_draft` 是只读草案生成器，用于把基础参数转成可审查的 ComfyUI API-like workflow JSON。它接受 `task_type`、`prompt`、`negative_prompt`、`width`、`height`、`seed`、`steps`、`cfg`、`sampler`、`scheduler`、`denoise`、`scale_by` 等参数。
+
+返回结构包含：
+
+- `valid`：草案是否通过本仓库 `workflow_validate`。
+- `workflow`：API-like workflow JSON 草案。
+- `validation_report`：完整校验报告。
+- `warnings`、`safety_notes`、`next_steps`：说明草案边界和后续人工确认步骤。
+
+所有 draft 都带 `StarBridgeDraftMetadata` 节点，标记 `production_ready=false`、`queue_submission=disabled`、`model_policy=placeholder_only`。模型、源图、mask、upscale model 都使用 placeholder，不使用真实模型路径、真实图片路径或真实输出目录。
+
+### ComfyUI workflow graph composer
+
+`comfy.workflow_compose` 是只读 graph composer，用固定安全模块组合 ComfyUI API-like workflow：
+
+- `checkpoint_loader_placeholder`
+- `positive_prompt_encode`
+- `negative_prompt_encode`
+- `empty_latent_image`
+- `load_image_placeholder`
+- `vae_encode_placeholder`
+- `ksampler`
+- `vae_decode`
+- `save_image_placeholder`
+- `upscale_placeholder`
+- `inpaint_mask_placeholder`
+
+返回结构包含 `valid`、`workflow`、`validation_report`、`warnings`、`safety_notes`、`next_steps`。所有 composed workflow 都带 `StarBridgeDraftMetadata`，其中 `draft=true`、`safe_placeholder=true`、`queue_submission=disabled`。Composer 不读取文件系统、不联网、不提交队列，只生成可审查 JSON。
+
+### ComfyUI workflow template registry
+
+`workflow_template_registry` 在 graph composer 之上增加一层公开模板索引，目前注册：
+
+| template_id | task_type | 状态 |
+| --- | --- | --- |
+| `txt2img_basic_v1` | `txt2img` | `composed_validated` |
+| `img2img_basic_v1` | `img2img` | `composed_validated` |
+| `inpaint_basic_v1` | `inpaint` | `composed_validated` |
+| `upscale_basic_v1` | `upscale` | `composed_validated` |
+| `creative_poster_complex_v1` | `complex_creative_poster` | `composed_validated` |
+
+Registry 文件位于 `examples/comfy_bridge/templates/workflow_template_registry.json`。每个模板只声明 `template_id`、`version`、`task_type`、composer modules、required inputs、placeholder policy、validation status、safety level 和 notes；不引用真实模型、真实图片或真实输出目录。
+
+新增 MCP safe read-only tools：
+
+- `comfy.workflow_template_list`：列出模板和 lint 状态。
+- `comfy.workflow_template_get`：按 `template_id` 返回单个模板。
+- `comfy.workflow_from_template`：用模板调用安全 graph composer，返回 placeholder-only workflow。
+
+这三个 tool 不读取用户文件路径、不联网、不提交 ComfyUI queue；输出 workflow 仍带 `StarBridgeDraftMetadata`、`safe_placeholder=true`、`production_ready=false`、`queue_submission=disabled`。
 
 ### CAD / AutoCAD
 

@@ -1,0 +1,14 @@
+{
+  "template_id": "txt2img_basic_v1",
+  "arguments": {
+    "prompt": "public placeholder concept art scene",
+    "negative_prompt": "low quality, watermark",
+    "width": 1024,
+    "height": 1024,
+    "seed": 123456789,
+    "steps": 20,
+    "cfg": 7.0,
+    "sampler": "euler",
+    "scheduler": "normal"
+  }
+}

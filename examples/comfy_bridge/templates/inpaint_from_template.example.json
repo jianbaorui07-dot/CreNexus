@@ -1,0 +1,11 @@
+{
+  "template_id": "inpaint_basic_v1",
+  "arguments": {
+    "prompt": "public placeholder inpaint concept",
+    "negative_prompt": "low quality, watermark",
+    "denoise": 0.8,
+    "seed": 123456789,
+    "steps": 20,
+    "cfg": 7.0
+  }
+}

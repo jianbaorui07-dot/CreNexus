@@ -17,9 +17,27 @@ from starbridge_mcp.core.security import sanitize
 BRIDGE_ID = "comfyui"
 DEFAULT_BASE_URL = os.environ.get("STARBRIDGE_COMFYUI_URL") or os.environ.get("COMFY_BASE_URL", "http://127.0.0.1:8188")
 DEFAULT_CHECKPOINT = os.environ.get("STARBRIDGE_COMFYUI_CHECKPOINT", "__checkpoint_name_required__")
+PLACEHOLDER_CHECKPOINT = "__checkpoint_placeholder__"
+PLACEHOLDER_UPSCALE_MODEL = "__upscale_model_placeholder__"
+PLACEHOLDER_SOURCE_IMAGE = "__source_image_placeholder__"
+PLACEHOLDER_MASK_IMAGE = "__mask_image_placeholder__"
 DEFAULT_NEGATIVE_PROMPT = "low quality, blurry, distorted, bad anatomy, watermark, text"
-SUPPORTED_WORKFLOW_TYPES = {"txt2img"}
-REQUIRED_NODES = [
+SUPPORTED_WORKFLOW_TYPES = {"txt2img", "img2img", "inpaint", "upscale"}
+BUILDABLE_WORKFLOW_TYPES = {"txt2img"}
+RECOGNIZED_COMPOSER_MODULES = {
+    "checkpoint_loader_placeholder",
+    "positive_prompt_encode",
+    "negative_prompt_encode",
+    "empty_latent_image",
+    "load_image_placeholder",
+    "vae_encode_placeholder",
+    "ksampler",
+    "vae_decode",
+    "save_image_placeholder",
+    "upscale_placeholder",
+    "inpaint_mask_placeholder",
+}
+TXT2IMG_REQUIRED_NODES = [
     "CheckpointLoaderSimple",
     "CLIPTextEncode_positive",
     "CLIPTextEncode_negative",
@@ -28,6 +46,47 @@ REQUIRED_NODES = [
     "VAEDecode",
     "SaveImage",
 ]
+TASK_PLAN_REQUIREMENTS: dict[str, dict[str, list[str]]] = {
+    "txt2img": {
+        "input_requirements": ["positive_prompt or goal", "checkpoint placeholder", "width", "height", "sampler settings"],
+        "workflow_requirements": TXT2IMG_REQUIRED_NODES,
+        "expected_outputs": ["API-format workflow JSON", "workflow_hash", "validation report", "no submitted ComfyUI job"],
+    },
+    "img2img": {
+        "input_requirements": ["source_image_path supplied by user at run time", "positive_prompt or goal", "checkpoint placeholder", "denoise"],
+        "workflow_requirements": [
+            "CheckpointLoaderSimple",
+            "LoadImage",
+            "VAEEncode",
+            "CLIPTextEncode_positive",
+            "CLIPTextEncode_negative",
+            "KSampler",
+            "VAEDecode",
+            "SaveImage",
+        ],
+        "expected_outputs": ["dry-run execution plan", "required node checklist", "blocked real queue submission"],
+    },
+    "inpaint": {
+        "input_requirements": ["source_image_path supplied by user at run time", "mask_image_path supplied by user at run time", "positive_prompt or goal", "checkpoint placeholder"],
+        "workflow_requirements": [
+            "CheckpointLoaderSimple",
+            "LoadImage",
+            "LoadImageMask or mask input",
+            "VAEEncodeForInpaint",
+            "CLIPTextEncode_positive",
+            "CLIPTextEncode_negative",
+            "KSampler",
+            "VAEDecode",
+            "SaveImage",
+        ],
+        "expected_outputs": ["dry-run execution plan", "mask requirements", "blocked real queue submission"],
+    },
+    "upscale": {
+        "input_requirements": ["source_image_path supplied by user at run time", "upscale_model placeholder or built-in method", "scale factor"],
+        "workflow_requirements": ["LoadImage", "UpscaleModelLoader or ImageScale", "ImageUpscaleWithModel or ImageScale", "SaveImage"],
+        "expected_outputs": ["dry-run execution plan", "upscale requirement checklist", "blocked real queue submission"],
+    },
+}
 
 
 def _as_int(value: Any, default: int, *, minimum: int, maximum: int) -> int:
@@ -52,7 +111,7 @@ def _workflow_type(arguments: dict[str, Any]) -> str:
 
 
 def _positive_prompt(arguments: dict[str, Any]) -> str:
-    prompt = str(arguments.get("positive_prompt") or "").strip()
+    prompt = str(arguments.get("positive_prompt") or arguments.get("prompt") or "").strip()
     if prompt:
         return prompt
     goal = str(arguments.get("goal") or "").strip()
@@ -67,6 +126,19 @@ def _negative_prompt(arguments: dict[str, Any]) -> str:
 
 def _checkpoint(arguments: dict[str, Any]) -> str:
     return str(arguments.get("checkpoint") or arguments.get("ckpt_name") or DEFAULT_CHECKPOINT).strip()
+
+
+def _draft_checkpoint(arguments: dict[str, Any]) -> str:
+    value = str(arguments.get("checkpoint") or arguments.get("ckpt_name") or arguments.get("model_name") or PLACEHOLDER_CHECKPOINT).strip()
+    lowered = value.lower()
+    if "\\" in value or "/" in value or lowered.endswith((".safetensors", ".ckpt", ".pt", ".pth")):
+        return PLACEHOLDER_CHECKPOINT
+    return value or PLACEHOLDER_CHECKPOINT
+
+
+def _draft_task_type(arguments: dict[str, Any]) -> str:
+    requested = str(arguments.get("task_type") or arguments.get("workflow_type") or "txt2img").strip().lower()
+    return requested if requested in SUPPORTED_WORKFLOW_TYPES else "txt2img"
 
 
 def _dimensions(arguments: dict[str, Any]) -> tuple[int, int]:
@@ -88,6 +160,33 @@ def _sampler_settings(arguments: dict[str, Any]) -> dict[str, Any]:
         "scheduler": str(arguments.get("scheduler") or "normal"),
         "denoise": _as_float(arguments.get("denoise"), 1.0, minimum=0.0, maximum=1.0),
     }
+
+
+def _draft_sampler_settings(arguments: dict[str, Any], *, denoise: float) -> dict[str, Any]:
+    settings = _sampler_settings(arguments)
+    settings["denoise"] = _as_float(arguments.get("denoise"), denoise, minimum=0.0, maximum=1.0)
+    return settings
+
+
+def _draft_metadata(task_type: str) -> dict[str, Any]:
+    return {
+        "class_type": "StarBridgeDraftMetadata",
+        "inputs": {
+            "task_type": task_type,
+            "status": "draft",
+            "draft": True,
+            "safe_placeholder": True,
+            "production_ready": False,
+            "queue_submission": "disabled",
+            "model_policy": "placeholder_only",
+            "asset_policy": "placeholder_only_no_private_files",
+            "note": "Generated by StarBridge workflow_draft; review and replace placeholders locally before any real ComfyUI run.",
+        },
+    }
+
+
+def _load_image_node(image_name: str) -> dict[str, Any]:
+    return {"class_type": "LoadImage", "inputs": {"image": image_name}}
 
 
 def workflow_hash(workflow: dict[str, Any]) -> str:
@@ -121,6 +220,14 @@ def workflow_summary(workflow: dict[str, Any]) -> dict[str, Any]:
 def workflow_build_plan(arguments: dict[str, Any]) -> dict[str, Any]:
     workflow_type = _workflow_type(arguments)
     width, height = _dimensions(arguments)
+    task_requirements = TASK_PLAN_REQUIREMENTS[workflow_type]
+    blocked_reasons = []
+    if workflow_type not in BUILDABLE_WORKFLOW_TYPES:
+        blocked_reasons.append(f"{workflow_type} is plan-only in this repository; real ComfyUI queue submission is not implemented.")
+    if workflow_type in {"img2img", "inpaint", "upscale"}:
+        blocked_reasons.append("Private input images must be supplied only during an explicit local run and must not be committed.")
+    if workflow_type == "inpaint":
+        blocked_reasons.append("Mask files are private local inputs and are not read by this dry-run planner.")
     return sanitize(
         {
             "ok": True,
@@ -128,14 +235,24 @@ def workflow_build_plan(arguments: dict[str, Any]) -> dict[str, Any]:
             "action": "workflow_build_plan",
             "mode": "dry_run",
             "workflow_type": workflow_type,
+            "task_type": workflow_type,
             "goal": str(arguments.get("goal") or ""),
             "style": str(arguments.get("style") or ""),
             "width": width,
             "height": height,
-            "required_nodes": REQUIRED_NODES,
+            "required_nodes": task_requirements["workflow_requirements"],
+            "input_requirements": task_requirements["input_requirements"],
+            "workflow_requirements": task_requirements["workflow_requirements"],
+            "safety_notes": [
+                "Dry-run only; this plan does not call /prompt or inspect the local filesystem.",
+                "Use placeholders for checkpoints, LoRA, VAE, ControlNet, and input images.",
+                "Do not commit generated images, model files, private prompts, or local output paths.",
+            ],
+            "expected_outputs": task_requirements["expected_outputs"],
+            "blocked_reasons": blocked_reasons,
             "will_build": False,
             "will_submit": False,
-            "warnings": [] if workflow_type == "txt2img" else ["Only txt2img is implemented in this MVP."],
+            "warnings": [] if workflow_type in BUILDABLE_WORKFLOW_TYPES else [f"{workflow_type} is available as dry-run plan only."],
         }
     )
 
@@ -181,8 +298,346 @@ def build_txt2img_workflow(arguments: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def build_txt2img_draft(arguments: dict[str, Any]) -> dict[str, Any]:
+    width, height = _dimensions(arguments)
+    sampler = _draft_sampler_settings(arguments, denoise=1.0)
+    return {
+        "1": _draft_metadata("txt2img"),
+        "2": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": _draft_checkpoint(arguments)}},
+        "3": {"class_type": "CLIPTextEncode", "inputs": {"text": _positive_prompt(arguments), "clip": ["2", 1]}},
+        "4": {"class_type": "CLIPTextEncode", "inputs": {"text": _negative_prompt(arguments), "clip": ["2", 1]}},
+        "5": {"class_type": "EmptyLatentImage", "inputs": {"width": width, "height": height, "batch_size": 1}},
+        "6": {
+            "class_type": "KSampler",
+            "inputs": {
+                **sampler,
+                "model": ["2", 0],
+                "positive": ["3", 0],
+                "negative": ["4", 0],
+                "latent_image": ["5", 0],
+            },
+        },
+        "7": {"class_type": "VAEDecode", "inputs": {"samples": ["6", 0], "vae": ["2", 2]}},
+        "8": {"class_type": "SaveImage", "inputs": {"filename_prefix": "starbridge_txt2img_draft", "images": ["7", 0]}},
+    }
+
+
+def build_img2img_draft(arguments: dict[str, Any]) -> dict[str, Any]:
+    sampler = _draft_sampler_settings(arguments, denoise=0.55)
+    return {
+        "1": _draft_metadata("img2img"),
+        "2": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": _draft_checkpoint(arguments)}},
+        "3": _load_image_node(PLACEHOLDER_SOURCE_IMAGE),
+        "4": {"class_type": "VAEEncode", "inputs": {"pixels": ["3", 0], "vae": ["2", 2]}},
+        "5": {"class_type": "CLIPTextEncode", "inputs": {"text": _positive_prompt(arguments), "clip": ["2", 1]}},
+        "6": {"class_type": "CLIPTextEncode", "inputs": {"text": _negative_prompt(arguments), "clip": ["2", 1]}},
+        "7": {
+            "class_type": "KSampler",
+            "inputs": {
+                **sampler,
+                "model": ["2", 0],
+                "positive": ["5", 0],
+                "negative": ["6", 0],
+                "latent_image": ["4", 0],
+            },
+        },
+        "8": {"class_type": "VAEDecode", "inputs": {"samples": ["7", 0], "vae": ["2", 2]}},
+        "9": {"class_type": "SaveImage", "inputs": {"filename_prefix": "starbridge_img2img_draft", "images": ["8", 0]}},
+    }
+
+
+def build_inpaint_draft(arguments: dict[str, Any]) -> dict[str, Any]:
+    sampler = _draft_sampler_settings(arguments, denoise=0.8)
+    return {
+        "1": _draft_metadata("inpaint"),
+        "2": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": _draft_checkpoint(arguments)}},
+        "3": _load_image_node(PLACEHOLDER_SOURCE_IMAGE),
+        "4": {"class_type": "LoadImageMask", "inputs": {"image": PLACEHOLDER_MASK_IMAGE, "channel": "alpha"}},
+        "5": {"class_type": "VAEEncodeForInpaint", "inputs": {"pixels": ["3", 0], "vae": ["2", 2], "mask": ["4", 0]}},
+        "6": {"class_type": "CLIPTextEncode", "inputs": {"text": _positive_prompt(arguments), "clip": ["2", 1]}},
+        "7": {"class_type": "CLIPTextEncode", "inputs": {"text": _negative_prompt(arguments), "clip": ["2", 1]}},
+        "8": {
+            "class_type": "KSampler",
+            "inputs": {
+                **sampler,
+                "model": ["2", 0],
+                "positive": ["6", 0],
+                "negative": ["7", 0],
+                "latent_image": ["5", 0],
+            },
+        },
+        "9": {"class_type": "VAEDecode", "inputs": {"samples": ["8", 0], "vae": ["2", 2]}},
+        "10": {"class_type": "SaveImage", "inputs": {"filename_prefix": "starbridge_inpaint_draft", "images": ["9", 0]}},
+    }
+
+
+def build_upscale_draft(arguments: dict[str, Any]) -> dict[str, Any]:
+    scale_by = _as_float(arguments.get("scale_by"), 2.0, minimum=1.0, maximum=8.0)
+    return {
+        "1": _draft_metadata("upscale"),
+        "2": _load_image_node(PLACEHOLDER_SOURCE_IMAGE),
+        "3": {"class_type": "UpscaleModelLoader", "inputs": {"model_name": PLACEHOLDER_UPSCALE_MODEL}},
+        "4": {"class_type": "ImageUpscaleWithModel", "inputs": {"upscale_model": ["3", 0], "image": ["2", 0]}},
+        "5": {"class_type": "ImageScale", "inputs": {"image": ["4", 0], "upscale_method": "lanczos", "scale_by": scale_by}},
+        "6": {"class_type": "CLIPTextEncode", "inputs": {"text": _positive_prompt(arguments), "clip": ["7", 1]}},
+        "7": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": _draft_checkpoint(arguments)}},
+        "8": {"class_type": "SaveImage", "inputs": {"filename_prefix": "starbridge_upscale_draft", "images": ["5", 0]}},
+    }
+
+
+def build_draft_workflow(arguments: dict[str, Any]) -> dict[str, Any]:
+    task_type = _draft_task_type(arguments)
+    builders = {
+        "txt2img": build_txt2img_draft,
+        "img2img": build_img2img_draft,
+        "inpaint": build_inpaint_draft,
+        "upscale": build_upscale_draft,
+    }
+    return builders[task_type](arguments)
+
+
+def module_checkpoint_loader_placeholder(node_id: str, arguments: dict[str, Any]) -> dict[str, Any]:
+    return {node_id: {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": _draft_checkpoint(arguments)}}}
+
+
+def module_positive_prompt_encode(node_id: str, checkpoint_node_id: str, arguments: dict[str, Any]) -> dict[str, Any]:
+    return {node_id: {"class_type": "CLIPTextEncode", "inputs": {"text": _positive_prompt(arguments), "clip": [checkpoint_node_id, 1]}}}
+
+
+def module_negative_prompt_encode(node_id: str, checkpoint_node_id: str, arguments: dict[str, Any]) -> dict[str, Any]:
+    return {node_id: {"class_type": "CLIPTextEncode", "inputs": {"text": _negative_prompt(arguments), "clip": [checkpoint_node_id, 1]}}}
+
+
+def module_empty_latent_image(node_id: str, arguments: dict[str, Any]) -> dict[str, Any]:
+    width, height = _dimensions(arguments)
+    return {node_id: {"class_type": "EmptyLatentImage", "inputs": {"width": width, "height": height, "batch_size": 1}}}
+
+
+def module_load_image_placeholder(node_id: str) -> dict[str, Any]:
+    return {node_id: _load_image_node(PLACEHOLDER_SOURCE_IMAGE)}
+
+
+def module_vae_encode_placeholder(node_id: str, image_node_id: str, checkpoint_node_id: str, mask_node_id: str | None = None) -> dict[str, Any]:
+    if mask_node_id:
+        return {
+            node_id: {
+                "class_type": "VAEEncodeForInpaint",
+                "inputs": {"pixels": [image_node_id, 0], "vae": [checkpoint_node_id, 2], "mask": [mask_node_id, 0]},
+            }
+        }
+    return {node_id: {"class_type": "VAEEncode", "inputs": {"pixels": [image_node_id, 0], "vae": [checkpoint_node_id, 2]}}}
+
+
+def module_ksampler(
+    node_id: str,
+    *,
+    checkpoint_node_id: str,
+    positive_node_id: str,
+    negative_node_id: str,
+    latent_node_id: str,
+    arguments: dict[str, Any],
+    denoise: float,
+) -> dict[str, Any]:
+    return {
+        node_id: {
+            "class_type": "KSampler",
+            "inputs": {
+                **_draft_sampler_settings(arguments, denoise=denoise),
+                "model": [checkpoint_node_id, 0],
+                "positive": [positive_node_id, 0],
+                "negative": [negative_node_id, 0],
+                "latent_image": [latent_node_id, 0],
+            },
+        }
+    }
+
+
+def module_vae_decode(node_id: str, sampler_node_id: str, checkpoint_node_id: str) -> dict[str, Any]:
+    return {node_id: {"class_type": "VAEDecode", "inputs": {"samples": [sampler_node_id, 0], "vae": [checkpoint_node_id, 2]}}}
+
+
+def module_save_image_placeholder(node_id: str, image_node_id: str, filename_prefix: str) -> dict[str, Any]:
+    return {node_id: {"class_type": "SaveImage", "inputs": {"filename_prefix": filename_prefix, "images": [image_node_id, 0]}}}
+
+
+def module_upscale_placeholder(model_node_id: str, upscale_node_id: str, scale_node_id: str, image_node_id: str, arguments: dict[str, Any]) -> dict[str, Any]:
+    scale_by = _as_float(arguments.get("scale") if "scale" in arguments else arguments.get("scale_by"), 2.0, minimum=1.0, maximum=8.0)
+    return {
+        model_node_id: {"class_type": "UpscaleModelLoader", "inputs": {"model_name": PLACEHOLDER_UPSCALE_MODEL}},
+        upscale_node_id: {"class_type": "ImageUpscaleWithModel", "inputs": {"upscale_model": [model_node_id, 0], "image": [image_node_id, 0]}},
+        scale_node_id: {"class_type": "ImageScale", "inputs": {"image": [upscale_node_id, 0], "upscale_method": "lanczos", "scale_by": scale_by}},
+    }
+
+
+def module_inpaint_mask_placeholder(node_id: str) -> dict[str, Any]:
+    return {node_id: {"class_type": "LoadImageMask", "inputs": {"image": PLACEHOLDER_MASK_IMAGE, "channel": "alpha"}}}
+
+
+def _composer_metadata(task_type: str) -> dict[str, Any]:
+    metadata = _draft_metadata(task_type)
+    metadata["inputs"]["composer"] = "workflow_graph_composer"
+    metadata["inputs"]["module_graph"] = True
+    return metadata
+
+
+def compose_workflow(arguments: dict[str, Any]) -> dict[str, Any]:
+    task_type = _draft_task_type(arguments)
+    workflow: dict[str, Any] = {"1": _composer_metadata(task_type)}
+
+    if task_type == "txt2img":
+        workflow.update(module_checkpoint_loader_placeholder("2", arguments))
+        workflow.update(module_positive_prompt_encode("3", "2", arguments))
+        workflow.update(module_negative_prompt_encode("4", "2", arguments))
+        workflow.update(module_empty_latent_image("5", arguments))
+        workflow.update(
+            module_ksampler(
+                "6",
+                checkpoint_node_id="2",
+                positive_node_id="3",
+                negative_node_id="4",
+                latent_node_id="5",
+                arguments=arguments,
+                denoise=1.0,
+            )
+        )
+        workflow.update(module_vae_decode("7", "6", "2"))
+        workflow.update(module_save_image_placeholder("8", "7", "starbridge_txt2img_composed"))
+    elif task_type == "img2img":
+        workflow.update(module_checkpoint_loader_placeholder("2", arguments))
+        workflow.update(module_load_image_placeholder("3"))
+        workflow.update(module_vae_encode_placeholder("4", "3", "2"))
+        workflow.update(module_positive_prompt_encode("5", "2", arguments))
+        workflow.update(module_negative_prompt_encode("6", "2", arguments))
+        workflow.update(
+            module_ksampler(
+                "7",
+                checkpoint_node_id="2",
+                positive_node_id="5",
+                negative_node_id="6",
+                latent_node_id="4",
+                arguments=arguments,
+                denoise=0.55,
+            )
+        )
+        workflow.update(module_vae_decode("8", "7", "2"))
+        workflow.update(module_save_image_placeholder("9", "8", "starbridge_img2img_composed"))
+    elif task_type == "inpaint":
+        workflow.update(module_checkpoint_loader_placeholder("2", arguments))
+        workflow.update(module_load_image_placeholder("3"))
+        workflow.update(module_inpaint_mask_placeholder("4"))
+        workflow.update(module_vae_encode_placeholder("5", "3", "2", mask_node_id="4"))
+        workflow.update(module_positive_prompt_encode("6", "2", arguments))
+        workflow.update(module_negative_prompt_encode("7", "2", arguments))
+        workflow.update(
+            module_ksampler(
+                "8",
+                checkpoint_node_id="2",
+                positive_node_id="6",
+                negative_node_id="7",
+                latent_node_id="5",
+                arguments=arguments,
+                denoise=0.8,
+            )
+        )
+        workflow.update(module_vae_decode("9", "8", "2"))
+        workflow.update(module_save_image_placeholder("10", "9", "starbridge_inpaint_composed"))
+    else:
+        workflow.update(module_load_image_placeholder("2"))
+        workflow.update(module_upscale_placeholder("3", "4", "5", "2", arguments))
+        workflow.update(module_save_image_placeholder("6", "5", "starbridge_upscale_composed"))
+
+    return workflow
+
+
+def workflow_compose(arguments: dict[str, Any]) -> dict[str, Any]:
+    task_type = _draft_task_type(arguments)
+    workflow = compose_workflow(arguments)
+    validation = validate_workflow_payload(workflow, workflow_name=f"{task_type}_composed_workflow")
+    safety_notes = [
+        "Composed workflow is safe placeholder JSON only.",
+        "No ComfyUI queue submission is performed.",
+        "No filesystem reads, model discovery, output inspection, or network requests are performed.",
+        "Replace placeholders only in a separate reviewed local step.",
+    ]
+    return sanitize(
+        {
+            "ok": bool(validation.get("ok")),
+            "bridge": BRIDGE_ID,
+            "action": "workflow_compose",
+            "mode": "dry_run",
+            "task_type": task_type,
+            "valid": bool(validation.get("ok")),
+            "workflow": workflow,
+            "workflow_hash": workflow_hash(workflow),
+            "node_summary": workflow_summary(workflow),
+            "validation_report": validation,
+            "warnings": list(validation.get("warnings") or []),
+            "safety_notes": safety_notes,
+            "next_steps": [
+                "Review the composed graph and validation report.",
+                "Keep placeholder assets until a user explicitly approves a local-only run.",
+                "Run workflow_validate again after any manual graph edits.",
+            ],
+        }
+    )
+
+
+def workflow_draft(arguments: dict[str, Any]) -> dict[str, Any]:
+    task_type = _draft_task_type(arguments)
+    workflow = build_draft_workflow(arguments)
+    validation = validate_workflow_payload(workflow, workflow_name=f"{task_type}_draft_workflow")
+    safety_notes = [
+        "Draft only; not a final production workflow.",
+        "No ComfyUI queue submission is performed.",
+        "No filesystem reads, model discovery, output inspection, or network requests are performed.",
+        "Model and asset fields use placeholders only.",
+    ]
+    warnings = list(validation.get("warnings") or [])
+    if not validation.get("ok"):
+        warnings.append("Draft validation failed; inspect validation_report before using this workflow locally.")
+    return sanitize(
+        {
+            "ok": bool(validation.get("ok")),
+            "bridge": BRIDGE_ID,
+            "action": "workflow_draft",
+            "mode": "dry_run",
+            "task_type": task_type,
+            "valid": bool(validation.get("ok")),
+            "workflow": workflow,
+            "workflow_hash": workflow_hash(workflow),
+            "node_summary": workflow_summary(workflow),
+            "validation_report": validation,
+            "warnings": warnings,
+            "safety_notes": safety_notes,
+            "next_steps": [
+                "Review the draft JSON and validation report.",
+                "Replace placeholders locally only after explicit user confirmation.",
+                "Run workflow_validate again before any separate real ComfyUI submission step.",
+            ],
+        }
+    )
+
+
 def workflow_build(arguments: dict[str, Any]) -> dict[str, Any]:
     workflow_type = _workflow_type(arguments)
+    if workflow_type not in BUILDABLE_WORKFLOW_TYPES:
+        plan = workflow_build_plan(arguments)
+        return sanitize(
+            {
+                "ok": False,
+                "bridge": BRIDGE_ID,
+                "action": "workflow_build",
+                "mode": "dry_run",
+                "workflow_type": workflow_type,
+                "task_type": workflow_type,
+                "build_plan": plan,
+                "workflow": None,
+                "workflow_hash": None,
+                "will_submit": False,
+                "warnings": [f"{workflow_type} workflow build is not implemented; only dry-run planning is supported."],
+                "next_steps": ["Use comfyui.workflow_build_plan for this task type until a reviewed safe workflow template exists."],
+            }
+        )
     workflow = build_txt2img_workflow(arguments)
     validation = validate_workflow_payload(workflow, workflow_name="agent_generated_txt2img")
     return sanitize(
@@ -351,6 +806,25 @@ def submit_workflow(
 
 def agent_run(arguments: dict[str, Any]) -> dict[str, Any]:
     plan = workflow_build_plan(arguments)
+    workflow_type = _workflow_type(arguments)
+    if workflow_type not in BUILDABLE_WORKFLOW_TYPES:
+        return sanitize(
+            {
+                "ok": True,
+                "bridge": BRIDGE_ID,
+                "action": "agent_run",
+                "mode": "dry_run",
+                "workflow_type": workflow_type,
+                "task_type": workflow_type,
+                "build_plan": plan,
+                "submitted": False,
+                "prompt_id": None,
+                "job_status": {"state": "not_submitted"},
+                "output_manifest": {"image_count": 0, "images": []},
+                "warnings": [f"{workflow_type} is plan-only; refusing to build or submit a queue job."],
+                "next_steps": ["Review the dry-run plan and add a safe public workflow template before enabling real runs."],
+            }
+        )
     run_arguments = dict(arguments)
     if bool(run_arguments.get("confirm_run", False)) and run_arguments.get("seed") is None:
         run_arguments["_random_seed"] = True

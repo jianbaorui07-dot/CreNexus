@@ -1,0 +1,142 @@
+{
+  "schema_version": "1.0",
+  "registry_id": "starbridge_comfy_workflow_template_registry",
+  "registry_policy": {
+    "model_policy": "placeholder_only",
+    "asset_policy": "placeholder_only_no_private_files",
+    "queue_submission": "disabled",
+    "network": "disabled",
+    "filesystem": "no_private_files"
+  },
+  "templates": [
+    {
+      "template_id": "txt2img_basic_v1",
+      "version": "1.0.0",
+      "task_type": "txt2img",
+      "required_modules": [
+        "checkpoint_loader_placeholder",
+        "positive_prompt_encode",
+        "negative_prompt_encode",
+        "empty_latent_image",
+        "ksampler",
+        "vae_decode",
+        "save_image_placeholder"
+      ],
+      "optional_modules": [],
+      "required_inputs": ["prompt", "negative_prompt", "width", "height", "seed", "steps", "cfg", "sampler", "scheduler"],
+      "safe_placeholder_policy": {
+        "model_policy": "placeholder_only",
+        "asset_policy": "placeholder_only_no_private_files",
+        "queue_submission": "disabled",
+        "network": "disabled",
+        "filesystem": "no_private_files"
+      },
+      "validation_status": "composed_validated",
+      "safety_level": "safe_placeholder_only",
+      "notes": "Basic txt2img placeholder workflow template for public graph composition tests."
+    },
+    {
+      "template_id": "img2img_basic_v1",
+      "version": "1.0.0",
+      "task_type": "img2img",
+      "required_modules": [
+        "checkpoint_loader_placeholder",
+        "load_image_placeholder",
+        "vae_encode_placeholder",
+        "positive_prompt_encode",
+        "negative_prompt_encode",
+        "ksampler",
+        "vae_decode",
+        "save_image_placeholder"
+      ],
+      "optional_modules": [],
+      "required_inputs": ["prompt", "negative_prompt", "source_image_placeholder", "denoise", "seed", "steps", "cfg"],
+      "safe_placeholder_policy": {
+        "model_policy": "placeholder_only",
+        "asset_policy": "placeholder_only_no_private_files",
+        "queue_submission": "disabled",
+        "network": "disabled",
+        "filesystem": "no_private_files"
+      },
+      "validation_status": "composed_validated",
+      "safety_level": "safe_placeholder_only",
+      "notes": "Basic img2img placeholder workflow template; source image remains a placeholder and is never read."
+    },
+    {
+      "template_id": "inpaint_basic_v1",
+      "version": "1.0.0",
+      "task_type": "inpaint",
+      "required_modules": [
+        "checkpoint_loader_placeholder",
+        "load_image_placeholder",
+        "inpaint_mask_placeholder",
+        "vae_encode_placeholder",
+        "positive_prompt_encode",
+        "negative_prompt_encode",
+        "ksampler",
+        "vae_decode",
+        "save_image_placeholder"
+      ],
+      "optional_modules": [],
+      "required_inputs": ["prompt", "negative_prompt", "source_image_placeholder", "mask_image_placeholder", "denoise", "seed", "steps", "cfg"],
+      "safe_placeholder_policy": {
+        "model_policy": "placeholder_only",
+        "asset_policy": "placeholder_only_no_private_files",
+        "queue_submission": "disabled",
+        "network": "disabled",
+        "filesystem": "no_private_files"
+      },
+      "validation_status": "composed_validated",
+      "safety_level": "safe_placeholder_only",
+      "notes": "Basic inpaint placeholder workflow template; source image and mask are placeholder labels only."
+    },
+    {
+      "template_id": "upscale_basic_v1",
+      "version": "1.0.0",
+      "task_type": "upscale",
+      "required_modules": [
+        "load_image_placeholder",
+        "upscale_placeholder",
+        "save_image_placeholder"
+      ],
+      "optional_modules": [],
+      "required_inputs": ["source_image_placeholder", "scale_by", "upscale_model_placeholder"],
+      "safe_placeholder_policy": {
+        "model_policy": "placeholder_only",
+        "asset_policy": "placeholder_only_no_private_files",
+        "queue_submission": "disabled",
+        "network": "disabled",
+        "filesystem": "no_private_files"
+      },
+      "validation_status": "composed_validated",
+      "safety_level": "safe_placeholder_only",
+      "notes": "Basic upscale placeholder workflow template; upscale model and source image are never resolved locally."
+    },
+    {
+      "template_id": "creative_poster_complex_v1",
+      "version": "1.0.0",
+      "task_type": "complex_creative_poster",
+      "required_modules": [
+        "checkpoint_loader_placeholder",
+        "positive_prompt_encode",
+        "negative_prompt_encode",
+        "empty_latent_image",
+        "ksampler",
+        "vae_decode",
+        "save_image_placeholder"
+      ],
+      "optional_modules": ["upscale_placeholder"],
+      "required_inputs": ["prompt", "negative_prompt", "width", "height", "seed", "steps", "cfg", "sampler", "scheduler"],
+      "safe_placeholder_policy": {
+        "model_policy": "placeholder_only",
+        "asset_policy": "placeholder_only_no_private_files",
+        "queue_submission": "disabled",
+        "network": "disabled",
+        "filesystem": "no_private_files"
+      },
+      "validation_status": "composed_validated",
+      "safety_level": "safe_placeholder_only",
+      "notes": "Complex poster layout template composed as a txt2img placeholder graph with public prompt text only."
+    }
+  ]
+}
