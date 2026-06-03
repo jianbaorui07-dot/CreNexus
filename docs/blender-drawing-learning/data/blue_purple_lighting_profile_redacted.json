@@ -1,0 +1,143 @@
+{
+  "source_redaction": "Local absolute paths and raw assets are intentionally omitted.",
+  "blend_file_count_attempted": 1,
+  "profile_count": 1,
+  "error_count": 0,
+  "profiles": [
+    {
+      "relative_label": "模型/蓝紫打光.blend",
+      "scene_name": "Scene",
+      "render_engine": "CYCLES",
+      "resolution": [
+        1920,
+        1080
+      ],
+      "frame_range": [
+        1,
+        250
+      ],
+      "object_count": 6,
+      "object_type_counts": {
+        "LIGHT": 3,
+        "CAMERA": 1,
+        "MESH": 2
+      },
+      "mesh_count": 2,
+      "material_count": 5,
+      "light_count": 3,
+      "camera_count": 1,
+      "mesh_material_slot_counts": {
+        "1": 2
+      },
+      "modifier_counts": {},
+      "lights": [
+        {
+          "name": "Area",
+          "type": "AREA",
+          "energy": 94.2478,
+          "color": [
+            0.0599,
+            0.3122,
+            1.0
+          ]
+        },
+        {
+          "name": "Area.001",
+          "type": "AREA",
+          "energy": 196.3495,
+          "color": [
+            1.0,
+            0.3207,
+            0.9318
+          ]
+        },
+        {
+          "name": "Area.002",
+          "type": "AREA",
+          "energy": 235.6194,
+          "color": [
+            0.2572,
+            0.2934,
+            0.8234
+          ]
+        }
+      ],
+      "cameras": [
+        {
+          "name": "Camera",
+          "lens": 50.0,
+          "sensor_width": 36.0,
+          "type": "PERSP"
+        }
+      ],
+      "materials_sample": [
+        {
+          "name": "Material",
+          "uses_nodes": true,
+          "node_types": {
+            "ShaderNodeTexImage": 2,
+            "ShaderNodeOutputMaterial": 1,
+            "ShaderNodeGroup": 8
+          },
+          "blend_method": "HASHED",
+          "use_screen_refraction": false
+        },
+        {
+          "name": "Material.001",
+          "uses_nodes": true,
+          "node_types": {
+            "ShaderNodeOutputMaterial": 1,
+            "ShaderNodeBsdfPrincipled": 1
+          },
+          "blend_method": "HASHED",
+          "use_screen_refraction": false
+        },
+        {
+          "name": "metal",
+          "uses_nodes": true,
+          "node_types": {
+            "ShaderNodeOutputMaterial": 1,
+            "ShaderNodeBsdfPrincipled": 1,
+            "ShaderNodeTexNoise": 2,
+            "ShaderNodeValToRGB": 2
+          },
+          "blend_method": "HASHED",
+          "use_screen_refraction": false
+        },
+        {
+          "name": "micro",
+          "uses_nodes": true,
+          "node_types": {
+            "ShaderNodeOutputMaterial": 1,
+            "ShaderNodeTexNoise": 2,
+            "ShaderNodeValToRGB": 2,
+            "ShaderNodeBsdfPrincipled": 1
+          },
+          "blend_method": "HASHED",
+          "use_screen_refraction": false
+        },
+        {
+          "name": "圣杯_000",
+          "uses_nodes": true,
+          "node_types": {
+            "ShaderNodeOutputMaterial": 1,
+            "ShaderNodeBsdfPrincipled": 1
+          },
+          "blend_method": "HASHED",
+          "use_screen_refraction": false
+        }
+      ],
+      "world": {
+        "has_world": true,
+        "uses_nodes": true
+      },
+      "drawing_learning_notes": [
+        "Camera exists: study focal length and framing before rebuilding the scene.",
+        "Lights exist: study key/fill/rim balance and light color before changing materials.",
+        "Node materials exist: inspect shader graphs for color, roughness, normal, emission, and transparency decisions.",
+        "Render engine is CYCLES: keep lighting and material expectations aligned with that engine."
+      ]
+    }
+  ],
+  "errors": []
+}

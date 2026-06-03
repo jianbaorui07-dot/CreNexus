@@ -122,6 +122,11 @@ def main() -> None:
     parser.add_argument("--root", required=True)
     parser.add_argument("--out", required=True)
     parser.add_argument("--limit", type=int, default=0)
+    parser.add_argument(
+        "--match-label",
+        default="",
+        help="Only profile .blend files whose redacted relative label contains this text.",
+    )
     argv = sys.argv
     if "--" in argv:
         argv = argv[argv.index("--") + 1 :]
@@ -131,6 +136,12 @@ def main() -> None:
 
     root = Path(args.root).resolve()
     blend_files = sorted(root.rglob("*.blend"), key=lambda p: p.as_posix().lower())
+    if args.match_label:
+        blend_files = [
+            path
+            for path in blend_files
+            if args.match_label.lower() in path.relative_to(root).as_posix().lower()
+        ]
     if args.limit:
         blend_files = blend_files[: args.limit]
 

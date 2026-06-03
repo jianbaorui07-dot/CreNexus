@@ -67,6 +67,7 @@
 
 - `LEARNING_NOTES.md`：面向创作学习的中文总结。
 - `PRACTICE_ROADMAP.md`：按阶段练习 Blender 绘制图的路线。
+- `experiments/`：逐个打开案例后的实验记录。
 - `data/asset_summary_redacted.json`：素材库脱敏统计。
 - `data/asset_inventory_redacted.csv`：逐文件脱敏索引。
 - `data/blend_scene_profiles_redacted.json`：`.blend` 场景结构 profile。
