@@ -3,62 +3,82 @@
   "bridges": [
     {
       "bridge_id": "comfyui",
-      "display_name": "ComfyUI 图像生成桥",
+      "display_name": "ComfyUI \u56fe\u50cf\u751f\u6210\u6865",
       "bridge_dir": "examples/comfy_bridge",
       "status_file": "examples/comfy_bridge/bridge_status.json",
-      "primary_docs": ["docs/02-codex-comfyui.md"],
+      "primary_docs": [
+        "docs/02-codex-comfyui.md"
+      ],
       "safe_probe_commands": [
         "python examples\\comfy_bridge\\probe.py --json",
         "python examples\\comfy_bridge\\comfy_probe.py"
       ],
       "local_action_commands": [
-        "python examples\\comfy_bridge\\run_txt2img.py --prompt \"a quiet futuristic tea house in a garden\""
+        "python examples\\comfy_bridge\\run_txt2img.py --prompt \"a quiet futuristic tea house in a garden\" --ckpt \"<checkpoint-name>\""
+      ],
+      "capability_categories": [
+        "discovery",
+        "planning",
+        "execution",
+        "validation",
+        "evidence"
       ],
       "current_capabilities": [
-        "读取 ComfyUI API 状态和基础节点信息",
-        "校验公开 txt2img workflow JSON",
-        "提交公开安全的文生图示例任务"
+        "\u8bfb\u53d6 ComfyUI API \u72b6\u6001\u548c\u57fa\u7840\u8282\u70b9\u4fe1\u606f",
+        "\u6821\u9a8c\u516c\u5f00 txt2img workflow JSON",
+        "\u63d0\u4ea4\u516c\u5f00\u5b89\u5168\u7684\u6587\u751f\u56fe\u793a\u4f8b\u4efb\u52a1"
       ],
       "planned_capabilities": [
-        "增加 img2img、inpaint、upscale workflow 校验",
-        "把 workflow 参数和本地输出目录安全边界拆成独立契约"
+        "\u589e\u52a0 img2img\u3001inpaint\u3001upscale workflow \u6821\u9a8c",
+        "\u628a workflow \u53c2\u6570\u548c\u672c\u5730\u8f93\u51fa\u76ee\u5f55\u5b89\u5168\u8fb9\u754c\u62c6\u6210\u72ec\u7acb\u5951\u7ea6"
       ],
       "public_safety_rules": [
-        "不提交模型、checkpoint、LoRA、VAE、ControlNet",
-        "不提交生成图片、输出目录和本机 ComfyUI 路径"
+        "\u4e0d\u63d0\u4ea4\u6a21\u578b\u3001checkpoint\u3001LoRA\u3001VAE\u3001ControlNet",
+        "\u4e0d\u63d0\u4ea4\u751f\u6210\u56fe\u7247\u3001\u8f93\u51fa\u76ee\u5f55\u548c\u672c\u673a ComfyUI \u8def\u5f84"
       ]
     },
     {
       "bridge_id": "blender",
-      "display_name": "Blender 三维场景桥",
+      "display_name": "Blender \u4e09\u7ef4\u573a\u666f\u6865",
       "bridge_dir": "examples/blender_bridge",
       "status_file": "examples/blender_bridge/bridge_status.json",
-      "primary_docs": ["docs/04-codex-blender.md"],
+      "primary_docs": [
+        "docs/04-codex-blender.md"
+      ],
       "safe_probe_commands": [
         "python examples\\blender_bridge\\probe.py --json",
         "python examples\\bridge_status.py --probe-executables"
       ],
       "local_action_commands": [],
+      "capability_categories": [
+        "discovery",
+        "planning",
+        "validation",
+        "evidence"
+      ],
       "current_capabilities": [
-        "读取 Blender 可执行文件配置和 PATH 线索",
-        "读取 Blender MCP 目录线索",
-        "生成安全 probe report"
+        "\u8bfb\u53d6 Blender \u53ef\u6267\u884c\u6587\u4ef6\u914d\u7f6e\u548c PATH \u7ebf\u7d22",
+        "\u8bfb\u53d6 Blender MCP \u76ee\u5f55\u7ebf\u7d22",
+        "\u751f\u6210\u5b89\u5168 probe report"
       ],
       "planned_capabilities": [
-        "新增公开安全的程序生成基础场景脚本",
-        "输出相机、灯光、材质和渲染参数的 JSON 规格"
+        "\u65b0\u589e\u516c\u5f00\u5b89\u5168\u7684\u7a0b\u5e8f\u751f\u6210\u57fa\u7840\u573a\u666f\u811a\u672c",
+        "\u8f93\u51fa\u76f8\u673a\u3001\u706f\u5149\u3001\u6750\u8d28\u548c\u6e32\u67d3\u53c2\u6570\u7684 JSON \u89c4\u683c"
       ],
       "public_safety_rules": [
-        "不提交私有 .blend、贴图、资产库和渲染缓存",
-        "planned 阶段不声称已经完成自动建模"
+        "\u4e0d\u63d0\u4ea4\u79c1\u6709 .blend\u3001\u8d34\u56fe\u3001\u8d44\u4ea7\u5e93\u548c\u6e32\u67d3\u7f13\u5b58",
+        "planned \u9636\u6bb5\u4e0d\u58f0\u79f0\u5df2\u7ecf\u5b8c\u6210\u81ea\u52a8\u5efa\u6a21"
       ]
     },
     {
       "bridge_id": "cad_autocad",
-      "display_name": "CAD / AutoCAD 工程制图桥",
+      "display_name": "CAD / AutoCAD \u5de5\u7a0b\u5236\u56fe\u6865",
       "bridge_dir": "examples/cad_bridge",
       "status_file": "examples/cad_bridge/bridge_status.json",
-      "primary_docs": ["docs/01-codex-cad.md", "AUTOCAD_MCP_SETUP.md"],
+      "primary_docs": [
+        "docs/01-codex-cad.md",
+        "AUTOCAD_MCP_SETUP.md"
+      ],
       "safe_probe_commands": [
         "python examples\\cad_bridge\\probe.py --json",
         "python scripts\\test_autocad_mcp.py"
@@ -67,26 +87,37 @@
         "python scripts\\draw_connection_plate_from_spec.py",
         "python scripts\\draw_reference_mechanical_part.py"
       ],
+      "capability_categories": [
+        "discovery",
+        "planning",
+        "execution",
+        "validation",
+        "evidence",
+        "cleanup"
+      ],
       "current_capabilities": [
-        "检测 AutoCAD 可执行文件、COM 注册和 pywin32 线索",
-        "保留 AutoCAD MCP 子项目和公开演示绘图脚本",
-        "生成中文区域标注的公开演示图纸逻辑"
+        "\u68c0\u6d4b AutoCAD \u53ef\u6267\u884c\u6587\u4ef6\u3001COM \u6ce8\u518c\u548c pywin32 \u7ebf\u7d22",
+        "\u4fdd\u7559 AutoCAD MCP \u5b50\u9879\u76ee\u548c\u516c\u5f00\u6f14\u793a\u7ed8\u56fe\u811a\u672c",
+        "\u751f\u6210\u4e2d\u6587\u533a\u57df\u6807\u6ce8\u7684\u516c\u5f00\u6f14\u793a\u56fe\u7eb8\u903b\u8f91"
       ],
       "planned_capabilities": [
-        "新增标准零件 JSON 参数格式",
-        "把只读 probe 和会写 CAD 的绘图动作分层"
+        "\u65b0\u589e\u6807\u51c6\u96f6\u4ef6 JSON \u53c2\u6570\u683c\u5f0f",
+        "\u628a\u53ea\u8bfb probe \u548c\u4f1a\u5199 CAD \u7684\u7ed8\u56fe\u52a8\u4f5c\u5206\u5c42"
       ],
       "public_safety_rules": [
-        "不提交客户 DWG、商业图纸、授权文件和真实项目输出",
-        "probe 不打开真实 DWG，也不写真实 CAD 文件"
+        "\u4e0d\u63d0\u4ea4\u5ba2\u6237 DWG\u3001\u5546\u4e1a\u56fe\u7eb8\u3001\u6388\u6743\u6587\u4ef6\u548c\u771f\u5b9e\u9879\u76ee\u8f93\u51fa",
+        "probe \u4e0d\u6253\u5f00\u771f\u5b9e DWG\uff0c\u4e5f\u4e0d\u5199\u771f\u5b9e CAD \u6587\u4ef6"
       ]
     },
     {
       "bridge_id": "photoshop",
-      "display_name": "Photoshop 修图桥",
+      "display_name": "Photoshop \u4fee\u56fe\u6865",
       "bridge_dir": "examples/photoshop_bridge",
       "status_file": "examples/photoshop_bridge/bridge_status.json",
-      "primary_docs": ["docs/03-codex-photoshop.md", "docs/photoshop-codex-bridge.md"],
+      "primary_docs": [
+        "docs/03-codex-photoshop.md",
+        "docs/photoshop-codex-bridge.md"
+      ],
       "safe_probe_commands": [
         "powershell -ExecutionPolicy Bypass -File examples\\photoshop_bridge\\probe.ps1",
         "powershell -ExecutionPolicy Bypass -File examples\\photoshop_bridge\\scripts\\diagnose_local.ps1"
@@ -95,68 +126,94 @@
         "powershell -ExecutionPolicy Bypass -File examples\\photoshop_bridge\\scripts\\run_local_practice.ps1",
         "python examples\\photoshop_bridge\\write_practice_report.py --run-practice"
       ],
+      "capability_categories": [
+        "discovery",
+        "planning",
+        "execution",
+        "validation",
+        "evidence",
+        "cleanup"
+      ],
       "current_capabilities": [
-        "检测 Photoshop 安装线索、COM 注册和运行状态",
-        "读取当前文档信息",
-        "执行公开安全的测试文档、主体选择和透明 PNG 导出练习"
+        "\u68c0\u6d4b Photoshop \u5b89\u88c5\u7ebf\u7d22\u3001COM \u6ce8\u518c\u548c\u8fd0\u884c\u72b6\u6001",
+        "\u8bfb\u53d6\u5f53\u524d\u6587\u6863\u4fe1\u606f",
+        "\u6267\u884c\u516c\u5f00\u5b89\u5168\u7684\u6d4b\u8bd5\u6587\u6863\u3001\u4e3b\u4f53\u9009\u62e9\u548c\u900f\u660e PNG \u5bfc\u51fa\u7ec3\u4e60"
       ],
       "planned_capabilities": [
-        "把 document_info、extract_subject、export_png 封装成本机 MCP 工具",
-        "增加二次蒙版、边缘羽化和人工确认流程"
+        "\u628a document_info\u3001extract_subject\u3001export_png \u5c01\u88c5\u6210\u672c\u673a MCP \u5de5\u5177",
+        "\u589e\u52a0\u4e8c\u6b21\u8499\u7248\u3001\u8fb9\u7f18\u7fbd\u5316\u548c\u4eba\u5de5\u786e\u8ba4\u6d41\u7a0b"
       ],
       "public_safety_rules": [
-        "不提交 PSD、源图、导出图、商业字体、商业笔刷和 Creative Cloud 缓存",
-        "路径必须通过参数传入，不写死桌面或个人目录"
+        "\u4e0d\u63d0\u4ea4 PSD\u3001\u6e90\u56fe\u3001\u5bfc\u51fa\u56fe\u3001\u5546\u4e1a\u5b57\u4f53\u3001\u5546\u4e1a\u7b14\u5237\u548c Creative Cloud \u7f13\u5b58",
+        "\u8def\u5f84\u5fc5\u987b\u901a\u8fc7\u53c2\u6570\u4f20\u5165\uff0c\u4e0d\u5199\u6b7b\u684c\u9762\u6216\u4e2a\u4eba\u76ee\u5f55"
       ]
     },
     {
       "bridge_id": "illustrator",
-      "display_name": "Illustrator / AI 矢量文件桥",
+      "display_name": "Illustrator / AI \u77e2\u91cf\u6587\u4ef6\u6865",
       "bridge_dir": "examples/illustrator_bridge",
       "status_file": "examples/illustrator_bridge/bridge_status.json",
-      "primary_docs": ["docs/05-codex-illustrator.md"],
+      "primary_docs": [
+        "docs/05-codex-illustrator.md"
+      ],
       "safe_probe_commands": [
         "powershell -ExecutionPolicy Bypass -File examples\\illustrator_bridge\\probe.ps1",
         "python examples\\bridge_status.py --probe-executables"
       ],
       "local_action_commands": [],
+      "capability_categories": [
+        "discovery",
+        "planning",
+        "execution",
+        "validation",
+        "evidence",
+        "cleanup"
+      ],
       "current_capabilities": [
-        "检测 Illustrator 可执行文件和 COM 线索",
-        "说明 .ai 矢量工程、Image Trace 和导出安全边界",
-        "生成安全 probe report"
+        "\u68c0\u6d4b Illustrator \u53ef\u6267\u884c\u6587\u4ef6\u548c COM \u7ebf\u7d22",
+        "\u8bf4\u660e .ai \u77e2\u91cf\u5de5\u7a0b\u3001Image Trace \u548c\u5bfc\u51fa\u5b89\u5168\u8fb9\u754c",
+        "\u751f\u6210\u5b89\u5168 probe report"
       ],
       "planned_capabilities": [
-        "新增只读 document_info",
-        "新增测试画板和 trace_image_to_vector 参数化示例"
+        "\u65b0\u589e\u53ea\u8bfb document_info",
+        "\u65b0\u589e\u6d4b\u8bd5\u753b\u677f\u548c trace_image_to_vector \u53c2\u6570\u5316\u793a\u4f8b"
       ],
       "public_safety_rules": [
-        "不提交客户 .ai、源图、导出 SVG/PDF/PNG 和商业字体",
-        "planned 阶段不声称已完成批量 Image Trace"
+        "\u4e0d\u63d0\u4ea4\u5ba2\u6237 .ai\u3001\u6e90\u56fe\u3001\u5bfc\u51fa SVG/PDF/PNG \u548c\u5546\u4e1a\u5b57\u4f53",
+        "planned \u9636\u6bb5\u4e0d\u58f0\u79f0\u5df2\u5b8c\u6210\u6279\u91cf Image Trace"
       ]
     },
     {
       "bridge_id": "capcut_jianying",
-      "display_name": "剪映 / CapCut 草稿桥",
+      "display_name": "\u526a\u6620 / CapCut \u8349\u7a3f\u6865",
       "bridge_dir": "examples/capcut_jianying_bridge",
       "status_file": "examples/capcut_jianying_bridge/bridge_status.json",
-      "primary_docs": ["docs/06-codex-jianying.md"],
+      "primary_docs": [
+        "docs/06-codex-jianying.md"
+      ],
       "safe_probe_commands": [
         "python examples\\capcut_jianying_bridge\\probe.py --json",
         "python examples\\bridge_status.py --json --redact-paths --soft-exit"
       ],
       "local_action_commands": [],
+      "capability_categories": [
+        "discovery",
+        "planning",
+        "validation",
+        "evidence"
+      ],
       "current_capabilities": [
-        "检测剪映 / CapCut 可执行文件和草稿目录环境变量",
-        "记录 research 阶段的安全边界",
-        "生成安全 probe report"
+        "\u68c0\u6d4b\u526a\u6620 / CapCut \u53ef\u6267\u884c\u6587\u4ef6\u548c\u8349\u7a3f\u76ee\u5f55\u73af\u5883\u53d8\u91cf",
+        "\u8bb0\u5f55 research \u9636\u6bb5\u7684\u5b89\u5168\u8fb9\u754c",
+        "\u751f\u6210\u5b89\u5168 probe report"
       ],
       "planned_capabilities": [
-        "新增只读草稿目录探针",
-        "验证最小测试草稿生成、模板替换和字幕导入流程"
+        "\u65b0\u589e\u53ea\u8bfb\u8349\u7a3f\u76ee\u5f55\u63a2\u9488",
+        "\u9a8c\u8bc1\u6700\u5c0f\u6d4b\u8bd5\u8349\u7a3f\u751f\u6210\u3001\u6a21\u677f\u66ff\u6362\u548c\u5b57\u5e55\u5bfc\u5165\u6d41\u7a0b"
       ],
       "public_safety_rules": [
-        "不提交草稿、素材、字幕原稿、导出视频、账号和会员状态",
-        "research 阶段不自动控制桌面应用"
+        "\u4e0d\u63d0\u4ea4\u8349\u7a3f\u3001\u7d20\u6750\u3001\u5b57\u5e55\u539f\u7a3f\u3001\u5bfc\u51fa\u89c6\u9891\u3001\u8d26\u53f7\u548c\u4f1a\u5458\u72b6\u6001",
+        "research \u9636\u6bb5\u4e0d\u81ea\u52a8\u63a7\u5236\u684c\u9762\u5e94\u7528"
       ]
     }
   ]

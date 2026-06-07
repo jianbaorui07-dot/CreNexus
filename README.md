@@ -22,7 +22,7 @@ Photoshop, Illustrator, Blender, and CapCut write flows are experimental or plan
 
 ## 项目状态：v0.1-alpha
 
-这个仓库当前是 **v0.1-alpha 工程原型**，不是完整多软件生产平台。定位是 Windows-first、local-first 的 **MCP stdio server + tool registry + safety verification layer**，用于让 Codex / Cursor / Claude Code 以可验证方式接入本机创意软件。StarBridge 不替代 ComfyUI、Photoshop、Illustrator、AutoCAD、Blender、剪映/CapCut 或 GUI Computer Use；它只把已经能测试的本地能力收敛成结构化工具，并把实验能力和计划能力明确分开。
+这个仓库当前是 **v0.1-alpha 工程原型**，不是完整多软件生产平台。定位是 Windows-first、local-first 的 **MCP stdio server + tool registry + safety verification layer**，用于让 Codex / Cursor / Claude Code 以可验证方式接入本机创意软件。StarBridge 不替代 ComfyUI、Photoshop、Illustrator、AutoCAD、Blender、剪映/CapCut 或 GUI Computer Use；它只把已经能测试的本地能力收敛成结构化工具，并把实验能力和计划能力明确分开。`StarBridge v0.2` 的重点是 `EvidenceManifest + JobStatus`，而不是继续扩张软件数量。
 
 当前真实能力分层：
 
@@ -77,6 +77,9 @@ python scripts/security_check.py
 python scripts/collect_bridge_status.py --json
 python examples/bridge_status.py --json --redact-paths --soft-exit
 python -m starbridge_mcp.server tools --json --safe-only
+python -m starbridge_mcp.server evidence --init --json
+python -m starbridge_mcp.server evidence --validate --json
+python -m starbridge_mcp.server job-status --json
 ```
 
 See [docs/demo-illustrator.md](docs/demo-illustrator.md) and [docs/demo-photoshop.md](docs/demo-photoshop.md). Real outputs go to `examples/output/` and are ignored by Git.
@@ -236,11 +239,24 @@ python scripts\security_check.py
 ```powershell
 python -m starbridge_mcp.server --json
 python -m starbridge_mcp.server tools --json --safe-only
+python -m starbridge_mcp.server evidence --init --json
+python -m starbridge_mcp.server evidence --validate --json
+python -m starbridge_mcp.server job-status --json
 python -m starbridge_mcp.mcp_server
 npm.cmd run starbridge:mcp
 ```
 
-MCP 客户端可发现首批安全工具：`starbridge.status`、`starbridge.probe`、`starbridge.tools`、`comfyui.system_probe`、`comfyui.workflow_validate`、`blender.environment_probe`、`cad_autocad.environment_probe`、`photoshop.session_info`、`illustrator.document_info`、`jianying_capcut.draft_probe`、`autocad_dxf.status`、`autocad_dxf.validate_cad_plan`、`autocad_dxf.create_dxf_plan`、`autocad_dxf.summarize_plan` 和 `autocad_dxf.write_dxf`。
+MCP 客户端可发现首批安全工具：`starbridge.status`、`starbridge.probe`、`starbridge.tools`、`starbridge.evidence_init`、`starbridge.evidence_validate`、`starbridge.job_status`、`comfyui.system_probe`、`comfyui.workflow_validate`、`blender.environment_probe`、`cad_autocad.environment_probe`、`photoshop.session_info`、`illustrator.document_info`、`jianying_capcut.draft_probe`、`autocad_dxf.status`、`autocad_dxf.validate_cad_plan`、`autocad_dxf.create_dxf_plan`、`autocad_dxf.summarize_plan` 和 `autocad_dxf.write_dxf`。
+
+### Evidence / Job lifecycle
+
+```powershell
+python -m starbridge_mcp.server evidence --init --json
+python -m starbridge_mcp.server evidence --validate --json
+python -m starbridge_mcp.server job-status --json
+```
+
+默认 manifest 写入 `examples/output/evidence/manifest.latest.json`。这里只保留脱敏 JSON 证据和状态摘要，不保存客户素材、模型、PSD、AI、DWG 或真实导出结果。
 
 ### ComfyUI
 

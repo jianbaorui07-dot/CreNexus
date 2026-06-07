@@ -8,11 +8,16 @@ This note tracks ideas from comparable public creative-software MCP projects tha
 | --- | --- | --- |
 | [artokun/comfyui-mcp](https://github.com/artokun/comfyui-mcp) | ComfyUI MCP | Asset IDs, job status, workflow visualization, workflow diff, generation metadata, VRAM checks, progress monitor. |
 | [IO-AtelierTech/comfyui-mcp](https://github.com/IO-AtelierTech/comfyui-mcp) | ComfyUI MCP | Explicit API vs UI workflow format separation, schema validation, node discovery, queue/history tools, compatibility notes. |
-| [namurokuro/Blender-MCP-Server](https://github.com/namurokuro/Blender-MCP-Server) | Blender MCP | Tool category map, thread-safe operation queue, UI panel start/stop, status monitoring, troubleshooting-first docs. |
+| [ahujasid/blender-mcp](https://github.com/ahujasid/blender-mcp) | Blender MCP | Blender addon + MCP server split, viewport screenshot, scene inspection. |
+| [djeada/blender-mcp-server](https://github.com/djeada/blender-mcp-server) | Blender MCP | Namespace grouping, scripts/demos/tests/docs structure, mocked Blender tests. |
+| [ie3jp/illustrator-mcp-server](https://github.com/ie3jp/illustrator-mcp-server) | Illustrator MCP | Read/manipulate/export/preflight grouping and multilingual docs. |
+| [krVatsal/illustrator-mcp](https://github.com/krVatsal/illustrator-mcp) | Illustrator MCP | Windows COM and macOS AppleScript wrapper split plus screenshot feedback. |
+| [loonghao/photoshop-python-api-mcp-server](https://github.com/loonghao/photoshop-python-api-mcp-server) | Photoshop MCP | Photoshop COM session/document/layer read-only boundary and controlled operations. |
+| [00bx/00bx-photoshop-mcp](https://github.com/00bx/00bx-photoshop-mcp) | Photoshop MCP | MCP tools plus skills knowledge-loading pattern and tool categorization. |
 
 ## Directly Pullable Ideas
 
-1. Add a richer `ExecutionResult` evidence manifest for generated assets:
+1. Add a richer `ExecutionResult` and `EvidenceManifest` layer for generated assets:
    - stable asset IDs
    - source plan ID
    - originating workflow or GUI step IDs
@@ -49,6 +54,7 @@ This note tracks ideas from comparable public creative-software MCP projects tha
 ## Not Directly Pulled Yet
 
 - External source code was not copied.
+- StarBridge只学习公开架构模式、schema 设计、tool grouping 和安全边界，不复制第三方实现代码、桌面脚本或私有素材假设。
 - Node.js/TypeScript tool implementations were not ported into the Python StarBridge server.
 - Blender addon server patterns were not added because this repository keeps real desktop automation behind probes, sandbox plans, and explicit user approval.
 - Model download, registry search, and custom node installation were not added because they need stricter token, license, cache, and path policies first.

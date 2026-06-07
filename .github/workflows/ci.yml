@@ -6,7 +6,11 @@ on:
 
 jobs:
   test:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
     env:
       PYTHONUTF8: "1"
       PYTHONIOENCODING: "utf-8"
@@ -17,19 +21,27 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: ${{ matrix.python-version }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify Node.js config
+        run: |
+          node --version
+          npm --version
+          node -e "JSON.parse(require('fs').readFileSync('package.json', 'utf8')); console.log('package.json ok')"
 
       - name: Run tests
         run: python -m unittest discover -s tests
 
-      - name: Run security check
-        run: python scripts/security_check.py
-
-      - name: Collect bridge manifest
-        run: python scripts/collect_bridge_status.py --json
-
       - name: Run StarBridge preflight
         run: python scripts/starbridge_preflight.py --markdown
 
-      - name: Run safe local status check
-        run: python examples/bridge_status.py --json --redact-paths --soft-exit
+      - name: Run security check
+        run: python scripts/security_check.py
+
+      - name: Run npm test
+        run: npm test

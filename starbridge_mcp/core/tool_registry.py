@@ -21,6 +21,7 @@ class ToolCapability:
     source_projects: tuple[str, ...] = field(default_factory=tuple)
     invocation: str | None = None
     next_step: str | None = None
+    categories: tuple[str, ...] = field(default_factory=tuple)
 
     @property
     def current_status(self) -> str:
@@ -48,6 +49,7 @@ class ToolCapability:
             "source_projects": list(self.source_projects),
             "invocation": self.invocation,
             "next_step": self.next_step,
+            "categories": list(self.categories),
         }
 
 
@@ -79,6 +81,52 @@ CAPABILITIES: tuple[ToolCapability, ...] = (
         requires_local_software=False,
         source_projects=("artokun/comfyui-mcp", "ie3jp/illustrator-mcp-server"),
         invocation="python -m starbridge_mcp.server tools --json",
+        categories=("discovery",),
+    ),
+    ToolCapability(
+        name="starbridge.evidence_init",
+        bridge="all",
+        action="evidence_init",
+        maturity="implemented",
+        risk_level="safe_read_only",
+        description="Initialize a sanitized EvidenceManifest summary and optional local manifest path under examples/output/evidence.",
+        side_effects="Safe by default; CLI may write only ignored JSON under examples/output/evidence and never launches desktop software.",
+        safe_default=True,
+        requires_confirmation=False,
+        requires_local_software=False,
+        source_projects=("artokun/comfyui-mcp", "00bx/00bx-photoshop-mcp"),
+        invocation="python -m starbridge_mcp.server evidence --init --json",
+        categories=("evidence", "planning"),
+    ),
+    ToolCapability(
+        name="starbridge.evidence_validate",
+        bridge="all",
+        action="evidence_validate",
+        maturity="implemented",
+        risk_level="safe_read_only",
+        description="Validate EvidenceManifest status vocabulary, field shape, and sanitized output boundaries.",
+        side_effects="Read-only validation for manifests stored under examples/output/evidence.",
+        safe_default=True,
+        requires_confirmation=False,
+        requires_local_software=False,
+        source_projects=("IO-AtelierTech/comfyui-mcp", "artokun/comfyui-mcp"),
+        invocation="python -m starbridge_mcp.server evidence --validate --json",
+        categories=("validation", "evidence"),
+    ),
+    ToolCapability(
+        name="starbridge.job_status",
+        bridge="all",
+        action="job_status",
+        maturity="implemented",
+        risk_level="safe_read_only",
+        description="Return a unified queued/running/completed/failed/cancelled/needs_user job status view backed by EvidenceManifest data.",
+        side_effects="Read-only status synthesis; no desktop launch and no private file reads.",
+        safe_default=True,
+        requires_confirmation=False,
+        requires_local_software=False,
+        source_projects=("artokun/comfyui-mcp", "IO-AtelierTech/comfyui-mcp"),
+        invocation="python -m starbridge_mcp.server job-status --json",
+        categories=("execution", "evidence"),
     ),
     ToolCapability(
         name="cad_autocad.environment_probe",
@@ -310,6 +358,76 @@ CAPABILITIES: tuple[ToolCapability, ...] = (
         invocation="npm.cmd run photoshop:info",
     ),
     ToolCapability(
+        name="photoshop.recipe_list",
+        bridge="photoshop",
+        action="recipe_list",
+        maturity="prototype",
+        risk_level="safe_read_only",
+        description="List reviewed Photoshop recipe definitions for hard-task planning without opening private PSD files.",
+        side_effects="Read-only recipe metadata listing; no desktop launch and no file writes.",
+        safe_default=True,
+        requires_confirmation=False,
+        requires_local_software=False,
+        source_projects=("loonghao/photoshop-python-api-mcp-server", "alisaitteke/photoshop-mcp"),
+        categories=("planning", "validation"),
+    ),
+    ToolCapability(
+        name="photoshop.recipe_plan",
+        bridge="photoshop",
+        action="recipe_plan",
+        maturity="prototype",
+        risk_level="safe_read_only",
+        description="Build a dry-run Photoshop recipe plan with allowed inputs, outputs, steps, and quality gates.",
+        side_effects="Planning only; returns sanitized sandbox output paths and does not launch Photoshop.",
+        safe_default=True,
+        requires_confirmation=False,
+        requires_local_software=False,
+        source_projects=("loonghao/photoshop-python-api-mcp-server", "alisaitteke/photoshop-mcp"),
+        categories=("planning", "validation", "evidence"),
+    ),
+    ToolCapability(
+        name="photoshop.recipe_validate",
+        bridge="photoshop",
+        action="recipe_validate",
+        maturity="prototype",
+        risk_level="safe_read_only",
+        description="Validate Photoshop recipe quality gates, sandbox output boundaries, and evidence manifest shape.",
+        side_effects="Validation only; does not launch Photoshop and does not write files.",
+        safe_default=True,
+        requires_confirmation=False,
+        requires_local_software=False,
+        source_projects=("loonghao/photoshop-python-api-mcp-server", "alisaitteke/photoshop-mcp"),
+        categories=("validation", "evidence"),
+    ),
+    ToolCapability(
+        name="photoshop.recipe_run",
+        bridge="photoshop",
+        action="recipe_run",
+        maturity="prototype",
+        risk_level="guarded_local_write",
+        description="Run a reviewed Photoshop recipe through the sandbox demo flow. Defaults to dry-run and requires confirm_write for real execution.",
+        side_effects="dry_run is the default; real execution is restricted to examples/output/photoshop and returns sanitized evidence data.",
+        safe_default=False,
+        requires_confirmation=True,
+        requires_local_software=True,
+        source_projects=("loonghao/photoshop-python-api-mcp-server", "alisaitteke/photoshop-mcp"),
+        categories=("execution", "validation", "evidence"),
+    ),
+    ToolCapability(
+        name="photoshop.recipe_debug",
+        bridge="photoshop",
+        action="recipe_debug",
+        maturity="prototype",
+        risk_level="safe_read_only",
+        description="Return recipe-specific troubleshooting guidance, retry policy, and safe next steps for Photoshop sandbox tasks.",
+        side_effects="Read-only debug hints; no desktop launch and no file writes.",
+        safe_default=True,
+        requires_confirmation=False,
+        requires_local_software=False,
+        source_projects=("loonghao/photoshop-python-api-mcp-server", "alisaitteke/photoshop-mcp"),
+        categories=("planning", "validation", "evidence"),
+    ),
+    ToolCapability(
         name="photoshop.create_demo_document",
         bridge="photoshop",
         action="create_demo_document",
@@ -480,6 +598,18 @@ CAPABILITIES: tuple[ToolCapability, ...] = (
 )
 
 
+BRIDGE_CAPABILITY_CATEGORIES: dict[str, list[str]] = {
+    "comfyui": ["discovery", "planning", "execution", "validation", "evidence"],
+    "blender": ["discovery", "planning", "validation", "evidence"],
+    "autocad": ["discovery", "planning", "execution", "validation", "evidence"],
+    "autocad_dxf": ["planning", "execution", "validation", "evidence", "cleanup"],
+    "photoshop": ["discovery", "planning", "execution", "validation", "evidence", "cleanup"],
+    "illustrator": ["discovery", "planning", "execution", "validation", "evidence", "cleanup"],
+    "jianying_capcut": ["discovery", "planning", "validation", "evidence"],
+    "all": ["discovery", "planning", "execution", "validation", "evidence", "cleanup"],
+}
+
+
 def list_capabilities(*, bridge: str = "all", include_guarded: bool = True) -> list[dict[str, Any]]:
     selected = []
     for capability in CAPABILITIES:
@@ -501,6 +631,7 @@ def capability_summary(*, bridge: str = "all", include_guarded: bool = True) -> 
             "bridge": bridge,
             "capability_count": len(capabilities),
             "capabilities": capabilities,
+            "bridge_categories": BRIDGE_CAPABILITY_CATEGORIES,
             "adoption_policy": {
                 "third_party_source": "third_party_research is local-only and ignored by Git.",
                 "copy_policy": "借鉴架构和接口形状；不直接复制第三方源码到公开仓库。",

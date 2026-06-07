@@ -41,6 +41,8 @@ class ToolRegistryTests(unittest.TestCase):
         capabilities = list_capabilities(bridge="comfyui")
         names = {item["name"] for item in capabilities}
         self.assertIn("starbridge.tools", names)
+        self.assertIn("starbridge.evidence_init", names)
+        self.assertIn("starbridge.job_status", names)
         self.assertIn("comfyui.system_probe", names)
         self.assertNotIn("photoshop.subject_extract", names)
 
@@ -50,6 +52,8 @@ class ToolRegistryTests(unittest.TestCase):
         self.assert_no_private_paths(text)
         self.assertEqual(payload["action"], "tools")
         self.assertGreater(payload["capability_count"], 0)
+        self.assertIn("bridge_categories", payload)
+        self.assertIn("evidence", payload["bridge_categories"]["all"])
 
     def test_server_tools_action_outputs_json(self) -> None:
         completed = subprocess.run(
@@ -64,6 +68,28 @@ class ToolRegistryTests(unittest.TestCase):
         payload = json.loads(completed.stdout)
         self.assertEqual(payload["action"], "tools")
         self.assertTrue(all(item["safe_default"] for item in payload["capabilities"]))
+        names = {item["name"] for item in payload["capabilities"]}
+        self.assertIn("starbridge.evidence_init", names)
+        self.assertIn("starbridge.evidence_validate", names)
+        self.assertIn("starbridge.job_status", names)
+
+    def test_photoshop_recipe_capabilities_are_registered(self) -> None:
+        capabilities = list_capabilities(bridge="photoshop")
+        by_name = {item["name"]: item for item in capabilities}
+
+        for name in (
+            "photoshop.recipe_list",
+            "photoshop.recipe_plan",
+            "photoshop.recipe_validate",
+            "photoshop.recipe_run",
+            "photoshop.recipe_debug",
+        ):
+            with self.subTest(tool=name):
+                self.assertIn(name, by_name)
+
+        self.assertTrue(by_name["photoshop.recipe_plan"]["safe_default"])
+        self.assertFalse(by_name["photoshop.recipe_run"]["safe_default"])
+        self.assertEqual("guarded_local_write", by_name["photoshop.recipe_run"]["risk_level"])
 
 
 if __name__ == "__main__":

@@ -29,6 +29,7 @@ docx_render_check/
 .codex_video_deps/
 .codex_video_frames/
 .skill-build/
+.codex/references/
 examples/output/**/*.png
 examples/output/**/*.jpg
 examples/output/**/*.jpeg

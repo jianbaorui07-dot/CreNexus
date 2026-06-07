@@ -32,6 +32,9 @@ python scripts/security_check.py
 python scripts/collect_bridge_status.py --json
 python examples/bridge_status.py --json --redact-paths --soft-exit
 python -m starbridge_mcp.server tools --json --safe-only
+python -m starbridge_mcp.server evidence --init --json
+python -m starbridge_mcp.server evidence --validate --json
+python -m starbridge_mcp.server job-status --json
 ```
 
 CI runner 固定为 `windows-2022`，避免 `windows-latest` 漂移。缺少本机软件时，探针必须返回 `ok=false`、`warning` 或 soft-exit JSON，不能抛裸 traceback 导致 CI 失败。

@@ -36,6 +36,34 @@ class McpToolSchemasTest(unittest.TestCase):
                 self.assertTrue(annotations["requiresConfirmation"])
                 self.assertFalse(annotations["safeDefault"])
 
+    def test_safe_only_evidence_tools_are_declared(self) -> None:
+        by_name = {tool["name"]: tool for tool in TOOL_DEFINITIONS}
+        for name in ("starbridge.evidence_init", "starbridge.evidence_validate", "starbridge.job_status"):
+            with self.subTest(tool=name):
+                self.assertIn(name, by_name)
+                self.assertTrue(by_name[name]["annotations"]["readOnlyHint"])
+
+    def test_photoshop_recipe_tools_have_expected_schema(self) -> None:
+        by_name = {tool["name"]: tool for tool in TOOL_DEFINITIONS}
+        safe_tools = (
+            "photoshop.recipe_list",
+            "photoshop.recipe_plan",
+            "photoshop.recipe_validate",
+            "photoshop.recipe_debug",
+        )
+        for name in safe_tools:
+            with self.subTest(tool=name):
+                self.assertIn(name, by_name)
+                self.assertTrue(by_name[name]["annotations"]["safeDefault"])
+
+        run_tool = by_name["photoshop.recipe_run"]
+        properties = run_tool["inputSchema"]["properties"]
+        self.assertIn("dry_run", properties)
+        self.assertIn("confirm_write", properties)
+        self.assertEqual("examples/output/photoshop", properties["output_dir"]["default"])
+        self.assertFalse(run_tool["annotations"]["safeDefault"])
+        self.assertTrue(run_tool["annotations"]["requiresConfirmation"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,20 +1,28 @@
 {
   "bridge_id": "illustrator",
-  "display_name": "Illustrator / AI 矢量文件桥",
+  "display_name": "Illustrator / AI \u77e2\u91cf\u6587\u4ef6\u6865",
   "maturity": "planned",
-  "platforms": ["Windows"],
-  "local_dependency": ["Adobe Illustrator desktop", "PowerShell", "Illustrator.Application COM"],
-  "required_env": ["ILLUSTRATOR_EXE"],
+  "platforms": [
+    "Windows"
+  ],
+  "local_dependency": [
+    "Adobe Illustrator desktop",
+    "PowerShell",
+    "Illustrator.Application COM"
+  ],
+  "required_env": [
+    "ILLUSTRATOR_EXE"
+  ],
   "probe_supported": true,
   "write_supported": false,
   "safe_report_supported": true,
   "last_verified": null,
   "known_risks": [
-    "客户 .ai、源图、导出 SVG/PDF/PNG、商业字体和 Creative Cloud 缓存不能提交。",
-    "planned 阶段不能声称已经完成 Image Trace 或批量导出。"
+    "\u5ba2\u6237 .ai\u3001\u6e90\u56fe\u3001\u5bfc\u51fa SVG/PDF/PNG\u3001\u5546\u4e1a\u5b57\u4f53\u548c Creative Cloud \u7f13\u5b58\u4e0d\u80fd\u63d0\u4ea4\u3002",
+    "planned \u9636\u6bb5\u4e0d\u80fd\u58f0\u79f0\u5df2\u7ecf\u5b8c\u6210 Image Trace \u6216\u6279\u91cf\u5bfc\u51fa\u3002"
   ],
   "next_steps": [
-    "先实现只读 document_info。",
-    "再评估参数化 Image Trace 和导出脚本。"
+    "\u5148\u5b9e\u73b0\u53ea\u8bfb document_info\u3002",
+    "\u518d\u8bc4\u4f30\u53c2\u6570\u5316 Image Trace \u548c\u5bfc\u51fa\u811a\u672c\u3002"
   ]
 }

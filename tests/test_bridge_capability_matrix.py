@@ -39,6 +39,9 @@ class BridgeCapabilityMatrixTest(unittest.TestCase):
 
         self.assertEqual(EXPECTED_IDS, bridge_ids)
         self.assertEqual([], bridge_capability_matrix.validate_registry(registry))
+        for bridge in registry["bridges"]:
+            self.assertIn("capability_categories", bridge)
+            self.assertIn("evidence", bridge["capability_categories"])
 
     def test_markdown_output_mentions_each_application_family(self) -> None:
         completed = subprocess.run(
