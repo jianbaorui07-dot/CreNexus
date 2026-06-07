@@ -15,6 +15,17 @@ from starbridge_mcp.core.computer_use import (
     render_plan_summary,
 )
 from starbridge_mcp.core.computer_use_demos import run_demo
+from starbridge_mcp.core.evidence import (
+    DEFAULT_MANIFEST_FILENAME,
+    ExecutionResult,
+    create_manifest,
+    ensure_evidence_path,
+    load_manifest,
+    manifest_validation_result,
+    repo_relative,
+    save_manifest,
+)
+from starbridge_mcp.core.job_status import JobStatus
 from starbridge_mcp.core.result_schema import make_result, validate_result
 from starbridge_mcp.core.security import sanitize
 from starbridge_mcp.core.tool_registry import capability_summary
@@ -206,6 +217,128 @@ def _print_json(payload: dict[str, Any]) -> None:
     print(json.dumps(sanitize(payload), ensure_ascii=False, indent=2))
 
 
+def _default_manifest_path() -> Path:
+    return ensure_evidence_path()
+
+
+def _manifest_summary(payload: dict[str, Any], manifest_path: Path) -> dict[str, Any]:
+    return sanitize(
+        {
+            "manifest_path": repo_relative(manifest_path),
+            "manifest_id": payload.get("manifest_id"),
+            "bridge": payload.get("bridge"),
+            "action": payload.get("action"),
+            "status": payload.get("status"),
+            "dry_run": payload.get("dry_run"),
+        }
+    )
+
+
+def _handle_evidence_cli(argv: list[str]) -> None:
+    parser = argparse.ArgumentParser(description="Create or validate StarBridge evidence manifests.")
+    parser.add_argument("--init", action="store_true")
+    parser.add_argument("--validate", action="store_true")
+    parser.add_argument("--add-file", dest="add_file", action="store_true")
+    parser.add_argument("--add-screenshot", dest="add_screenshot", action="store_true")
+    parser.add_argument("--manifest-path", default=str(_default_manifest_path().relative_to(REPO_ROOT)))
+    parser.add_argument("--bridge", default="starbridge")
+    parser.add_argument("--action-name", default="evidence_init")
+    parser.add_argument("--status", default="queued")
+    parser.add_argument("--job-id")
+    parser.add_argument("--plan-id")
+    parser.add_argument("--label")
+    parser.add_argument("--path")
+    parser.add_argument("--confirm-write", action="store_true")
+    parser.add_argument("--no-dry-run", action="store_true")
+    parser.add_argument("--json", action="store_true")
+    args = parser.parse_args(argv)
+
+    modes = [args.init, args.validate, args.add_file, args.add_screenshot]
+    if sum(bool(mode) for mode in modes) != 1:
+        raise SystemExit("choose exactly one of --init, --validate, --add-file, or --add-screenshot")
+
+    manifest_path = ensure_evidence_path(args.manifest_path)
+    if args.init:
+        manifest = create_manifest(
+            bridge=args.bridge,
+            action=args.action_name,
+            status=args.status,
+            dry_run=not args.no_dry_run,
+            confirm_write=args.confirm_write,
+            job_id=args.job_id,
+            plan_id=args.plan_id,
+        )
+        saved = save_manifest(manifest, manifest_path)
+        result = ExecutionResult(
+            ok=True,
+            status=manifest.status,
+            message="initialized evidence manifest",
+            manifest_path=repo_relative(saved),
+            next_steps=["Run `python -m starbridge_mcp.server evidence --validate --json` to validate the manifest."],
+        )
+        payload = {"ok": True, "action": "evidence_init", "result": result.to_dict(), "manifest": manifest.to_dict()}
+        _print_json(payload)
+        return
+
+    payload = load_manifest(manifest_path)
+    if args.add_file or args.add_screenshot:
+        evidence_path = ensure_evidence_path(args.path or args.manifest_path)
+        collection = "output_files" if args.add_file else "screenshots"
+        payload.setdefault(collection, []).append(
+            {
+                "kind": "file" if args.add_file else "screenshot",
+                "path": repo_relative(evidence_path),
+                "label": args.label,
+                "details": {},
+            }
+        )
+        payload.setdefault("redacted_paths", []).append(repo_relative(evidence_path))
+        payload["updated_at"] = payload.get("updated_at")
+        target = ensure_evidence_path(args.manifest_path)
+        target.write_text(json.dumps(sanitize(payload), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        _print_json({"ok": True, "action": "evidence_add", "manifest": _manifest_summary(payload, target)})
+        return
+
+    validation = manifest_validation_result(payload)
+    payload.setdefault("validation", []).append(validation.to_dict())
+    save_path = ensure_evidence_path(args.manifest_path)
+    save_path.write_text(json.dumps(sanitize(payload), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    _print_json(
+        {
+            "ok": validation.ok,
+            "action": "evidence_validate",
+            "manifest": _manifest_summary(payload, save_path),
+            "validation": validation.to_dict(),
+        }
+    )
+
+
+def _handle_job_status_cli(argv: list[str]) -> None:
+    parser = argparse.ArgumentParser(description="Return a unified StarBridge job status summary.")
+    parser.add_argument("--manifest-path", default=str(_default_manifest_path().relative_to(REPO_ROOT)))
+    parser.add_argument("--job-id")
+    parser.add_argument("--message", default="evidence manifest available")
+    parser.add_argument("--progress", type=int)
+    parser.add_argument("--json", action="store_true")
+    args = parser.parse_args(argv)
+
+    payload = load_manifest(args.manifest_path)
+    progress = args.progress
+    if progress is None:
+        progress = 100 if payload.get("status") == "completed" else 0
+    job = JobStatus(
+        job_id=args.job_id or str(payload.get("job_id") or payload.get("manifest_id")),
+        bridge=str(payload.get("bridge") or "starbridge"),
+        action=str(payload.get("action") or "job_status"),
+        status=str(payload.get("status") or "queued"),
+        progress=progress,
+        message=args.message,
+        evidence_manifest=_manifest_summary(payload, ensure_evidence_path(args.manifest_path)),
+        next_steps=["Review validation results before connecting the manifest to a real bridge execution loop."],
+    )
+    _print_json({"ok": True, "action": "job_status", "job_status": job.to_dict()})
+
+
 def _load_action_plan(path: str) -> ActionPlan:
     return ActionPlan.load(Path(path))
 
@@ -308,7 +441,7 @@ def _handle_demo_cli(argv: list[str]) -> None:
 
 
 def main() -> None:
-    if len(sys.argv) > 1 and sys.argv[1] in {"plan", "run", "gui-instructions", "gui-record", "demo"}:
+    if len(sys.argv) > 1 and sys.argv[1] in {"plan", "run", "gui-instructions", "gui-record", "demo", "evidence", "job-status"}:
         command = sys.argv[1]
         argv = sys.argv[2:]
         if command == "plan":
@@ -321,6 +454,10 @@ def main() -> None:
             _handle_gui_record_cli(argv)
         elif command == "demo":
             _handle_demo_cli(argv)
+        elif command == "evidence":
+            _handle_evidence_cli(argv)
+        elif command == "job-status":
+            _handle_job_status_cli(argv)
         return
 
     parser = argparse.ArgumentParser(description="StarBridge 本地创意软件 MCP 桥接框架最小状态入口。")

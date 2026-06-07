@@ -10,6 +10,14 @@
 - Smoke test documentation
 - Release notes draft
 
+## v0.2.0
+
+- EvidenceManifest: 统一记录 plan、job、output files、screenshots、validation、warnings、safety decision。
+- JobStatus: 统一使用 `queued / running / completed / failed / cancelled / needs_user` 状态词汇。
+- visual evidence: 只保存脱敏截图和输出摘要到 `examples/output/evidence/`。
+- dry-run validation: `evidence --validate`、`job-status` 和 safe-only registry 都必须可在 CI 运行。
+- ComfyUI real txt2img closed loop: 保持真实生成在本机显式确认后执行，同时把生命周期摘要接到统一 evidence 层。
+
 ## High Priority
 
 | 任务 | 目标 | 验收标准 |

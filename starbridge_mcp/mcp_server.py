@@ -8,6 +8,15 @@ from pathlib import Path
 from typing import Any, Callable
 
 from starbridge_mcp.bridges import autocad_dxf
+from starbridge_mcp.core.evidence import (
+    create_manifest,
+    ensure_evidence_path,
+    load_manifest,
+    manifest_validation_result,
+    repo_relative,
+    save_manifest,
+)
+from starbridge_mcp.core.job_status import JobStatus
 from starbridge_mcp.core.security import sanitize
 from starbridge_mcp.core.tool_registry import capability_summary, list_capabilities
 from starbridge_mcp.server import BRIDGE_ALIASES, build_response
@@ -131,6 +140,49 @@ TOOL_DEFINITIONS: list[JsonObject] = [
         ),
         "annotations": _safe_read_annotations(),
     },
+    _standard_tool(
+        name="starbridge.evidence_init",
+        title="Initialize Evidence Manifest",
+        description="Create a sanitized EvidenceManifest for a bridge action. Safe by default and limited to examples/output/evidence.",
+        input_schema=_object_schema(
+            {
+                "bridge": {"type": "string", "default": "starbridge"},
+                "action_name": {"type": "string", "default": "evidence_init"},
+                "status": {
+                    "type": "string",
+                    "enum": ["queued", "running", "completed", "failed", "cancelled", "needs_user"],
+                    "default": "queued",
+                },
+                "manifest_path": {"type": "string", "default": "examples/output/evidence/manifest.latest.json"},
+                "job_id": {"type": "string"},
+                "plan_id": {"type": "string"},
+                "persist": {"type": "boolean", "default": False},
+            }
+        ),
+    ),
+    _standard_tool(
+        name="starbridge.evidence_validate",
+        title="Validate Evidence Manifest",
+        description="Validate a StarBridge evidence manifest stored under examples/output/evidence without launching local software.",
+        input_schema=_object_schema(
+            {
+                "manifest_path": {"type": "string", "default": "examples/output/evidence/manifest.latest.json"},
+            }
+        ),
+    ),
+    _standard_tool(
+        name="starbridge.job_status",
+        title="Read Job Status",
+        description="Return a unified job status summary backed by a StarBridge evidence manifest.",
+        input_schema=_object_schema(
+            {
+                "manifest_path": {"type": "string", "default": "examples/output/evidence/manifest.latest.json"},
+                "job_id": {"type": "string"},
+                "message": {"type": "string", "default": "evidence manifest available"},
+                "progress": {"type": "integer", "minimum": 0, "maximum": 100},
+            }
+        ),
+    ),
     _standard_tool(
         name="comfyui.system_probe",
         title="Probe ComfyUI",
@@ -548,6 +600,83 @@ def _handle_tools(arguments: JsonObject) -> JsonObject:
     return capability_summary(bridge=bridge, include_guarded=not bool(arguments.get("safe_only", False)))
 
 
+def _handle_evidence_init(arguments: JsonObject) -> JsonObject:
+    manifest = create_manifest(
+        bridge=str(arguments.get("bridge") or "starbridge"),
+        action=str(arguments.get("action_name") or "evidence_init"),
+        status=str(arguments.get("status") or "queued"),
+        job_id=arguments.get("job_id"),
+        plan_id=arguments.get("plan_id"),
+    )
+    manifest_path = ensure_evidence_path(arguments.get("manifest_path"))
+    if bool(arguments.get("persist", False)):
+        save_manifest(manifest, manifest_path)
+    return sanitize(
+        {
+            "ok": True,
+            "bridge": manifest.bridge,
+            "action": "evidence_init",
+            "message": "initialized evidence manifest",
+            "details": {
+                "manifest": manifest.to_dict(),
+                "manifest_path": repo_relative(manifest_path),
+                "persisted": bool(arguments.get("persist", False)),
+            },
+            "warnings": [],
+            "next_steps": ["Use starbridge.evidence_validate to verify field shape and status vocabulary."],
+        }
+    )
+
+
+def _handle_evidence_validate(arguments: JsonObject) -> JsonObject:
+    payload = load_manifest(arguments.get("manifest_path"))
+    validation = manifest_validation_result(payload)
+    return sanitize(
+        {
+            "ok": validation.ok,
+            "bridge": str(payload.get("bridge") or "starbridge"),
+            "action": "evidence_validate",
+            "message": validation.message,
+            "details": {
+                "manifest_path": repo_relative(ensure_evidence_path(arguments.get("manifest_path"))),
+                "validation": validation.to_dict(),
+            },
+            "warnings": list(validation.warnings),
+            "next_steps": [] if validation.ok else ["Reinitialize the manifest inside examples/output/evidence and validate again."],
+        }
+    )
+
+
+def _handle_job_status(arguments: JsonObject) -> JsonObject:
+    payload = load_manifest(arguments.get("manifest_path"))
+    progress = arguments.get("progress")
+    resolved_progress = int(progress) if progress is not None else (100 if payload.get("status") == "completed" else 0)
+    job_status = JobStatus(
+        job_id=str(arguments.get("job_id") or payload.get("job_id") or payload.get("manifest_id")),
+        bridge=str(payload.get("bridge") or "starbridge"),
+        action=str(payload.get("action") or "job_status"),
+        status=str(payload.get("status") or "queued"),
+        progress=resolved_progress,
+        message=str(arguments.get("message") or "evidence manifest available"),
+        evidence_manifest={
+            "manifest_id": payload.get("manifest_id"),
+            "manifest_path": repo_relative(ensure_evidence_path(arguments.get("manifest_path"))),
+        },
+        next_steps=["Review warnings and validation before wiring this status into a bridge execution loop."],
+    )
+    return sanitize(
+        {
+            "ok": True,
+            "bridge": job_status.bridge,
+            "action": "job_status",
+            "message": job_status.message,
+            "details": job_status.to_dict(),
+            "warnings": [],
+            "next_steps": job_status.next_steps,
+        }
+    )
+
+
 def _report_to_result(*, bridge: str, action: str, report: JsonObject, display_name: str) -> JsonObject:
     errors = report.get("errors", [])
     raw_warnings = report.get("warnings", [])
@@ -955,6 +1084,9 @@ TOOL_HANDLERS: dict[str, ToolHandler] = {
     "starbridge.status": _handle_status,
     "starbridge.probe": _handle_probe,
     "starbridge.tools": _handle_tools,
+    "starbridge.evidence_init": _handle_evidence_init,
+    "starbridge.evidence_validate": _handle_evidence_validate,
+    "starbridge.job_status": _handle_job_status,
     "comfyui.system_probe": _handle_comfy_system_probe,
     "comfyui.workflow_validate": _handle_workflow_validate,
     "comfyui.workflow_build_plan": _handle_comfy_workflow_build_plan,

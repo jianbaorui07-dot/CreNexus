@@ -36,6 +36,13 @@ class McpToolSchemasTest(unittest.TestCase):
                 self.assertTrue(annotations["requiresConfirmation"])
                 self.assertFalse(annotations["safeDefault"])
 
+    def test_safe_only_evidence_tools_are_declared(self) -> None:
+        by_name = {tool["name"]: tool for tool in TOOL_DEFINITIONS}
+        for name in ("starbridge.evidence_init", "starbridge.evidence_validate", "starbridge.job_status"):
+            with self.subTest(tool=name):
+                self.assertIn(name, by_name)
+                self.assertTrue(by_name[name]["annotations"]["readOnlyHint"])
+
 
 if __name__ == "__main__":
     unittest.main()
