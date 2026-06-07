@@ -70,7 +70,7 @@ class StatusOutputSafetyTests(unittest.TestCase):
 
     def test_legacy_bridge_status_json_exit_code_and_output_are_safe(self) -> None:
         completed = subprocess.run(
-            [sys.executable, "examples\\bridge_status.py", "--json", "--redact-paths", "--soft-exit"],
+            [sys.executable, str(REPO_ROOT / "examples" / "bridge_status.py"), "--json", "--redact-paths", "--soft-exit"],
             cwd=REPO_ROOT,
             env=probe_env(),
             capture_output=True,

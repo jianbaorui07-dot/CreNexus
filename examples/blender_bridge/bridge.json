@@ -2,13 +2,25 @@
   "bridge_id": "blender",
   "name": "Blender",
   "status": "planned",
-  "platform": ["Windows"],
-  "requires": ["Blender desktop or blender CLI", "Python 3.10+"],
+  "platform": [
+    "Windows"
+  ],
+  "requires": [
+    "Blender desktop or blender CLI",
+    "Python 3.10+"
+  ],
   "entrypoints": {
     "probe": "python examples/blender_bridge/probe.py"
   },
-  "supported_tasks": ["environment probe"],
-  "unsupported_tasks": ["public safe scene generation", "render pipeline", "Blender MCP integration", "private .blend processing"],
+  "supported_tasks": [
+    "environment probe"
+  ],
+  "unsupported_tasks": [
+    "public safe scene generation",
+    "render pipeline",
+    "Blender MCP integration",
+    "private .blend processing"
+  ],
   "safety_notes": [
     "Do not commit private .blend files, textures, asset libraries, render caches, or purchased models.",
     "Public examples must use generated geometry and materials only.",

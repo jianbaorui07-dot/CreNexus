@@ -10,23 +10,27 @@ function Test-Key {
 }
 
 function Get-CommonPhotoshopPaths {
-    $paths = @(
-        "C:\Program Files\Adobe\Adobe Photoshop 2026\Photoshop.exe",
-        "C:\Program Files\Adobe\Adobe Photoshop 2025\Photoshop.exe",
-        "C:\Program Files\Adobe\Adobe Photoshop 2024\Photoshop.exe",
-        "C:\Program Files\Adobe\Adobe Photoshop 2023\Photoshop.exe"
+    $programFiles = [Environment]::GetFolderPath("ProgramFiles")
+    $candidates = @(
+        @{ label = "Adobe Photoshop 2026 default install"; path = Join-Path $programFiles "Adobe\Adobe Photoshop 2026\Photoshop.exe" },
+        @{ label = "Adobe Photoshop 2025 default install"; path = Join-Path $programFiles "Adobe\Adobe Photoshop 2025\Photoshop.exe" },
+        @{ label = "Adobe Photoshop 2024 default install"; path = Join-Path $programFiles "Adobe\Adobe Photoshop 2024\Photoshop.exe" },
+        @{ label = "Adobe Photoshop 2023 default install"; path = Join-Path $programFiles "Adobe\Adobe Photoshop 2023\Photoshop.exe" }
     )
 
-    foreach ($path in $paths) {
+    foreach ($candidate in $candidates) {
         [pscustomobject]@{
-            path = $path
-            exists = Test-Path -LiteralPath $path
+            label = $candidate.label
+            exists = Test-Path -LiteralPath $candidate.path
         }
     }
 }
 
 function Find-AdobePhotoshopExe {
-    $roots = @("C:\Program Files\Adobe", "C:\Program Files (x86)\Adobe")
+    $roots = @(
+        (Join-Path ([Environment]::GetFolderPath("ProgramFiles")) "Adobe"),
+        (Join-Path ([Environment]::GetFolderPath("ProgramFilesX86")) "Adobe")
+    )
     $found = @()
     foreach ($root in $roots) {
         if (Test-Path -LiteralPath $root) {
@@ -42,7 +46,7 @@ $running = @(Get-Process -Name Photoshop -ErrorAction SilentlyContinue | ForEach
     [pscustomobject]@{
         id = $_.Id
         process_name = $_.ProcessName
-        path = $_.Path
+        executable = if ($_.Path) { Split-Path -Leaf $_.Path } else { $null }
         title = $_.MainWindowTitle
     }
 })
@@ -86,13 +90,13 @@ if ($comProbe -and $comProbe.ok) {
 [pscustomobject]@{
     ok = ($status -eq "ready" -or $status -eq "com_registered")
     status = $status
-    env_photoshop_exe = $envPath
+    env_photoshop_exe = [bool]$envPath
     env_photoshop_exe_exists = [bool]($envPath -and (Test-Path -LiteralPath $envPath))
     com_registered = $comRegistered
     clsid_registered = $clsidRegistered
     running_processes = $running
     common_paths = @(Get-CommonPhotoshopPaths)
-    discovered_paths = @(Find-AdobePhotoshopExe)
+    discovered_path_count = @((Find-AdobePhotoshopExe)).Count
     com_probe = $comProbe
     next_step = if ($status -eq "ready") {
         "Run run_local_practice.ps1 or document_info.ps1."

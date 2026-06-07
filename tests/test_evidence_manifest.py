@@ -37,13 +37,12 @@ class EvidenceManifestTests(unittest.TestCase):
 
     def test_saved_manifest_uses_redacted_paths(self) -> None:
         manifest = create_manifest()
-        manifest.add_output_file(r"C:\Users\tester\Desktop\secret.png", label="secret")
+        manifest.add_output_file(r"C:\Users\<USER_HOME>\Desktop\secret.png", label="secret")
         with tempfile.TemporaryDirectory() as tmp:
             target = Path(tmp) / "manifest.json"
             safe_target = ensure_evidence_path(Path("examples/output/evidence") / target.name)
             save_manifest(manifest, safe_target)
             payload = load_manifest(safe_target)
         text = json.dumps(payload, ensure_ascii=False)
-        self.assertNotIn(r"C:\Users\tester", text)
+        self.assertNotIn(r"C:\Users\<USER_HOME>", text)
         self.assertIn("<REDACTED_PATH>", text)
-

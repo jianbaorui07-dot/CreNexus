@@ -73,6 +73,24 @@ class ToolRegistryTests(unittest.TestCase):
         self.assertIn("starbridge.evidence_validate", names)
         self.assertIn("starbridge.job_status", names)
 
+    def test_photoshop_recipe_capabilities_are_registered(self) -> None:
+        capabilities = list_capabilities(bridge="photoshop")
+        by_name = {item["name"]: item for item in capabilities}
+
+        for name in (
+            "photoshop.recipe_list",
+            "photoshop.recipe_plan",
+            "photoshop.recipe_validate",
+            "photoshop.recipe_run",
+            "photoshop.recipe_debug",
+        ):
+            with self.subTest(tool=name):
+                self.assertIn(name, by_name)
+
+        self.assertTrue(by_name["photoshop.recipe_plan"]["safe_default"])
+        self.assertFalse(by_name["photoshop.recipe_run"]["safe_default"])
+        self.assertEqual("guarded_local_write", by_name["photoshop.recipe_run"]["risk_level"])
+
 
 if __name__ == "__main__":
     unittest.main()

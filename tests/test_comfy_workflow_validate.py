@@ -101,7 +101,7 @@ class ComfyWorkflowValidateTests(unittest.TestCase):
 
     def test_cli_output_is_json_and_safe(self) -> None:
         completed = subprocess.run(
-            [sys.executable, "examples\\comfy_bridge\\validate_workflow.py", "--json"],
+            [sys.executable, str(REPO_ROOT / "examples" / "comfy_bridge" / "validate_workflow.py"), "--json"],
             cwd=REPO_ROOT,
             capture_output=True,
             text=True,
