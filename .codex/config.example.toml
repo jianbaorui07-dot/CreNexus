@@ -1,0 +1,13 @@
+[mcp_servers.starbridge]
+command = "python"
+args = ["-m", "starbridge_mcp.mcp_server"]
+
+[mcp_servers.starbridge.env]
+STARBRIDGE_PHOTOSHOP_SAFE_ONLY = "1"
+STARBRIDGE_PHOTOSHOP_ENABLE_TOOLS = "ps.probe,ps.document.info,ps.layers.list,ps.preview.export,ps.evidence.capture,ps.batchplay.validate"
+STARBRIDGE_PHOTOSHOP_DISABLE_TOOLS = "ps.batchplay.execute_confirmed,ps.script.execute_confirmed,ps.history.undo,ps.mask.refine,ps.smartobject.place,ps.adjustment.apply,ps.text.edit,ps.export.psd_copy"
+STARBRIDGE_PHOTOSHOP_DEFAULT_DRY_RUN = "1"
+STARBRIDGE_PHOTOSHOP_ALLOW_DESTRUCTIVE = "0"
+
+# Copy this file to your real Codex config location and adjust the command if needed.
+# Do not point output paths at real PSD project folders.

@@ -8,18 +8,10 @@ from pathlib import Path
 from typing import Any, Callable
 
 from starbridge_mcp.bridges import autocad_dxf
-from starbridge_mcp.core.evidence import (
-    ValidationResult,
-    create_manifest,
-    ensure_evidence_path,
-    load_manifest,
-    manifest_validation_result,
-    repo_relative,
-    save_manifest,
-)
-from starbridge_mcp.core.job_status import JobStatus
+from starbridge_mcp.adapters.photoshop import TOOL_DEFINITIONS as PHOTOSHOP_V1_TOOL_DEFINITIONS
+from starbridge_mcp.adapters.photoshop import TOOL_HANDLERS as PHOTOSHOP_V1_TOOL_HANDLERS
 from starbridge_mcp.core.security import sanitize
-from starbridge_mcp.core.tool_registry import capability_summary, list_capabilities
+from starbridge_mcp.core.tool_registry import capability_summary
 from starbridge_mcp.server import BRIDGE_ALIASES, build_response
 
 
@@ -57,8 +49,6 @@ def _object_schema(properties: JsonObject, required: list[str] | None = None) ->
 
 
 STARBRIDGE_OUTPUT_SCHEMA: JsonObject = {"type": "object", "additionalProperties": True}
-PHOTOSHOP_RECIPE_ID = "sandbox_demo_v1"
-PHOTOSHOP_OUTPUT_ROOT = "examples/output/photoshop"
 
 
 def _safe_read_annotations() -> JsonObject:
@@ -144,49 +134,6 @@ TOOL_DEFINITIONS: list[JsonObject] = [
         "annotations": _safe_read_annotations(),
     },
     _standard_tool(
-        name="starbridge.evidence_init",
-        title="Initialize Evidence Manifest",
-        description="Create a sanitized EvidenceManifest for a bridge action. Safe by default and limited to examples/output/evidence.",
-        input_schema=_object_schema(
-            {
-                "bridge": {"type": "string", "default": "starbridge"},
-                "action_name": {"type": "string", "default": "evidence_init"},
-                "status": {
-                    "type": "string",
-                    "enum": ["queued", "running", "completed", "failed", "cancelled", "needs_user"],
-                    "default": "queued",
-                },
-                "manifest_path": {"type": "string", "default": "examples/output/evidence/manifest.latest.json"},
-                "job_id": {"type": "string"},
-                "plan_id": {"type": "string"},
-                "persist": {"type": "boolean", "default": False},
-            }
-        ),
-    ),
-    _standard_tool(
-        name="starbridge.evidence_validate",
-        title="Validate Evidence Manifest",
-        description="Validate a StarBridge evidence manifest stored under examples/output/evidence without launching local software.",
-        input_schema=_object_schema(
-            {
-                "manifest_path": {"type": "string", "default": "examples/output/evidence/manifest.latest.json"},
-            }
-        ),
-    ),
-    _standard_tool(
-        name="starbridge.job_status",
-        title="Read Job Status",
-        description="Return a unified job status summary backed by a StarBridge evidence manifest.",
-        input_schema=_object_schema(
-            {
-                "manifest_path": {"type": "string", "default": "examples/output/evidence/manifest.latest.json"},
-                "job_id": {"type": "string"},
-                "message": {"type": "string", "default": "evidence manifest available"},
-                "progress": {"type": "integer", "minimum": 0, "maximum": 100},
-            }
-        ),
-    ),
-    _standard_tool(
         name="comfyui.system_probe",
         title="Probe ComfyUI",
         description="读取 ComfyUI /system_stats 与 /object_info，确认服务和基础节点是否可用。不提交生成任务。",
@@ -214,193 +161,6 @@ TOOL_DEFINITIONS: list[JsonObject] = [
         ),
     ),
     _standard_tool(
-        name="comfyui.workflow_build_plan",
-        title="Plan ComfyUI Workflow Build",
-        description="Build a dry-run plan for txt2img, img2img, inpaint, or upscale without reading files or submitting a job.",
-        input_schema=_object_schema(
-            {
-                "goal": {"type": "string"},
-                "workflow_type": {"type": "string", "enum": ["txt2img", "img2img", "inpaint", "upscale"], "default": "txt2img"},
-                "style": {"type": "string"},
-                "width": {"type": "integer", "default": 1024, "minimum": 64, "maximum": 4096},
-                "height": {"type": "integer", "default": 1024, "minimum": 64, "maximum": 4096},
-            },
-            required=["goal"],
-        ),
-    ),
-    _standard_tool(
-        name="comfyui.workflow_build",
-        title="Build ComfyUI Workflow",
-        description="Generate a valid ComfyUI API-format txt2img workflow JSON from a natural-language goal. Does not submit to ComfyUI.",
-        input_schema=_object_schema(
-            {
-                "goal": {"type": "string"},
-                "workflow_type": {"type": "string", "enum": ["txt2img", "img2img", "inpaint", "upscale"], "default": "txt2img"},
-                "style": {"type": "string"},
-                "positive_prompt": {"type": "string"},
-                "negative_prompt": {"type": "string"},
-                "checkpoint": {"type": "string"},
-                "width": {"type": "integer", "default": 1024, "minimum": 64, "maximum": 4096},
-                "height": {"type": "integer", "default": 1024, "minimum": 64, "maximum": 4096},
-                "steps": {"type": "integer", "default": 20, "minimum": 1, "maximum": 150},
-                "cfg": {"type": "number", "default": 7.0, "minimum": 1.0, "maximum": 30.0},
-                "seed": {"type": "integer"},
-                "sampler_name": {"type": "string", "default": "euler"},
-                "scheduler": {"type": "string", "default": "normal"},
-            },
-            required=["goal"],
-        ),
-    ),
-    _standard_tool(
-        name="comfy.workflow_draft",
-        title="Draft ComfyUI Workflow",
-        description="Generate API-like draft workflow JSON for txt2img, img2img, inpaint, or upscale. Draft only; no filesystem reads, network calls, or queue submission.",
-        input_schema=_object_schema(
-            {
-                "task_type": {"type": "string", "enum": ["txt2img", "img2img", "inpaint", "upscale"], "default": "txt2img"},
-                "prompt": {"type": "string"},
-                "positive_prompt": {"type": "string"},
-                "negative_prompt": {"type": "string"},
-                "width": {"type": "integer", "default": 1024, "minimum": 64, "maximum": 4096},
-                "height": {"type": "integer", "default": 1024, "minimum": 64, "maximum": 4096},
-                "seed": {"type": "integer"},
-                "steps": {"type": "integer", "default": 20, "minimum": 1, "maximum": 150},
-                "cfg": {"type": "number", "default": 7.0, "minimum": 1.0, "maximum": 30.0},
-                "sampler": {"type": "string", "default": "euler"},
-                "sampler_name": {"type": "string", "default": "euler"},
-                "scheduler": {"type": "string", "default": "normal"},
-                "denoise": {"type": "number", "minimum": 0.0, "maximum": 1.0},
-                "scale_by": {"type": "number", "default": 2.0, "minimum": 1.0, "maximum": 8.0},
-                "checkpoint": {"type": "string", "description": "Optional placeholder model name; real paths and checkpoint filenames are replaced with placeholders."},
-            },
-            required=["task_type"],
-        ),
-    ),
-    _standard_tool(
-        name="comfy.workflow_compose",
-        title="Compose ComfyUI Workflow Graph",
-        description="Compose API-like ComfyUI workflow JSON from safe placeholder graph modules for txt2img, img2img, inpaint, or upscale. No filesystem reads, network calls, or queue submission.",
-        input_schema=_object_schema(
-            {
-                "task_type": {"type": "string", "enum": ["txt2img", "img2img", "inpaint", "upscale"], "default": "txt2img"},
-                "prompt": {"type": "string", "description": "Positive prompt text used only inside the draft graph."},
-                "positive_prompt": {"type": "string", "description": "Alias for prompt."},
-                "negative_prompt": {"type": "string", "default": "low quality, blurry, distorted"},
-                "width": {"type": "integer", "default": 1024, "minimum": 64, "maximum": 4096},
-                "height": {"type": "integer", "default": 1024, "minimum": 64, "maximum": 4096},
-                "seed": {"type": "integer", "description": "Deterministic placeholder seed."},
-                "steps": {"type": "integer", "default": 20, "minimum": 1, "maximum": 150},
-                "cfg": {"type": "number", "default": 7.0, "minimum": 1.0, "maximum": 30.0},
-                "sampler": {"type": "string", "default": "euler"},
-                "sampler_name": {"type": "string", "default": "euler"},
-                "scheduler": {"type": "string", "default": "normal"},
-                "denoise": {"type": "number", "minimum": 0.0, "maximum": 1.0},
-                "scale": {"type": "number", "default": 2.0, "minimum": 1.0, "maximum": 8.0},
-                "scale_by": {"type": "number", "default": 2.0, "minimum": 1.0, "maximum": 8.0},
-                "checkpoint": {"type": "string", "description": "Optional placeholder model label; real paths and checkpoint filenames are replaced with placeholders."},
-            },
-            required=["task_type"],
-        ),
-    ),
-    _standard_tool(
-        name="comfy.workflow_template_list",
-        title="List ComfyUI Workflow Templates",
-        description="List bundled placeholder-only ComfyUI workflow templates and lint status. No private filesystem reads, network calls, or queue submission.",
-        input_schema=_object_schema({}),
-    ),
-    _standard_tool(
-        name="comfy.workflow_template_get",
-        title="Get ComfyUI Workflow Template",
-        description="Return one bundled placeholder-only ComfyUI workflow template by template_id. No private filesystem reads, network calls, or queue submission.",
-        input_schema=_object_schema(
-            {
-                "template_id": {
-                    "type": "string",
-                    "enum": [
-                        "txt2img_basic_v1",
-                        "img2img_basic_v1",
-                        "inpaint_basic_v1",
-                        "upscale_basic_v1",
-                        "creative_poster_complex_v1",
-                    ],
-                }
-            },
-            required=["template_id"],
-        ),
-    ),
-    _standard_tool(
-        name="comfy.workflow_from_template",
-        title="Compose ComfyUI Workflow From Template",
-        description="Compose placeholder-only API-like ComfyUI workflow JSON from a bundled template. Does not read model/image paths, use network, or submit queue jobs.",
-        input_schema=_object_schema(
-            {
-                "template_id": {
-                    "type": "string",
-                    "enum": [
-                        "txt2img_basic_v1",
-                        "img2img_basic_v1",
-                        "inpaint_basic_v1",
-                        "upscale_basic_v1",
-                        "creative_poster_complex_v1",
-                    ],
-                },
-                "arguments": {
-                    "type": "object",
-                    "additionalProperties": True,
-                    "description": "Optional placeholder composer arguments such as prompt, width, height, seed, steps, cfg, sampler, scheduler, denoise, or scale_by.",
-                },
-            },
-            required=["template_id"],
-        ),
-    ),
-    _standard_tool(
-        name="comfyui.workflow_repair",
-        title="Repair ComfyUI Workflow",
-        description="Repair missing txt2img nodes, bad sampler values, invalid dimensions, prompt text, and broken core links without submitting a job.",
-        input_schema=_object_schema(
-            {
-                "workflow": {"type": "object"},
-                "goal": {"type": "string"},
-                "positive_prompt": {"type": "string"},
-                "negative_prompt": {"type": "string"},
-                "checkpoint": {"type": "string"},
-                "width": {"type": "integer", "default": 1024, "minimum": 64, "maximum": 4096},
-                "height": {"type": "integer", "default": 1024, "minimum": 64, "maximum": 4096},
-            },
-            required=["workflow"],
-        ),
-    ),
-    _standard_tool(
-        name="comfyui.agent_run",
-        title="Run ComfyUI Agent Workflow",
-        description="Build, validate, optionally repair, and only with confirm_run=true submit a generated ComfyUI txt2img workflow.",
-        input_schema=_object_schema(
-            {
-                "goal": {"type": "string"},
-                "workflow_type": {"type": "string", "enum": ["txt2img", "img2img", "inpaint", "upscale"], "default": "txt2img"},
-                "style": {"type": "string"},
-                "positive_prompt": {"type": "string"},
-                "negative_prompt": {"type": "string"},
-                "checkpoint": {"type": "string"},
-                "width": {"type": "integer", "default": 1024, "minimum": 64, "maximum": 4096},
-                "height": {"type": "integer", "default": 1024, "minimum": 64, "maximum": 4096},
-                "steps": {"type": "integer", "default": 20, "minimum": 1, "maximum": 150},
-                "cfg": {"type": "number", "default": 7.0, "minimum": 1.0, "maximum": 30.0},
-                "seed": {"type": "integer"},
-                "sampler_name": {"type": "string", "default": "euler"},
-                "scheduler": {"type": "string", "default": "normal"},
-                "filename_prefix": {"type": "string", "default": "starbridge_agent_txt2img"},
-                "comfy_url": {"type": "string"},
-                "timeout": {"type": "integer", "default": 30, "minimum": 1, "maximum": 300},
-                "wait_seconds": {"type": "integer", "default": 10, "minimum": 0, "maximum": 600},
-                "timeout_seconds": {"type": "integer", "default": 10, "minimum": 0, "maximum": 600},
-                "confirm_run": {"type": "boolean", "default": False},
-            },
-            required=["goal"],
-        ),
-        read_only=False,
-    ),
-    _standard_tool(
         name="blender.environment_probe",
         title="Probe Blender",
         description="检查 Blender 可执行文件和可选环境配置。不打开 .blend，不运行脚本。",
@@ -425,78 +185,6 @@ TOOL_DEFINITIONS: list[JsonObject] = [
         title="Photoshop Document Info",
         description="Read the active Photoshop document summary through COM without opening private PSD files.",
         input_schema=_object_schema({"probe_com": {"type": "boolean", "default": True}}),
-    ),
-    _standard_tool(
-        name="photoshop.recipe_list",
-        title="List Photoshop Recipes",
-        description="List reviewed Photoshop hard-task recipes without opening PSD files or launching Photoshop.",
-        input_schema=_object_schema({}),
-    ),
-    _standard_tool(
-        name="photoshop.recipe_plan",
-        title="Plan Photoshop Recipe",
-        description="Build a dry-run Photoshop recipe plan with allowed inputs, outputs, steps, validations, and evidence requirements.",
-        input_schema=_object_schema(
-            {
-                "recipe_id": {"type": "string", "default": PHOTOSHOP_RECIPE_ID},
-                "goal": {"type": "string", "default": "Create a public safe sandbox Photoshop demo artifact."},
-                "dry_run": {"type": "boolean", "default": True},
-                "confirm_write": {"type": "boolean", "default": False},
-                "output_dir": {"type": "string", "default": PHOTOSHOP_OUTPUT_ROOT},
-                "width": {"type": "integer", "default": 1080, "minimum": 64, "maximum": 4096},
-                "height": {"type": "integer", "default": 1080, "minimum": 64, "maximum": 4096},
-                "dpi": {"type": "integer", "default": 72, "minimum": 36, "maximum": 600},
-            }
-        ),
-    ),
-    _standard_tool(
-        name="photoshop.recipe_validate",
-        title="Validate Photoshop Recipe",
-        description="Validate sandbox output boundaries, quality gates, and EvidenceManifest shape for a Photoshop recipe plan.",
-        input_schema=_object_schema(
-            {
-                "recipe_id": {"type": "string", "default": PHOTOSHOP_RECIPE_ID},
-                "goal": {"type": "string", "default": "Create a public safe sandbox Photoshop demo artifact."},
-                "dry_run": {"type": "boolean", "default": True},
-                "confirm_write": {"type": "boolean", "default": False},
-                "output_dir": {"type": "string", "default": PHOTOSHOP_OUTPUT_ROOT},
-                "width": {"type": "integer", "default": 1080, "minimum": 64, "maximum": 4096},
-                "height": {"type": "integer", "default": 1080, "minimum": 64, "maximum": 4096},
-                "dpi": {"type": "integer", "default": 72, "minimum": 36, "maximum": 600},
-            }
-        ),
-    ),
-    _standard_tool(
-        name="photoshop.recipe_run",
-        title="Run Photoshop Recipe",
-        description="Run a reviewed Photoshop sandbox recipe. Defaults to dry-run; real execution requires confirm_write=true and stays inside examples/output/photoshop.",
-        input_schema=_object_schema(
-            {
-                "recipe_id": {"type": "string", "default": PHOTOSHOP_RECIPE_ID},
-                "goal": {"type": "string", "default": "Create a public safe sandbox Photoshop demo artifact."},
-                "dry_run": {"type": "boolean", "default": True},
-                "confirm_write": {"type": "boolean", "default": False},
-                "output_dir": {"type": "string", "default": PHOTOSHOP_OUTPUT_ROOT},
-                "width": {"type": "integer", "default": 1080, "minimum": 64, "maximum": 4096},
-                "height": {"type": "integer", "default": 1080, "minimum": 64, "maximum": 4096},
-                "dpi": {"type": "integer", "default": 72, "minimum": 36, "maximum": 600},
-            }
-        ),
-        read_only=False,
-    ),
-    _standard_tool(
-        name="photoshop.recipe_debug",
-        title="Debug Photoshop Recipe",
-        description="Return troubleshooting notes, retry policy, and safe next steps for a Photoshop recipe without launching Photoshop.",
-        input_schema=_object_schema(
-            {
-                "recipe_id": {"type": "string", "default": PHOTOSHOP_RECIPE_ID},
-                "last_error": {"type": "string"},
-                "dry_run": {"type": "boolean", "default": True},
-                "confirm_write": {"type": "boolean", "default": False},
-                "output_dir": {"type": "string", "default": PHOTOSHOP_OUTPUT_ROOT},
-            }
-        ),
     ),
     _standard_tool(
         name="photoshop.create_demo_document",
@@ -648,6 +336,8 @@ TOOL_DEFINITIONS: list[JsonObject] = [
     ),
 ]
 
+TOOL_DEFINITIONS.extend(PHOTOSHOP_V1_TOOL_DEFINITIONS)
+
 
 def _namespace_for_status(arguments: JsonObject, *, probe_default: bool = False) -> argparse.Namespace:
     return argparse.Namespace(
@@ -673,83 +363,6 @@ def _handle_probe(arguments: JsonObject) -> JsonObject:
 def _handle_tools(arguments: JsonObject) -> JsonObject:
     bridge = BRIDGE_ALIASES.get(str(arguments.get("bridge") or "all"), str(arguments.get("bridge") or "all"))
     return capability_summary(bridge=bridge, include_guarded=not bool(arguments.get("safe_only", False)))
-
-
-def _handle_evidence_init(arguments: JsonObject) -> JsonObject:
-    manifest = create_manifest(
-        bridge=str(arguments.get("bridge") or "starbridge"),
-        action=str(arguments.get("action_name") or "evidence_init"),
-        status=str(arguments.get("status") or "queued"),
-        job_id=arguments.get("job_id"),
-        plan_id=arguments.get("plan_id"),
-    )
-    manifest_path = ensure_evidence_path(arguments.get("manifest_path"))
-    if bool(arguments.get("persist", False)):
-        save_manifest(manifest, manifest_path)
-    return sanitize(
-        {
-            "ok": True,
-            "bridge": manifest.bridge,
-            "action": "evidence_init",
-            "message": "initialized evidence manifest",
-            "details": {
-                "manifest": manifest.to_dict(),
-                "manifest_path": repo_relative(manifest_path),
-                "persisted": bool(arguments.get("persist", False)),
-            },
-            "warnings": [],
-            "next_steps": ["Use starbridge.evidence_validate to verify field shape and status vocabulary."],
-        }
-    )
-
-
-def _handle_evidence_validate(arguments: JsonObject) -> JsonObject:
-    payload = load_manifest(arguments.get("manifest_path"))
-    validation = manifest_validation_result(payload)
-    return sanitize(
-        {
-            "ok": validation.ok,
-            "bridge": str(payload.get("bridge") or "starbridge"),
-            "action": "evidence_validate",
-            "message": validation.message,
-            "details": {
-                "manifest_path": repo_relative(ensure_evidence_path(arguments.get("manifest_path"))),
-                "validation": validation.to_dict(),
-            },
-            "warnings": list(validation.warnings),
-            "next_steps": [] if validation.ok else ["Reinitialize the manifest inside examples/output/evidence and validate again."],
-        }
-    )
-
-
-def _handle_job_status(arguments: JsonObject) -> JsonObject:
-    payload = load_manifest(arguments.get("manifest_path"))
-    progress = arguments.get("progress")
-    resolved_progress = int(progress) if progress is not None else (100 if payload.get("status") == "completed" else 0)
-    job_status = JobStatus(
-        job_id=str(arguments.get("job_id") or payload.get("job_id") or payload.get("manifest_id")),
-        bridge=str(payload.get("bridge") or "starbridge"),
-        action=str(payload.get("action") or "job_status"),
-        status=str(payload.get("status") or "queued"),
-        progress=resolved_progress,
-        message=str(arguments.get("message") or "evidence manifest available"),
-        evidence_manifest={
-            "manifest_id": payload.get("manifest_id"),
-            "manifest_path": repo_relative(ensure_evidence_path(arguments.get("manifest_path"))),
-        },
-        next_steps=["Review warnings and validation before wiring this status into a bridge execution loop."],
-    )
-    return sanitize(
-        {
-            "ok": True,
-            "bridge": job_status.bridge,
-            "action": "job_status",
-            "message": job_status.message,
-            "details": job_status.to_dict(),
-            "warnings": [],
-            "next_steps": job_status.next_steps,
-        }
-    )
 
 
 def _report_to_result(*, bridge: str, action: str, report: JsonObject, display_name: str) -> JsonObject:
@@ -829,63 +442,6 @@ def _handle_workflow_validate(arguments: JsonObject) -> JsonObject:
     return validate_workflow_file(path)
 
 
-def _handle_comfy_workflow_build_plan(arguments: JsonObject) -> JsonObject:
-    from examples.comfy_bridge.workflow_agent import workflow_build_plan
-
-    return workflow_build_plan(arguments)
-
-
-def _handle_comfy_workflow_build(arguments: JsonObject) -> JsonObject:
-    from examples.comfy_bridge.workflow_agent import workflow_build
-
-    return workflow_build(arguments)
-
-
-def _handle_comfy_workflow_draft(arguments: JsonObject) -> JsonObject:
-    from examples.comfy_bridge.workflow_agent import workflow_draft
-
-    return workflow_draft(arguments)
-
-
-def _handle_comfy_workflow_compose(arguments: JsonObject) -> JsonObject:
-    from examples.comfy_bridge.workflow_agent import workflow_compose
-
-    return workflow_compose(arguments)
-
-
-def _handle_comfy_workflow_template_list(_arguments: JsonObject) -> JsonObject:
-    from examples.comfy_bridge.workflow_template_registry import list_workflow_templates
-
-    return list_workflow_templates()
-
-
-def _handle_comfy_workflow_template_get(arguments: JsonObject) -> JsonObject:
-    from examples.comfy_bridge.workflow_template_registry import get_workflow_template
-
-    return get_workflow_template(str(arguments.get("template_id") or ""))
-
-
-def _handle_comfy_workflow_from_template(arguments: JsonObject) -> JsonObject:
-    from examples.comfy_bridge.workflow_template_registry import compose_from_template
-
-    template_arguments = arguments.get("arguments") or {}
-    if not isinstance(template_arguments, dict):
-        raise ValueError("arguments must be an object when provided")
-    return compose_from_template(str(arguments.get("template_id") or ""), template_arguments)
-
-
-def _handle_comfy_workflow_repair(arguments: JsonObject) -> JsonObject:
-    from examples.comfy_bridge.workflow_agent import workflow_repair
-
-    return workflow_repair(arguments)
-
-
-def _handle_comfy_agent_run(arguments: JsonObject) -> JsonObject:
-    from examples.comfy_bridge.workflow_agent import agent_run
-
-    return agent_run(arguments)
-
-
 def _handle_write_dxf(arguments: JsonObject) -> JsonObject:
     dry_run = bool(arguments.get("dry_run", True))
     if not dry_run and not bool(arguments.get("confirm_write", False)):
@@ -908,7 +464,6 @@ def _handle_write_dxf(arguments: JsonObject) -> JsonObject:
         arguments.get("plan"),
         str(arguments.get("output_path") or ""),
         dry_run=dry_run,
-        confirm_write=bool(arguments.get("confirm_write", False)),
     )
 
 
@@ -928,336 +483,6 @@ def _sandbox_output_dir(arguments: JsonObject, bridge: str) -> str:
     except ValueError as exc:
         raise ValueError(f"output_dir must stay inside {default}") from exc
     return candidate.relative_to(REPO_ROOT).as_posix()
-
-
-def _photoshop_recipe_catalog() -> list[JsonObject]:
-    return [
-        {
-            "recipe_id": PHOTOSHOP_RECIPE_ID,
-            "goal": "Create a public safe sandbox Photoshop demo artifact.",
-            "allowed_inputs": ["structured dimensions only"],
-            "allowed_outputs": [PHOTOSHOP_OUTPUT_ROOT],
-            "steps": [
-                "Plan sandbox PSD creation.",
-                "Create the sandbox PSD with named layers.",
-                "Export PNG and JPG previews from the sandbox PSD.",
-                "Collect sanitized evidence from the sandbox run.",
-            ],
-            "tools": [
-                "photoshop.create_demo_document",
-                "photoshop.export_demo_preview",
-                "photoshop.run_demo",
-            ],
-            "validations": [
-                "output_path_sandboxed",
-                "no_private_path_leak",
-                "dry_run_safe",
-                "confirm_write_required",
-                "evidence_manifest_valid",
-                "expected_file_list_declared",
-            ],
-            "retry_policy": {
-                "max_attempts": 2,
-                "requires_user_intervention": [
-                    "Photoshop authorization prompts",
-                    "Adobe app launch or licensing issues",
-                ],
-            },
-            "evidence_requirements": [
-                "bridge",
-                "action",
-                "status",
-                "dry_run",
-                "confirm_write",
-                "input_summary",
-                "output_files",
-                "validation",
-                "warnings",
-                "safety_decision",
-                "redacted_paths",
-                "notes",
-            ],
-            "safety_boundary": "Do not open arbitrary PSD files, do not run arbitrary JSX, and keep all outputs inside examples/output/photoshop.",
-        }
-    ]
-
-
-def _get_photoshop_recipe(recipe_id: str) -> JsonObject:
-    for recipe in _photoshop_recipe_catalog():
-        if recipe["recipe_id"] == recipe_id:
-            return recipe
-    raise ValueError(f"unknown photoshop recipe: {recipe_id}")
-
-
-def _build_photoshop_recipe_plan(arguments: JsonObject) -> JsonObject:
-    recipe_id = str(arguments.get("recipe_id") or PHOTOSHOP_RECIPE_ID)
-    recipe = _get_photoshop_recipe(recipe_id)
-    output_dir = _sandbox_output_dir(arguments, "photoshop")
-    width = int(arguments.get("width") or 1080)
-    height = int(arguments.get("height") or 1080)
-    dpi = int(arguments.get("dpi") or 72)
-    dry_run = bool(arguments.get("dry_run", True))
-    confirm_write = bool(arguments.get("confirm_write", False))
-    return sanitize(
-        {
-            "recipe_id": recipe_id,
-            "goal": str(arguments.get("goal") or recipe["goal"]),
-            "dry_run": dry_run,
-            "confirm_write": confirm_write,
-            "allowed_inputs": recipe["allowed_inputs"],
-            "allowed_outputs": recipe["allowed_outputs"],
-            "steps": recipe["steps"],
-            "tools": recipe["tools"],
-            "validations": recipe["validations"],
-            "retry_policy": recipe["retry_policy"],
-            "evidence_requirements": recipe["evidence_requirements"],
-            "safety_boundary": recipe["safety_boundary"],
-            "output_dir": output_dir,
-            "document": {
-                "name": "starbridge_ps_demo.psd",
-                "width": width,
-                "height": height,
-                "dpi": dpi,
-                "color_mode": "RGB",
-            },
-            "expected_output_files": [
-                f"{output_dir}/starbridge_ps_demo.psd",
-                f"{output_dir}/starbridge_ps_demo.png",
-                f"{output_dir}/starbridge_ps_demo.jpg",
-            ],
-            "commands": [
-                "npm.cmd run photoshop:demo:plan",
-                "npm.cmd run photoshop:demo",
-                "npm.cmd run photoshop:manifest",
-            ],
-        }
-    )
-
-
-def _photoshop_recipe_manifest(plan: JsonObject, *, status: str, dry_run: bool, confirm_write: bool) -> JsonObject:
-    manifest = create_manifest(
-        bridge="photoshop",
-        action="recipe_run",
-        status=status,
-        dry_run=dry_run,
-        confirm_write=confirm_write,
-        plan_id=str(plan["recipe_id"]),
-        input_summary={
-            "goal": plan["goal"],
-            "document": plan["document"],
-            "output_dir": plan["output_dir"],
-        },
-        notes=["Photoshop recipe layer uses the sandbox demo flow only."],
-    )
-    manifest.safety_decision = {
-        "output_root": PHOTOSHOP_OUTPUT_ROOT,
-        "dry_run": dry_run,
-        "confirm_write_required": True,
-        "private_inputs_allowed": False,
-    }
-    return manifest.to_dict()
-
-
-def _validate_photoshop_recipe_plan(plan: JsonObject) -> list[JsonObject]:
-    manifest_payload = _photoshop_recipe_manifest(
-        plan,
-        status="queued" if plan["dry_run"] else "running",
-        dry_run=bool(plan["dry_run"]),
-        confirm_write=bool(plan["confirm_write"]),
-    )
-    plan_text = json.dumps(plan, ensure_ascii=False)
-    checks = [
-        {
-            "name": "output_path_sandboxed",
-            "ok": all(path.startswith(f"{PHOTOSHOP_OUTPUT_ROOT}/") for path in plan["expected_output_files"]),
-            "message": "Expected output files stay inside examples/output/photoshop.",
-        },
-        {
-            "name": "no_private_path_leak",
-            "ok": str(REPO_ROOT) not in plan_text and "\\Users\\" not in plan_text and "/Users/" not in plan_text,
-            "message": "Plan output is sanitized and does not expose private absolute paths.",
-        },
-        {
-            "name": "dry_run_safe",
-            "ok": isinstance(plan["dry_run"], bool),
-            "message": "Recipe plan keeps dry_run as an explicit boolean and defaults to safe planning.",
-        },
-        {
-            "name": "confirm_write_required",
-            "ok": bool(plan["dry_run"]) or bool(plan["confirm_write"]),
-            "message": "Real recipe execution requires confirm_write=true.",
-        },
-        manifest_validation_result(manifest_payload).to_dict(),
-        {
-            "name": "expected_file_list_declared",
-            "ok": bool(plan["expected_output_files"]),
-            "message": "Recipe plan declares the expected sandbox output file list.",
-        },
-    ]
-    return sanitize(checks)
-
-
-def _handle_photoshop_recipe_list(_arguments: JsonObject) -> JsonObject:
-    recipes = _photoshop_recipe_catalog()
-    return sanitize(
-        {
-            "ok": True,
-            "bridge": "photoshop",
-            "action": "recipe_list",
-            "recipes": recipes,
-        }
-    )
-
-
-def _handle_photoshop_recipe_plan(arguments: JsonObject) -> JsonObject:
-    plan = _build_photoshop_recipe_plan(arguments)
-    return sanitize(
-        {
-            "ok": True,
-            "bridge": "photoshop",
-            "action": "recipe_plan",
-            "plan": plan,
-            "next_steps": ["Call photoshop.recipe_validate to inspect quality gates before any real execution."],
-        }
-    )
-
-
-def _handle_photoshop_recipe_validate(arguments: JsonObject) -> JsonObject:
-    plan = _build_photoshop_recipe_plan(arguments)
-    validations = _validate_photoshop_recipe_plan(plan)
-    return sanitize(
-        {
-            "ok": all(item.get("ok", False) for item in validations),
-            "bridge": "photoshop",
-            "action": "recipe_validate",
-            "recipe_id": plan["recipe_id"],
-            "dry_run": plan["dry_run"],
-            "confirm_write": plan["confirm_write"],
-            "output_dir": plan["output_dir"],
-            "validation": validations,
-        }
-    )
-
-
-def _handle_photoshop_recipe_run(arguments: JsonObject) -> JsonObject:
-    plan = _build_photoshop_recipe_plan(arguments)
-    validations = _validate_photoshop_recipe_plan(plan)
-    dry_run = bool(plan["dry_run"])
-    confirm_write = bool(plan["confirm_write"])
-    if dry_run:
-        return sanitize(
-            {
-                "ok": True,
-                "bridge": "photoshop",
-                "action": "recipe_run",
-                "recipe_id": plan["recipe_id"],
-                "dry_run": True,
-                "confirm_write": confirm_write,
-                "plan": plan,
-                "validation": validations,
-                "evidence_manifest": _photoshop_recipe_manifest(plan, status="queued", dry_run=True, confirm_write=confirm_write),
-                "warnings": [],
-                "next_steps": ["Call again with dry_run=false and confirm_write=true to run the sandbox recipe locally."],
-            }
-        )
-    if not confirm_write:
-        return sanitize(
-            {
-                "ok": False,
-                "bridge": "photoshop",
-                "action": "recipe_run",
-                "recipe_id": plan["recipe_id"],
-                "dry_run": False,
-                "confirm_write": False,
-                "message": "Refusing real Photoshop recipe execution without confirm_write=true.",
-                "validation": validations,
-                "warnings": ["Real sandbox execution is blocked until confirm_write=true is provided."],
-                "next_steps": ["Run the dry-run plan first, then call again with confirm_write=true for sandbox output."],
-            }
-        )
-    execution = _run_powershell_json("examples/photoshop_bridge/scripts/run_demo.ps1")
-    manifest = create_manifest(
-        bridge="photoshop",
-        action="recipe_run",
-        status="completed" if bool(execution.get("ok")) else "failed",
-        dry_run=False,
-        confirm_write=True,
-        plan_id=str(plan["recipe_id"]),
-        input_summary={
-            "goal": plan["goal"],
-            "document": plan["document"],
-            "output_dir": plan["output_dir"],
-        },
-        notes=["Real execution stayed inside the sandbox Photoshop demo flow."],
-    )
-    manifest.safety_decision = {
-        "output_root": PHOTOSHOP_OUTPUT_ROOT,
-        "dry_run": False,
-        "confirm_write_required": True,
-        "private_inputs_allowed": False,
-    }
-    create_payload = execution.get("create") if isinstance(execution.get("create"), dict) else {}
-    export_payload = execution.get("export") if isinstance(execution.get("export"), dict) else {}
-    psd_path = create_payload.get("output_psd_path")
-    if isinstance(psd_path, str):
-        manifest.add_output_file(psd_path, label="sandbox_psd")
-    for path in export_payload.get("exported_files", []):
-        if isinstance(path, str):
-            manifest.add_output_file(path, label="sandbox_export")
-    for item in validations:
-        if item.get("name") == "manifest_schema":
-            continue
-        manifest.add_validation(
-            ValidationResult(
-                name=str(item.get("name") or "validation"),
-                ok=bool(item.get("ok", False)),
-                message=str(item.get("message") or ""),
-                details={},
-                warnings=list(item.get("warnings", [])) if isinstance(item.get("warnings"), list) else [],
-            )
-        )
-    manifest.add_validation(manifest_validation_result(manifest.to_dict()))
-    evidence_payload = manifest.to_dict()
-    return sanitize(
-        {
-            "ok": bool(execution.get("ok")),
-            "bridge": "photoshop",
-            "action": "recipe_run",
-            "recipe_id": plan["recipe_id"],
-            "dry_run": False,
-            "confirm_write": True,
-            "plan": plan,
-            "validation": _validate_photoshop_recipe_plan(plan),
-            "execution": execution,
-            "evidence_manifest": evidence_payload,
-            "warnings": execution.get("warnings", []),
-            "next_steps": execution.get("next_steps", []),
-        }
-    )
-
-
-def _handle_photoshop_recipe_debug(arguments: JsonObject) -> JsonObject:
-    recipe = _get_photoshop_recipe(str(arguments.get("recipe_id") or PHOTOSHOP_RECIPE_ID))
-    last_error = str(arguments.get("last_error") or "")
-    return sanitize(
-        {
-            "ok": True,
-            "bridge": "photoshop",
-            "action": "recipe_debug",
-            "recipe_id": recipe["recipe_id"],
-            "dry_run": bool(arguments.get("dry_run", True)),
-            "confirm_write": bool(arguments.get("confirm_write", False)),
-            "output_dir": _sandbox_output_dir(arguments, "photoshop"),
-            "retry_policy": recipe["retry_policy"],
-            "troubleshooting": [
-                "Keep Photoshop authorization and licensing prompts as manual user steps.",
-                "Use dry_run=true first to inspect planned outputs and quality gates.",
-                "If COM is unavailable, rerun photoshop.session_info or the documented local diagnose scripts outside CI.",
-            ],
-            "last_error": last_error,
-            "next_steps": ["Do not add arbitrary JSX or PSD-opening behavior; keep the recipe bound to sandbox demo scripts."],
-        }
-    )
 
 
 def _run_powershell_json(script_relative: str, extra_args: list[str] | None = None) -> JsonObject:
@@ -1489,20 +714,8 @@ TOOL_HANDLERS: dict[str, ToolHandler] = {
     "starbridge.status": _handle_status,
     "starbridge.probe": _handle_probe,
     "starbridge.tools": _handle_tools,
-    "starbridge.evidence_init": _handle_evidence_init,
-    "starbridge.evidence_validate": _handle_evidence_validate,
-    "starbridge.job_status": _handle_job_status,
     "comfyui.system_probe": _handle_comfy_system_probe,
     "comfyui.workflow_validate": _handle_workflow_validate,
-    "comfyui.workflow_build_plan": _handle_comfy_workflow_build_plan,
-    "comfyui.workflow_build": _handle_comfy_workflow_build,
-    "comfy.workflow_draft": _handle_comfy_workflow_draft,
-    "comfy.workflow_compose": _handle_comfy_workflow_compose,
-    "comfy.workflow_template_list": _handle_comfy_workflow_template_list,
-    "comfy.workflow_template_get": _handle_comfy_workflow_template_get,
-    "comfy.workflow_from_template": _handle_comfy_workflow_from_template,
-    "comfyui.workflow_repair": _handle_comfy_workflow_repair,
-    "comfyui.agent_run": _handle_comfy_agent_run,
     "blender.environment_probe": lambda _arguments: _handle_python_probe(
         bridge="blender",
         action="environment_probe",
@@ -1521,11 +734,6 @@ TOOL_HANDLERS: dict[str, ToolHandler] = {
         "photoshop",
         "examples/photoshop_bridge/scripts/document_info.ps1",
     ),
-    "photoshop.recipe_list": _handle_photoshop_recipe_list,
-    "photoshop.recipe_plan": _handle_photoshop_recipe_plan,
-    "photoshop.recipe_validate": _handle_photoshop_recipe_validate,
-    "photoshop.recipe_run": _handle_photoshop_recipe_run,
-    "photoshop.recipe_debug": _handle_photoshop_recipe_debug,
     "photoshop.create_demo_document": _handle_photoshop_create,
     "photoshop.export_demo_preview": _handle_photoshop_export,
     "photoshop.run_demo": _handle_photoshop_run,
@@ -1550,30 +758,7 @@ TOOL_HANDLERS: dict[str, ToolHandler] = {
     "autocad_dxf.write_dxf": _handle_write_dxf,
 }
 
-
-def _apply_risk_metadata() -> None:
-    registry = {item["name"]: item for item in list_capabilities()}
-    default_metadata = {
-        "riskLevel": "safe_read_only",
-        "safeDefault": True,
-        "requiresConfirmation": False,
-        "requiresLocalSoftware": False,
-    }
-    for tool in TOOL_DEFINITIONS:
-        capability = registry.get(tool["name"], {})
-        annotations = tool.setdefault("annotations", {})
-        annotations.update(
-            {
-                "riskLevel": capability.get("risk_level", default_metadata["riskLevel"]),
-                "safeDefault": capability.get("safe_default", default_metadata["safeDefault"]),
-                "requiresConfirmation": capability.get("requires_confirmation", default_metadata["requiresConfirmation"]),
-                "requiresLocalSoftware": capability.get("requires_local_software", default_metadata["requiresLocalSoftware"]),
-                "currentStatus": capability.get("current_status", "stable"),
-            }
-        )
-
-
-_apply_risk_metadata()
+TOOL_HANDLERS.update(PHOTOSHOP_V1_TOOL_HANDLERS)
 
 
 def _response(message_id: Any, result: JsonObject) -> JsonObject:

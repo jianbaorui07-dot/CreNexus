@@ -1,0 +1,18 @@
+{
+  "manifestVersion": 5,
+  "id": "com.starbridge.photoshop.bridge",
+  "name": "StarBridge Photoshop Bridge",
+  "version": "1.0.0",
+  "main": "src/index.js",
+  "host": {
+    "app": "PS",
+    "minVersion": "25.0.0"
+  },
+  "entrypoints": [
+    {
+      "type": "command",
+      "id": "starbridgePing",
+      "label": "StarBridge Ping"
+    }
+  ]
+}
