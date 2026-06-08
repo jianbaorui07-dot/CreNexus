@@ -1,0 +1,30 @@
+# Copy the server block below into your real Codex config.toml.
+# Do not edit your real ~/.codex/config.toml from this repository.
+
+[mcp_servers.starbridge]
+command = ".\\.venv\\Scripts\\python.exe"
+args = ["-m", "starbridge_mcp.mcp_server"]
+cwd = "C:\\path\\to\\Codex-Integration-with-Creative-Industry-Software"
+timeout_sec = 30
+
+# The server is read-only by default and safe to enable on a workstation
+# without Photoshop, AutoCAD, Blender, ComfyUI, or Jianying installed.
+enabled_tools = [
+  "starbridge.status",
+  "starbridge.tools",
+  "comfyui.system_probe",
+  "comfyui.workflow_validate",
+  "photoshop.session_info",
+  "illustrator.document_info",
+  "blender.environment_probe",
+  "cad_autocad.environment_probe",
+  "autocad_dxf.status",
+  "autocad_dxf.validate_cad_plan",
+  "autocad_dxf.summarize_plan",
+  "jianying_capcut.draft_probe",
+]
+
+# Workspace note:
+# - point cwd at the repository root
+# - keep output in repo-local output/ or scratch/
+# - do not point tools at private PSD/DWG/AI assets unless you intend to probe them locally
