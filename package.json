@@ -13,6 +13,7 @@
     "starbridge:status:strict": "python -m starbridge_mcp.server --json --strict",
     "starbridge:tools": "python -m starbridge_mcp.server tools --json",
     "starbridge:tools:safe": "python -m starbridge_mcp.server tools --json --safe-only",
+    "starbridge:roots": "python -m starbridge_mcp.server roots --json",
     "starbridge:evidence:init": "python -m starbridge_mcp.server evidence --init --json",
     "starbridge:evidence:validate": "python -m starbridge_mcp.server evidence --validate --json",
     "starbridge:job-status": "python -m starbridge_mcp.server job-status --json",

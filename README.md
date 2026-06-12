@@ -91,6 +91,7 @@ See [docs/demo-illustrator.md](docs/demo-illustrator.md) and [docs/demo-photosho
 * Draft release notes: [RELEASE_NOTES_DRAFT.md](RELEASE_NOTES_DRAFT.md)
 * Computer Use architecture: [docs/starbridge.md](docs/starbridge.md)
 * GitHub comparison notes: [docs/github-comparison.md](docs/github-comparison.md)
+* Advanced project core patterns: [docs/advanced-project-core-patterns.md](docs/advanced-project-core-patterns.md)
 
 **English quick summary:** StarBridge is a Windows-first, local-first MCP stdio server and safety bridge for connecting AI coding agents to creative desktop software: ComfyUI, Blender, AutoCAD / DXF, Photoshop, Illustrator, and CapCut / Jianying. It focuses on safe probes, workflow validation, redacted status reports, and guarded automation examples instead of uploading private assets or replacing the creative tools.
 

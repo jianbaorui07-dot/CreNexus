@@ -29,6 +29,7 @@ class PackageScriptsTest(unittest.TestCase):
                 "starbridge:status:strict",
                 "starbridge:tools",
                 "starbridge:tools:safe",
+                "starbridge:roots",
                 "starbridge:evidence:init",
                 "starbridge:evidence:validate",
                 "starbridge:job-status",

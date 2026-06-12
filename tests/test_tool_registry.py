@@ -41,6 +41,7 @@ class ToolRegistryTests(unittest.TestCase):
         capabilities = list_capabilities(bridge="comfyui")
         names = {item["name"] for item in capabilities}
         self.assertIn("starbridge.tools", names)
+        self.assertIn("starbridge.safe_roots", names)
         self.assertIn("starbridge.evidence_init", names)
         self.assertIn("starbridge.job_status", names)
         self.assertIn("comfyui.system_probe", names)
@@ -53,7 +54,8 @@ class ToolRegistryTests(unittest.TestCase):
         self.assertEqual(payload["action"], "tools")
         self.assertGreater(payload["capability_count"], 0)
         self.assertIn("bridge_categories", payload)
-        self.assertIn("evidence", payload["bridge_categories"]["all"])
+        self.assertIn("evidence_init", payload["bridge_categories"]["all"])
+        self.assertIn("safe_roots", payload["bridge_categories"]["all"])
 
     def test_server_tools_action_outputs_json(self) -> None:
         completed = subprocess.run(

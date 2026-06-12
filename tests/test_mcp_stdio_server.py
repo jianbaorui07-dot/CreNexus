@@ -47,6 +47,7 @@ class McpStdioServerTests(unittest.TestCase):
         names = {tool["name"] for tool in tools}
         self.assertIn("starbridge.status", names)
         self.assertIn("starbridge.tools", names)
+        self.assertIn("starbridge.safe_roots", names)
         self.assertIn("comfyui.system_probe", names)
         self.assertIn("blender.environment_probe", names)
         self.assertIn("cad_autocad.environment_probe", names)
@@ -69,6 +70,21 @@ class McpStdioServerTests(unittest.TestCase):
         self.assertEqual("tools", result["structuredContent"]["action"])
         self.assertTrue(all(item["safe_default"] for item in result["structuredContent"]["capabilities"]))
         self.assertTrue(all("current_status" in item for item in result["structuredContent"]["capabilities"]))
+        self.assert_no_private_paths(response)
+
+    def test_safe_roots_tool_returns_repo_relative_boundaries(self) -> None:
+        response = request(
+            32,
+            "tools/call",
+            {"name": "starbridge.safe_roots", "arguments": {"bridge": "photoshop"}},
+        )
+        structured = response["result"]["structuredContent"]
+
+        self.assertTrue(structured["ok"])
+        self.assertEqual("safe_roots", structured["action"])
+        paths = {item["path"] for item in structured["roots"]}
+        self.assertIn("examples/output/photoshop", paths)
+        self.assertNotIn(str(REPO_ROOT), json.dumps(structured, ensure_ascii=False))
         self.assert_no_private_paths(response)
 
     def test_direct_bridge_probe_tools_return_structured_content(self) -> None:

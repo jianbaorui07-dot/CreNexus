@@ -27,6 +27,7 @@ from starbridge_mcp.core.evidence import (
 )
 from starbridge_mcp.core.job_status import JobStatus
 from starbridge_mcp.core.result_schema import make_result, validate_result
+from starbridge_mcp.core.safe_roots import safe_roots_summary
 from starbridge_mcp.core.security import sanitize
 from starbridge_mcp.core.tool_registry import capability_summary
 
@@ -192,6 +193,8 @@ def build_response(args: argparse.Namespace) -> dict[str, Any]:
             bridge=requested_bridge,
             include_guarded=not args.safe_only,
         )
+    if args.action == "roots":
+        return safe_roots_summary(bridge=requested_bridge)
 
     config = StarBridgeConfig(timeout=args.timeout)
     comfy_url = args.comfy_url or config.comfy_url
@@ -461,7 +464,7 @@ def main() -> None:
         return
 
     parser = argparse.ArgumentParser(description="StarBridge 本地创意软件 MCP 桥接框架最小状态入口。")
-    parser.add_argument("action", nargs="?", default="status", choices=["status", "tools"], help="当前实现 status 和 tools。")
+    parser.add_argument("action", nargs="?", default="status", choices=["status", "tools", "roots"], help="当前实现 status、tools 和 roots。")
     parser.add_argument(
         "--bridge",
         default="all",
