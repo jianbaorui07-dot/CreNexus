@@ -11,6 +11,7 @@ export class BridgeClient {
     this.socket = null;
     this.connected = false;
     this.lastPingAt = null;
+    this.reconnectTimer = null;
   }
 
   connect() {
@@ -21,11 +22,17 @@ export class BridgeClient {
       this.socket = new WebSocket(this.proxyUrl);
       this.socket.addEventListener("open", () => {
         this.connected = true;
-        this.send({ type: "register", host: "photoshop", connectedAt: nowIso() });
+        this.send({
+          type: "register",
+          host: "photoshop",
+          connectedAt: nowIso(),
+          photoshop_host: this.hostInfo(),
+        });
       });
       this.socket.addEventListener("close", () => {
         this.connected = false;
         this.socket = null;
+        this.scheduleReconnect();
       });
       this.socket.addEventListener("message", async (event) => {
         const message = JSON.parse(String(event.data || "{}"));
@@ -51,7 +58,30 @@ export class BridgeClient {
     } catch (_error) {
       this.connected = false;
       this.socket = null;
+      this.scheduleReconnect();
     }
+  }
+
+  hostInfo() {
+    try {
+      const photoshop = require("photoshop");
+      return {
+        app: "Photoshop",
+        version: String(photoshop?.app?.version || "unknown"),
+      };
+    } catch (_error) {
+      return { app: "Photoshop", version: "unknown" };
+    }
+  }
+
+  scheduleReconnect() {
+    if (this.reconnectTimer) {
+      return;
+    }
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      this.connect();
+    }, 2000);
   }
 
   send(payload) {

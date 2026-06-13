@@ -1,92 +1,130 @@
-# Photoshop v2 Node Proxy + UXP
+# Photoshop v2 Node Proxy + UXP Bridge
 
-## 1. 启动 Node Proxy
-
-```powershell
-cd node_proxy\photoshop-bridge
-npm install
-npm start
-```
-
-默认监听：
+This document describes the v2 Photoshop control path for StarBridge.
 
 ```text
-http://127.0.0.1:8971
+Codex / MCP client
+  -> StarBridge MCP tools
+  -> local Node Proxy
+  -> Photoshop UXP plugin
+  -> Photoshop DOM / typed batchPlay / executeAsModal
+```
+
+The v2 path is still experimental. It is designed to make Photoshop control observable and guarded, not to run arbitrary scripts against private PSD files.
+
+## What v2 Adds
+
+| Area | Capability |
+| --- | --- |
+| Node Proxy | Local HTTP JSON-RPC endpoint, UXP WebSocket endpoint, `/health`, `/bridge/status`, `/events` |
+| UXP plugin | Registers Photoshop host info, reconnects after proxy restarts, exposes typed handlers |
+| Read-only tools | `ps.probe`, `ps.document.info`, `ps.layers.list` |
+| Guarded write path | `ps.preview.export`, `ps.batchplay.execute_confirmed` behind confirmation and sandbox policy |
+| Evidence | Returns `EvidenceManifest` fields for bridge kind, UXP status, host info, layer snapshot, validation result |
+
+## Start the Node Proxy
+
+```powershell
+npm.cmd run photoshop:node-proxy
+```
+
+Default local endpoints:
+
+```text
+http://127.0.0.1:8971/health
+http://127.0.0.1:8971/bridge/status
+http://127.0.0.1:8971/events
 ws://127.0.0.1:8971/uxp
 ```
 
-## 2. 加载 UXP 插件
+Use `STARBRIDGE_PHOTOSHOP_PROXY_PORT` if you need another local port.
 
-在 UXP Developer Tool 中加载：
+## Load the UXP Plugin
+
+Open Adobe UXP Developer Tool and load:
 
 ```text
 uxp/photoshop-bridge
 ```
 
-## 3. 启动 MCP Server
+Then start the plugin in Photoshop. On connect, the plugin registers with the Node Proxy and sends basic host metadata:
+
+- app name
+- Photoshop version
+- connection timestamp
+
+If the Node Proxy restarts, the UXP client attempts to reconnect automatically.
+
+## Run the MCP Server
 
 ```powershell
 python -m starbridge_mcp.mcp_server
 ```
 
-## 4. 调用 `ps.probe`
+Then call:
 
-确认：
+- `ps.probe`
+- `ps.document.info`
+- `ps.layers.list`
+- `ps.batchplay.validate`
+
+`ps.probe` should show:
 
 - `node_proxy_running`
 - `uxp_client_connected`
 - `photoshop_host_seen`
-- COM fallback 状态
+- `photoshop_host`
+- COM fallback state
 
-## 5. 调用 `ps.document.info`
+## Safe BatchPlay Contract
 
-读取当前活动文档：
+All write-like actions must pass through the typed allowlist and explicit confirmation.
 
-- document id
-- title / name
-- width / height
-- resolution
-- color mode
-- bit depth
-- active layer
-- layer count
+Allowed descriptor families are intentionally narrow:
 
-## 6. 调用 `ps.layers.list`
+- `get`
+- `duplicate`
+- `make`
+- `set`
+- `move`
 
-读取当前图层树和基础属性。
+Denied descriptor families include destructive or arbitrary execution paths:
 
-## 7. 调用 `ps.batchplay.validate`
-
-只允许 typed allowlist：
-
-- get current document info
-- get layers list
-- duplicate current document to sandbox copy
-- export preview from sandbox copy
-- create test adjustment layer in sandbox copy
-- rename / visibility / move only in sandbox copy
-
-## 8. 确认后调用 `ps.batchplay.execute_confirmed`
-
-需要：
-
-- `confirm_write=true`
-- `requires_confirmation=true`
-- sandbox 路径
-
-## 9. 当前真实 DOM 读取
-
-- 已接入：`ps.document.info`、`ps.layers.list`
-
-## 10. 当前 executeAsModal 可控写入雏形
-
-- 已接入：typed BatchPlay confirmed path
-- 仍然要求 allowlist + confirmation + sandbox only
-
-## 11. 当前仍然禁用
-
-- delete layer
+- `delete`
 - merge / flatten / rasterize
-- overwrite save
-- arbitrary script execution
-- sandbox 外写入
+- arbitrary JavaScript
+- raw nested `batchPlay`
+- overwrite-style saves
+
+Confirmed execution requires:
+
+- `requires_confirmation=true`
+- `confirm_write=true`
+- sandbox output only
+- a prior `ps.batchplay.validate` result with no blocked descriptors
+
+## Local Smoke Checks
+
+These checks do not require Photoshop to be installed:
+
+```powershell
+python -m unittest tests.test_photoshop_node_proxy
+python -m unittest tests.test_photoshop_adapter_v1
+```
+
+With local Photoshop and the UXP plugin running:
+
+```powershell
+npm.cmd run photoshop:node-proxy
+python -m starbridge_mcp.mcp_server
+```
+
+Then call `ps.probe` from an MCP client and confirm the bridge reports `node_proxy_uxp`.
+
+## Current Limits
+
+- UXP preview export is routed but bitmap encoding still depends on local Photoshop host support.
+- The bridge does not open private PSD files by itself.
+- Arbitrary script execution remains disabled.
+- Real outputs must stay in sandbox or ignored output directories.
+- Account, Creative Cloud, licensed asset, and private project data must not be committed.

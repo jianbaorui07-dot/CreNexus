@@ -12,7 +12,7 @@
 | ComfyUI | Workflow JSON validation; safe status shape when service is offline. | None for validation. | Local HTTP probe and `txt2img` submit script require a running local ComfyUI and explicit checkpoint. | Full txt2img job lifecycle, img2img, inpaint, upscale, asset manifest. |
 | Blender | Environment probe for executable and optional MCP directory hints. | None. | No public write loop in this release. | Safe generated scene script and render manifest. |
 | AutoCAD/DXF | CAD plan validation, plan summary, DXF dry-run, sandbox output guard. | DXF export defaults to dry-run. | Real test DXF write only with `confirm_write=true`, optional `ezdxf`, and `examples/cad/output`. | Richer CAD entity schema and desktop AutoCAD evidence. |
-| Photoshop | Safe status/session metadata shape; no private PSD opening. | Sandbox demo plan defaults to dry-run. | Real COM document info and sandbox PSD/preview export require authorized local Photoshop and explicit confirmation. | Subject extraction MCP tool and reviewed local smoke evidence. |
+| Photoshop | Safe status/session metadata shape; Node Proxy + UXP v2 probe, document info, layers list, typed BatchPlay validation. | Sandbox demo plan defaults to dry-run; preview export and confirmed BatchPlay require explicit confirmation. | Real COM document info and sandbox PSD/preview export require authorized local Photoshop; UXP v2 requires local Node Proxy and loaded plugin. | Broader UXP preview export evidence and reviewed local smoke evidence. |
 | Illustrator | Safe status/document metadata shape; no private `.ai` opening. | Sandbox artboard/export plan defaults to dry-run. | Real COM document info and sandbox AI/SVG/PDF/PNG export require authorized local Illustrator and explicit confirmation. | Preflight and image trace workflows. |
 | Jianying/CapCut | Draft directory probe shape only; no draft content read. | None. | Local executable/draft directory availability checks. | Safe draft skeleton and manifest research. |
 
@@ -40,7 +40,7 @@ v0.1-alpha 已有且可以验证：
 - 总状态与安全状态：`npm.cmd run bridge:status:safe`
 - ComfyUI：offline-safe probe、workflow JSON validate；真实生成任务仍依赖本机 ComfyUI 和显式 checkpoint。
 - AutoCAD/DXF：自然语言/JSON plan、`validate_cad_plan`、dry-run、`confirm_write` 受控写入 `examples/cad/output`、manifest/report。
-- Adobe / Blender / CapCut：已有部分 probe/demo 入口，但生产级写入闭环仍是 experimental 或 planned。
+- Adobe / Blender / CapCut：已有部分 probe/demo 入口；Photoshop 另有 Node Proxy + UXP v2 实验链路，但生产级写入闭环仍是 experimental 或 planned。
 
 关键文档：
 
@@ -153,7 +153,7 @@ Useful entry points:
 | ComfyUI 图像生成桥 | MCP 工具读取系统/节点信息、校验 API workflow | 文生图、图生图、修复、放大 | 已挂 `comfyui.system_probe` / `comfyui.workflow_validate` |
 | Blender 三维场景桥 | MCP 工具检查可执行文件和环境线索 | 建模、材质、灯光、相机、渲染 | 已挂 `blender.environment_probe`，待补安全场景脚本 |
 | CAD 工程制图桥 | MCP 工具检查 AutoCAD 环境；离线生成/校验 DXF plan | 精确线条、孔位、尺寸、图层、DWG | 已挂 `cad_autocad.environment_probe` 和 `autocad_dxf.*` |
-| Photoshop 修图桥 | MCP 工具检查 COM/session 线索，脚本读取文档信息 | 主体选择、抠图、图层处理、PNG 导出 | 已挂 `photoshop.session_info`，写入动作仍需确认 |
+| Photoshop 修图桥 | MCP 工具检查 COM/session 线索；Node Proxy + UXP v2 读取文档和图层；脚本读取文档信息 | 主体选择、抠图、图层处理、PNG 导出、typed BatchPlay confirmed path | 已挂 `photoshop.session_info` 和 `ps.*` v2 工具，写入动作仍需确认 |
 | AI 矢量文件桥 | MCP 工具检查 Illustrator COM/session 线索 | Illustrator `.ai`、Image Trace、SVG/PDF/PNG 导出 | 已挂 `illustrator.document_info`，导出脚本未开放 |
 | 剪映/CapCut 短视频剪辑桥 | MCP 工具检查可执行文件和草稿目录配置 | 时间线剪辑、模板、字幕、导出 | 已挂 `jianying_capcut.draft_probe`，不读草稿内容 |
 
@@ -247,7 +247,7 @@ python -m starbridge_mcp.mcp_server
 npm.cmd run starbridge:mcp
 ```
 
-MCP 客户端可发现首批安全工具：`starbridge.status`、`starbridge.probe`、`starbridge.tools`、`starbridge.evidence_init`、`starbridge.evidence_validate`、`starbridge.job_status`、`comfyui.system_probe`、`comfyui.workflow_validate`、`blender.environment_probe`、`cad_autocad.environment_probe`、`photoshop.session_info`、`illustrator.document_info`、`jianying_capcut.draft_probe`、`autocad_dxf.status`、`autocad_dxf.validate_cad_plan`、`autocad_dxf.create_dxf_plan`、`autocad_dxf.summarize_plan` 和 `autocad_dxf.write_dxf`。
+MCP 客户端可发现首批安全工具：`starbridge.status`、`starbridge.probe`、`starbridge.tools`、`starbridge.evidence_init`、`starbridge.evidence_validate`、`starbridge.job_status`、`comfyui.system_probe`、`comfyui.workflow_validate`、`blender.environment_probe`、`cad_autocad.environment_probe`、`photoshop.session_info`、`ps.probe`、`ps.document.info`、`ps.layers.list`、`ps.batchplay.validate`、`illustrator.document_info`、`jianying_capcut.draft_probe`、`autocad_dxf.status`、`autocad_dxf.validate_cad_plan`、`autocad_dxf.create_dxf_plan`、`autocad_dxf.summarize_plan` 和 `autocad_dxf.write_dxf`。
 
 ### Evidence / Job lifecycle
 
@@ -370,6 +370,16 @@ powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\docum
 powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\run_local_practice.ps1
 python examples\photoshop_bridge\write_practice_report.py
 ```
+
+Node Proxy + UXP v2 链路：
+
+```powershell
+npm.cmd run photoshop:node-proxy
+python -m unittest tests.test_photoshop_node_proxy
+python -m unittest tests.test_photoshop_adapter_v1
+```
+
+然后在 UXP Developer Tool 中加载 `uxp/photoshop-bridge`，通过 MCP 调用 `ps.probe`、`ps.document.info`、`ps.layers.list` 和 `ps.batchplay.validate`。详细说明见 [docs/photoshop-v2-node-proxy-uxp.md](docs/photoshop-v2-node-proxy-uxp.md)。
 
 单独运行 COM 探针：
 

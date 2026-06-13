@@ -23,6 +23,7 @@ class OutputGitignoreTests(unittest.TestCase):
                 self.assertTrue(self.git_check_ignore(f"examples/output/illustrator/demo.{suffix}"))
         self.assertTrue(self.git_check_ignore("examples/output/comfyui/demo_manifest.json"))
         self.assertTrue(self.git_check_ignore("examples/output/evidence/manifest.latest.json"))
+        self.assertTrue(self.git_check_ignore("sandbox/ps_preview_demo.png"))
 
     def test_output_readme_and_gitkeep_are_not_ignored(self) -> None:
         self.assertFalse(self.git_check_ignore("examples/output/.gitkeep"))

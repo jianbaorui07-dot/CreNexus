@@ -51,6 +51,10 @@ class PhotoshopNodeProxyTests(unittest.TestCase):
                 self.process.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 self.process.kill()
+        if self.process.stdout:
+            self.process.stdout.close()
+        if self.process.stderr:
+            self.process.stderr.close()
 
     def test_health_endpoint_reports_running(self) -> None:
         payload = read_json(f"http://127.0.0.1:{self.port}/health")
@@ -63,6 +67,14 @@ class PhotoshopNodeProxyTests(unittest.TestCase):
         self.assertTrue(payload["ok"])
         self.assertFalse(payload["uxp_client_connected"])
         self.assertIn("pending_jobs", payload)
+        self.assertIn("last_error", payload)
+        self.assertIn("last_client_registered_at", payload)
+
+    def test_events_endpoint_reports_startup_event(self) -> None:
+        payload = read_json(f"http://127.0.0.1:{self.port}/events")
+        self.assertTrue(payload["ok"])
+        event_types = {event["type"] for event in payload["events"]}
+        self.assertIn("node_proxy_started", event_types)
 
     def test_rpc_without_uxp_client_returns_explicit_error(self) -> None:
         request = urllib.request.Request(
@@ -75,6 +87,30 @@ class PhotoshopNodeProxyTests(unittest.TestCase):
             payload = json.loads(response.read().decode("utf-8"))
         self.assertEqual(-32001, payload["error"]["code"])
         self.assertIn("uxp_client_not_connected", payload["error"]["message"])
+
+    def test_rpc_rejects_invalid_json_without_crashing(self) -> None:
+        request = urllib.request.Request(
+            f"http://127.0.0.1:{self.port}/rpc",
+            data=b"{not-json",
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(request, timeout=5) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        self.assertEqual(-32700, payload["error"]["code"])
+        self.assertEqual("parse_error", payload["error"]["message"])
+
+    def test_rpc_validates_jsonrpc_shape(self) -> None:
+        request = urllib.request.Request(
+            f"http://127.0.0.1:{self.port}/rpc",
+            data=json.dumps({"id": 1, "method": "starbridge.ping"}).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(request, timeout=5) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        self.assertEqual(-32600, payload["error"]["code"])
+        self.assertEqual("jsonrpc_must_be_2_0", payload["error"]["message"])
 
 
 if __name__ == "__main__":
