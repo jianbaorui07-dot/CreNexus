@@ -45,6 +45,8 @@
     "preflight": "python scripts/starbridge_preflight.py --markdown",
     "preflight:json": "python scripts/starbridge_preflight.py --json",
     "security:check": "python scripts/security_check.py",
+    "frontend:dev": "npm --prefix examples/starbridge_frontend run dev",
+    "frontend:build": "npm --prefix examples/starbridge_frontend run build",
     "test": "python -m unittest discover -s tests",
     "test:pytest": "python -m pytest"
   }
