@@ -133,6 +133,58 @@ def preview_export_schema() -> dict[str, Any]:
     )
 
 
+def camera_raw_tune_schema() -> dict[str, Any]:
+    camera_raw_params = object_schema(
+        {
+            "temperature": {"type": "number", "minimum": 2000, "maximum": 50000, "default": 4800},
+            "tint": {"type": "number", "minimum": -150, "maximum": 150, "default": 10},
+            "exposure": {"type": "number", "minimum": -5, "maximum": 5, "default": 0.35},
+            "contrast": {"type": "number", "minimum": -100, "maximum": 100, "default": 10},
+            "highlights": {"type": "number", "minimum": -100, "maximum": 100, "default": -25},
+            "shadows": {"type": "number", "minimum": -100, "maximum": 100, "default": 35},
+            "whites": {"type": "number", "minimum": -100, "maximum": 100, "default": 12},
+            "blacks": {"type": "number", "minimum": -100, "maximum": 100, "default": -12},
+            "texture": {"type": "number", "minimum": -100, "maximum": 100, "default": 18},
+            "clarity": {"type": "number", "minimum": -100, "maximum": 100, "default": 8},
+            "dehaze": {"type": "number", "minimum": -100, "maximum": 100, "default": 3},
+            "vibrance": {"type": "number", "minimum": -100, "maximum": 100, "default": 14},
+            "saturation": {"type": "number", "minimum": -100, "maximum": 100, "default": -2},
+        }
+    )
+    return object_schema(
+        {
+            **common_properties(
+                risk_level="level_2_confirmed_write",
+                requires_confirmation=True,
+                writes_files=False,
+                touches_user_psd=True,
+                default_output_dir="examples/output/photoshop",
+            ),
+            "protocol_version": {"type": "string", "enum": ["camera_raw_tune.v1"], "default": "camera_raw_tune.v1"},
+            "method": {"type": "string", "enum": ["ps.camera_raw.tune"], "default": "ps.camera_raw.tune"},
+            "confirm_apply": {"type": "boolean", "default": False},
+            "confirm_export": {"type": "boolean", "default": False},
+            "descriptor_fixture_path": {"type": "string", "description": "Optional local verified Camera Raw BatchPlay descriptor fixture path. Do not commit real local paths."},
+            "preset": {"type": "string", "enum": ["blue_artwork_clean"], "default": "blue_artwork_clean"},
+            "params": camera_raw_params,
+            "source": object_schema(
+                {
+                    "mode": {"type": "string", "enum": ["active_document", "explicit_path"], "default": "active_document"},
+                    "path": {"type": "string", "description": "User-explicit local image path; recorded in the plan only and never scanned recursively."},
+                }
+            ),
+            "output": object_schema(
+                {
+                    "dir": {"type": "string", "default": "examples/output/photoshop"},
+                    "basename": {"type": "string", "default": "camera_raw_tune_preview"},
+                    "formats": {"type": "array", "items": {"type": "string", "enum": ["jpg", "png"]}, "default": ["jpg"]},
+                    "export_after_apply": {"type": "boolean", "default": False},
+                }
+            ),
+        }
+    )
+
+
 def layer_write_schema() -> dict[str, Any]:
     return object_schema(
         {

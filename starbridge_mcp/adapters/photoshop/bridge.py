@@ -8,6 +8,13 @@ from typing import Any
 from starbridge_mcp.core.result_schema import make_result
 
 from .batchplay_schema import validate_descriptor
+from .camera_raw_protocol import (
+    CAMERA_RAW_BLOCKED_REASON,
+    CAMERA_RAW_NEXT_STEP,
+    build_camera_raw_tune_protocol,
+    load_verified_descriptor_fixture,
+    resolve_camera_raw_output_dir,
+)
 from .evidence import build_manifest, manifest_path_for, new_job_id, preview_path_for, write_json, write_placeholder_png
 from .mock import mock_document, mock_layers, mock_probe
 from .node_proxy_client import bridge_status as node_proxy_bridge_status
@@ -64,6 +71,27 @@ def _build_context(arguments: dict[str, Any], repo_root: Path, tool_name: str) -
         job_id=str(arguments.get("job_id") or new_job_id()),
         risk_level=str(arguments.get("risk_level") or "level_0_read_only"),
         requires_confirmation=_bool(arguments.get("requires_confirmation") or arguments.get("confirm_write"), False),
+        dry_run=_bool(arguments.get("dry_run"), True),
+        writes_files=_bool(arguments.get("writes_files"), False),
+        touches_user_psd=_bool(arguments.get("touches_user_psd"), True),
+        bridge_kind=str(arguments.get("bridge_kind") or "auto"),
+        output_dir=output_root.relative_to(repo_root).as_posix(),
+        repo_root=repo_root,
+        evidence_dir=evidence_dir,
+        output_root=output_root,
+    )
+
+
+def _build_camera_raw_context(arguments: dict[str, Any], repo_root: Path) -> RequestContext:
+    raw_output = arguments.get("output") or {}
+    requested_output = raw_output.get("dir") if isinstance(raw_output, dict) else None
+    output_root = resolve_camera_raw_output_dir(repo_root, str(requested_output or arguments.get("output_dir") or "examples/output/photoshop"))
+    evidence_dir = (output_root / "evidence").resolve()
+    return RequestContext(
+        tool_name="ps.camera_raw.tune",
+        job_id=str(arguments.get("job_id") or new_job_id()),
+        risk_level=str(arguments.get("risk_level") or "level_2_confirmed_write"),
+        requires_confirmation=_bool(arguments.get("requires_confirmation") or arguments.get("confirm_apply"), False),
         dry_run=_bool(arguments.get("dry_run"), True),
         writes_files=_bool(arguments.get("writes_files"), False),
         touches_user_psd=_bool(arguments.get("touches_user_psd"), True),
@@ -505,6 +533,250 @@ class PhotoshopBridgeAdapter:
             },
             warnings=warnings,
             next_steps=["Review preview_files and layers_snapshot before follow-up edits.", "Keep writes restricted to sandbox copies."],
+        )
+
+    def camera_raw_tune(self, arguments: dict[str, Any]) -> dict[str, Any]:
+        ctx = _build_camera_raw_context(arguments, self.repo_root)
+        confirm_apply = _bool(arguments.get("confirm_apply"), False)
+        confirm_export = _bool(arguments.get("confirm_export"), False)
+        plan, errors = build_camera_raw_tune_protocol(arguments, self.repo_root)
+        proxy = _node_proxy_probe()
+        warnings: list[str] = []
+        if errors:
+            return make_result(
+                ok=False,
+                bridge="photoshop",
+                action="camera_raw_tune",
+                message="Camera Raw tuning plan validation failed.",
+                details={"job_id": ctx.job_id, "errors": errors, "dry_run": ctx.dry_run, "confirm_apply": confirm_apply, "confirm_export": confirm_export},
+                warnings=["Camera Raw tuning accepts only reviewed numeric slider ranges."],
+                next_steps=["Fix params and rerun with dry_run=true."],
+            )
+
+        assert plan is not None
+        descriptor_fixture, descriptor_errors = load_verified_descriptor_fixture(arguments, plan)
+        manifest_status = "ok" if ctx.dry_run else "blocked"
+        manifest_errors: list[str] = []
+        if not ctx.dry_run and not confirm_apply:
+            manifest_errors.append("confirm_apply=true is required when dry_run=false.")
+        elif not ctx.dry_run and bool(plan["output"].get("export_after_apply")) and not confirm_export:
+            manifest_errors.append("confirm_export=true is required when output.export_after_apply=true and dry_run=false.")
+        elif not ctx.dry_run and descriptor_errors:
+            manifest_errors.extend(descriptor_errors)
+        elif not ctx.dry_run and descriptor_fixture is None:
+            manifest_errors.append(CAMERA_RAW_BLOCKED_REASON)
+
+        manifest = _make_manifest(
+            ctx,
+            input_summary={
+                "preset": plan["preset"],
+                "params": plan["params"],
+                "source": plan["source"],
+                "output": plan["output"],
+                "confirm_apply": confirm_apply,
+                "confirm_export": confirm_export,
+                "output_dir": ctx.output_dir,
+            },
+            output_files=[],
+            preview_files=[],
+            source_files=["<active_document>"],
+            photoshop_available=bool(proxy["uxp_client_connected"]),
+            bridge_kind="node_proxy_uxp" if proxy["uxp_client_connected"] else "fallback",
+            node_proxy_status=proxy["status"],
+            uxp_status={"connected": proxy["uxp_client_connected"], "method": "ps.camera_raw.tune" if proxy["uxp_client_connected"] else None},
+            photoshop_host=dict(proxy["status"].get("photoshop_host") or {}),
+            layers_snapshot=[],
+            history_state=None,
+            descriptor_summary=[],
+            validation_result={
+                "ok": not errors,
+                "descriptor_available": descriptor_fixture is not None,
+                "descriptor_count": int(descriptor_fixture.get("descriptor_count", 0)) if descriptor_fixture else 0,
+                "blocked_reason": None if descriptor_fixture else CAMERA_RAW_BLOCKED_REASON,
+            },
+            status=manifest_status,
+            warnings=warnings,
+            errors=manifest_errors,
+        )
+
+        if ctx.dry_run:
+            return make_result(
+                ok=True,
+                bridge="photoshop",
+                action="camera_raw_tune",
+                message="Camera Raw tuning dry-run plan validated.",
+                details={
+                    "job_id": ctx.job_id,
+                    "dry_run": True,
+                    "confirm_apply": confirm_apply,
+                    "confirm_export": confirm_export,
+                    "plan": plan,
+                    "descriptor_fixture": {
+                        "available": descriptor_fixture is not None,
+                        "errors": descriptor_errors,
+                    },
+                    "evidence_manifest": manifest,
+                    "evidence_path": None,
+                },
+                warnings=["Camera Raw tuning is experimental; no Photoshop state was modified."],
+                next_steps=["Record and review a Camera Raw Filter BatchPlay descriptor before enabling confirmed apply."],
+            )
+
+        if not confirm_apply:
+            return make_result(
+                ok=False,
+                bridge="photoshop",
+                action="camera_raw_tune",
+                message="ps.camera_raw.tune refused because confirm_apply=true is required when dry_run=false.",
+                details={
+                    "job_id": ctx.job_id,
+                    "dry_run": False,
+                    "confirm_apply": False,
+                    "confirm_export": confirm_export,
+                    "plan": plan,
+                    "evidence_manifest": manifest,
+                    "evidence_path": _write_manifest_if_requested(ctx, manifest),
+                },
+                warnings=["Real Camera Raw tuning would modify the active Photoshop document."],
+                next_steps=["Rerun dry_run first, then set confirm_apply=true only after reviewing the plan."],
+            )
+
+        if bool(plan["output"].get("export_after_apply")) and not confirm_export:
+            return make_result(
+                ok=False,
+                bridge="photoshop",
+                action="camera_raw_tune",
+                message="ps.camera_raw.tune refused because confirm_export=true is required for real export.",
+                details={
+                    "job_id": ctx.job_id,
+                    "dry_run": False,
+                    "confirm_apply": True,
+                    "confirm_export": False,
+                    "plan": plan,
+                    "evidence_manifest": manifest,
+                    "evidence_path": _write_manifest_if_requested(ctx, manifest),
+                },
+                warnings=["Real Camera Raw export would write files and must stay inside examples/output/photoshop."],
+                next_steps=["Rerun dry_run first, then set confirm_export=true only for reviewed sandbox output."],
+            )
+
+        if descriptor_errors:
+            return make_result(
+                ok=False,
+                bridge="photoshop",
+                action="camera_raw_tune",
+                message="Camera Raw tuning apply is blocked because the descriptor fixture is invalid.",
+                details={
+                    "job_id": ctx.job_id,
+                    "dry_run": False,
+                    "confirm_apply": True,
+                    "confirm_export": confirm_export,
+                    "descriptor_fixture_errors": descriptor_errors,
+                    "plan": plan,
+                    "evidence_manifest": manifest,
+                    "evidence_path": _write_manifest_if_requested(ctx, manifest),
+                },
+                warnings=["Only locally recorded and explicitly verified Camera Raw descriptor fixtures may be used."],
+                next_steps=[CAMERA_RAW_NEXT_STEP],
+            )
+
+        if descriptor_fixture is not None and proxy["uxp_client_connected"]:
+            try:
+                response = node_proxy_rpc(
+                    "ps.camera_raw.tune",
+                    {
+                        "job_id": ctx.job_id,
+                        "plan": plan,
+                        "descriptors": descriptor_fixture["descriptors"],
+                        "descriptor_fixture_verified": True,
+                        "confirm_apply": True,
+                        "confirm_export": confirm_export,
+                    },
+                )
+                if "result" in response:
+                    payload = dict(response["result"] or {})
+                    executed = bool(payload.get("executed") or payload.get("ok"))
+                    if executed:
+                        manifest["status"] = "ok"
+                        manifest["validation_result"]["blocked_reason"] = None
+                    return make_result(
+                        ok=executed,
+                        bridge="photoshop",
+                        action="camera_raw_tune",
+                        message="Camera Raw tuning apply completed." if executed else "Camera Raw tuning apply returned without execution.",
+                        details={
+                            "job_id": ctx.job_id,
+                            "dry_run": False,
+                            "confirm_apply": True,
+                            "confirm_export": confirm_export,
+                            "executed": executed,
+                            "plan": plan,
+                            "uxp_result": payload,
+                            "evidence_manifest": manifest,
+                            "evidence_path": _write_manifest_if_requested(ctx, manifest),
+                        },
+                        warnings=[str(item) for item in payload.get("warnings") or []],
+                        next_steps=["Review Photoshop history and exported files before additional edits."],
+                    )
+            except Exception as exc:
+                manifest["errors"].append(f"Node Proxy camera_raw_tune failed: {type(exc).__name__}")
+                return make_result(
+                    ok=False,
+                    bridge="photoshop",
+                    action="camera_raw_tune",
+                    message="Camera Raw tuning apply failed through Node Proxy / UXP.",
+                    details={
+                        "job_id": ctx.job_id,
+                        "dry_run": False,
+                        "confirm_apply": True,
+                        "confirm_export": confirm_export,
+                        "error": type(exc).__name__,
+                        "plan": plan,
+                        "evidence_manifest": manifest,
+                        "evidence_path": _write_manifest_if_requested(ctx, manifest),
+                    },
+                    warnings=["Photoshop UXP bridge must be running and connected for real apply."],
+                    next_steps=["Start the Photoshop node proxy and UXP plugin, then retry the confirmed command."],
+                )
+
+        if descriptor_fixture is not None and not proxy["uxp_client_connected"]:
+            return make_result(
+                ok=False,
+                bridge="photoshop",
+                action="camera_raw_tune",
+                message="Camera Raw descriptor fixture is ready, but Photoshop UXP is not connected.",
+                details={
+                    "job_id": ctx.job_id,
+                    "dry_run": False,
+                    "confirm_apply": True,
+                    "confirm_export": confirm_export,
+                    "descriptor_fixture": {"available": True, "verified": True, "descriptor_count": descriptor_fixture["descriptor_count"]},
+                    "plan": plan,
+                    "evidence_manifest": manifest,
+                    "evidence_path": _write_manifest_if_requested(ctx, manifest),
+                },
+                warnings=["Node Proxy / UXP is required for real Photoshop apply."],
+                next_steps=["Run npm.cmd run photoshop:node-proxy and connect the UXP plugin, then retry."],
+            )
+
+        return make_result(
+            ok=False,
+            bridge="photoshop",
+            action="camera_raw_tune",
+            message="Camera Raw tuning apply is blocked until a verified BatchPlay descriptor is recorded.",
+            details={
+                "job_id": ctx.job_id,
+                "dry_run": False,
+                "confirm_apply": True,
+                "confirm_export": confirm_export,
+                "blocked_reason": CAMERA_RAW_BLOCKED_REASON,
+                "next_step": CAMERA_RAW_NEXT_STEP,
+                "plan": plan,
+                "evidence_manifest": manifest,
+                "evidence_path": _write_manifest_if_requested(ctx, manifest),
+            },
+            warnings=["No Camera Raw Filter BatchPlay descriptor fixture is bundled yet."],
+            next_steps=[CAMERA_RAW_NEXT_STEP],
         )
 
     def evidence_capture(self, arguments: dict[str, Any]) -> dict[str, Any]:

@@ -38,6 +38,8 @@
     "photoshop:demo:plan": "powershell -ExecutionPolicy Bypass -File examples/photoshop_bridge/scripts/create_demo_document.ps1",
     "photoshop:demo": "powershell -ExecutionPolicy Bypass -File examples/photoshop_bridge/scripts/run_demo.ps1",
     "photoshop:manifest": "python -m json.tool examples/output/photoshop/demo_manifest.json",
+    "photoshop:camera-raw:tune": "python examples/photoshop_bridge/scripts/camera_raw_tune.py",
+    "photoshop:camera-raw:export": "powershell -ExecutionPolicy Bypass -File examples/photoshop_bridge/scripts/camera_raw_export.ps1",
     "illustrator:info": "powershell -ExecutionPolicy Bypass -File examples/illustrator_bridge/scripts/document_info.ps1",
     "illustrator:demo:plan": "powershell -ExecutionPolicy Bypass -File examples/illustrator_bridge/scripts/create_demo_artboard.ps1",
     "illustrator:demo": "powershell -ExecutionPolicy Bypass -File examples/illustrator_bridge/scripts/run_demo.ps1",

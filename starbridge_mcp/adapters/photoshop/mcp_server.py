@@ -19,6 +19,7 @@ TOOL_HANDLERS = {
     "ps.layer.move": _ADAPTER.layer_move,
     "ps.layer.visibility": _ADAPTER.layer_visibility,
     "ps.preview.export": _ADAPTER.preview_export,
+    "ps.camera_raw.tune": _ADAPTER.camera_raw_tune,
     "ps.evidence.capture": _ADAPTER.evidence_capture,
     "ps.batchplay.validate": _ADAPTER.batchplay_validate,
     "ps.batchplay.execute_confirmed": _ADAPTER.batchplay_execute_confirmed,

@@ -32,7 +32,7 @@ class McpToolSchemasTest(unittest.TestCase):
                     self.assertIn("confirm_run", properties)
                 else:
                     self.assertIn("dry_run", properties)
-                    self.assertTrue({"confirm_write", "confirm_export"} & set(properties))
+                    self.assertTrue({"confirm_write", "confirm_export", "confirm_apply"} & set(properties))
                 self.assertTrue(annotations["requiresConfirmation"])
                 self.assertFalse(annotations["safeDefault"])
 

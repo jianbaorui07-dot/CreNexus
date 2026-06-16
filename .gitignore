@@ -23,6 +23,10 @@ reports/
 **/reports/
 scratch/
 sandbox/
+tmp/
+doc_outputs/
+docx_render_check_*/
+_scene_audit_*/
 research_repos/
 third_party_research/
 external_references/
@@ -31,6 +35,10 @@ docx_render_check/
 .codex_video_frames/
 .skill-build/
 .codex/references/
+.codex/skills/blender-safe-scene-skill/
+.codex/skills/comfyui-workflow-skill/agents/
+.codex/skills/mcp-tool-hardening-skill/
+.codex/skills/starbridge-preflight-skill/
 examples/output/**/*.png
 examples/output/**/*.jpg
 examples/output/**/*.jpeg
@@ -40,6 +48,10 @@ examples/output/**/*.ai
 examples/output/**/*.svg
 examples/output/**/*.pdf
 examples/output/**/*.json
+examples/output/**/*.xmp
+examples/output/**/*.CR2
+examples/output/**/*.cr2
+examples/output/**/*.jsx
 !examples/output/
 !examples/output/.gitkeep
 !examples/output/README.md

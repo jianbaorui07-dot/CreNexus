@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://starbridge.local/protocols/photoshop/camera_raw_tune.v1.schema.json",
+  "title": "StarBridge Photoshop Camera Raw Tune Protocol v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["method", "dry_run", "confirm_apply", "preset", "params"],
+  "properties": {
+    "protocol_version": {
+      "type": "string",
+      "const": "camera_raw_tune.v1"
+    },
+    "method": {
+      "type": "string",
+      "const": "ps.camera_raw.tune"
+    },
+    "dry_run": {
+      "type": "boolean",
+      "default": true
+    },
+    "confirm_apply": {
+      "type": "boolean",
+      "default": false
+    },
+    "confirm_export": {
+      "type": "boolean",
+      "default": false
+    },
+    "preset": {
+      "type": "string",
+      "enum": ["blue_artwork_clean"],
+      "default": "blue_artwork_clean"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["active_document", "explicit_path"],
+          "default": "active_document"
+        },
+        "path": {
+          "type": "string",
+          "description": "Optional user-explicit local image path. The protocol records it but does not recursively scan private directories."
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dir": {
+          "type": "string",
+          "const": "examples/output/photoshop"
+        },
+        "basename": {
+          "type": "string",
+          "default": "camera_raw_tune_preview"
+        },
+        "formats": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["jpg", "png"]
+          },
+          "default": ["jpg"]
+        },
+        "export_after_apply": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "params": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "temperature": {"type": "number", "minimum": 2000, "maximum": 50000},
+        "tint": {"type": "number", "minimum": -150, "maximum": 150},
+        "exposure": {"type": "number", "minimum": -5, "maximum": 5},
+        "contrast": {"type": "number", "minimum": -100, "maximum": 100},
+        "highlights": {"type": "number", "minimum": -100, "maximum": 100},
+        "shadows": {"type": "number", "minimum": -100, "maximum": 100},
+        "whites": {"type": "number", "minimum": -100, "maximum": 100},
+        "blacks": {"type": "number", "minimum": -100, "maximum": 100},
+        "texture": {"type": "number", "minimum": -100, "maximum": 100},
+        "clarity": {"type": "number", "minimum": -100, "maximum": 100},
+        "dehaze": {"type": "number", "minimum": -100, "maximum": 100},
+        "vibrance": {"type": "number", "minimum": -100, "maximum": 100},
+        "saturation": {"type": "number", "minimum": -100, "maximum": 100}
+      }
+    }
+  }
+}

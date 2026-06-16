@@ -1,0 +1,38 @@
+{
+  "protocol_version": "camera_raw_tune.v1",
+  "method": "ps.camera_raw.tune",
+  "dry_run": true,
+  "confirm_apply": false,
+  "confirm_export": false,
+  "preset": "blue_artwork_clean",
+  "source": {
+    "mode": "active_document"
+  },
+  "output": {
+    "dir": "examples/output/photoshop",
+    "basename": "camera_raw_tune_blue_artwork",
+    "formats": ["jpg"],
+    "export_after_apply": false
+  },
+  "params": {
+    "temperature": 4800,
+    "tint": 10,
+    "exposure": 0.35,
+    "contrast": 10,
+    "highlights": -25,
+    "shadows": 35,
+    "whites": 12,
+    "blacks": -12,
+    "texture": 18,
+    "clarity": 8,
+    "dehaze": 3,
+    "vibrance": 14,
+    "saturation": -2
+  },
+  "safety": {
+    "target": "active Photoshop document only",
+    "camera_raw_modal_mouse_automation": false,
+    "real_apply_requires": "dry_run=false and confirm_apply=true",
+    "descriptor_status": "not_recorded"
+  }
+}

@@ -142,3 +142,61 @@ powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\extra
 - 不提交输入图、输出图、PSD、字体、笔刷、素材库或账号信息。
 - 不把本机路径写入仓库文档或脚本默认值。
 - 需要登录、授权、插件确认、验证码时，由人手动完成。
+
+## 区域十一：Camera Raw 参数协议
+
+`ps.camera_raw.tune` 使用可复用的参数协议，不控制 Camera Raw 弹窗鼠标，也不自动扫描本机图片目录。协议 schema 位于：
+
+```text
+examples\photoshop_bridge\protocols\camera_raw_tune.v1.schema.json
+```
+
+示例计划位于：
+
+```text
+examples\photoshop_bridge\plans\camera_raw_tune_blue_artwork.example.json
+```
+
+调用方可以通过 `source` 显式说明目标来自当前 Photoshop 文档或用户传入路径；V1 dry-run 只记录计划，不读取私有 RAW。真实输出目录固定为 `examples/output/photoshop`，不能写桌面或任意本机目录。
+
+Codex 可复用脚本入口：
+
+```powershell
+python examples\photoshop_bridge\scripts\camera_raw_tune.py `
+  --source-path "<user-provided-raw-file>" `
+  --exposure 0.5 --contrast 8 --highlights 20 --shadows -6 `
+  --whites 20 --blacks -7 --texture 11 --vibrance 12 `
+  --basename blue_artwork_tuned `
+  --export-after-apply `
+  --write-plan --write-xmp
+```
+
+该命令默认 `dry_run=true`，只把脱敏后的调参计划写入 `examples/output/photoshop/*.camera_raw_plan.json`，并可用 `--write-xmp` 生成 `examples/output/photoshop/*.xmp` Camera Raw 参数 sidecar 预览。真实 apply/export 仍需要已审 BatchPlay descriptor，并显式传入 `--no-dry-run --confirm-apply --confirm-export`。
+
+本地录制 Camera Raw BatchPlay descriptor 后，不要提交 fixture。把它放在本机私有位置，然后用参数或环境变量接入：
+
+```powershell
+$env:STARBRIDGE_CAMERA_RAW_DESCRIPTOR_FIXTURE="<local-verified-fixture.json>"
+python examples\photoshop_bridge\scripts\camera_raw_tune.py `
+  --source-path "<user-provided-raw-file>" `
+  --exposure 0.5 --contrast 8 --highlights 20 --shadows -6 `
+  --whites 20 --blacks -7 --texture 11 --vibrance 12 `
+  --basename blue_artwork_tuned `
+  --export-after-apply `
+  --no-dry-run --confirm-apply --confirm-export
+```
+
+fixture 必须声明 `protocol_version: "camera_raw_tune.v1"`、`method: "ps.camera_raw.tune"`、`descriptor_kind: "camera_raw_filter"`、`verified: true` 和非空 `descriptors`。未验证 fixture 会被拒绝。
+
+本机 Photoshop COM 导出入口：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\camera_raw_export.ps1 `
+  -InputPath "<user-provided-raw-file>" `
+  -Basename blue_artwork_tuned `
+  -Exposure 0.5 -Contrast 8 -Highlights 20 -Shadows -6 `
+  -Whites 20 -Blacks -7 -Texture 11 -Vibrance 12 `
+  -ConfirmApply -ConfirmExport
+```
+
+这个脚本会先把用户显式传入的 RAW 复制到 `examples/output/photoshop`，在同目录写同名 XMP，然后通过已授权的本机 Photoshop COM 打开安全副本并导出 JPG。它不写桌面，不修改原始 RAW 所在目录。

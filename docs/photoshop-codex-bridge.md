@@ -16,6 +16,12 @@ Codex 接入 Photoshop 可以分成三层：
 
 本机实验已经验证过：Codex 可以通过 Windows COM 调用 Photoshop 的脚本接口，创建测试文档并导出 PNG；也可以用 Photoshop 的主体选择能力做抠图实验。复杂海报、文字背景、纹理背景会影响主体选择质量，所以抠图脚本只能作为半自动起点，必要时还要人工修边或增加二次蒙版清理。
 
+Camera Raw tuning 是实验能力。V1 支持参数规划和安全验证；真实 Photoshop apply 需要已验证的本机 BatchPlay descriptor 和显式确认。当前结构化链路是：
+
+`Codex -> StarBridge MCP -> Node Proxy -> UXP Plugin -> Photoshop`
+
+`ps.camera_raw.tune` 不自动拖动 Camera Raw modal UI。默认 `dry_run=true` 只返回计划；`dry_run=false` 必须同时提供 `confirm_apply=true`。在没有已审 Camera Raw Filter descriptor fixture 前，真实 apply 会返回 `camera_raw_batchplay_descriptor_not_recorded`。
+
 ## 仓库入口
 
 | 文件 | 用途 |
@@ -23,6 +29,8 @@ Codex 接入 Photoshop 可以分成三层：
 | `examples/photoshop_bridge/README.md` | Photoshop 本地桥实验说明 |
 | `examples/photoshop_bridge/scripts/com_probe.ps1` | 连接 Photoshop COM，创建测试文档并导出 PNG |
 | `examples/photoshop_bridge/scripts/extract_subject_to_png.ps1` | 打开输入图，调用 Photoshop 主体选择，导出透明 PNG |
+| `examples/photoshop_bridge/protocols/camera_raw_tune.v1.schema.json` | `ps.camera_raw.tune` 可复用参数协议 schema |
+| `examples/photoshop_bridge/plans/camera_raw_tune_blue_artwork.example.json` | 蓝色织物/蓝晒类作品照片的 Camera Raw tuning dry-run 示例计划 |
 | `examples/bridge_status.py` | 增加 Photoshop 状态检查，只读取通用环境和 COM 可用性 |
 
 ## 运行条件
@@ -83,6 +91,7 @@ powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\extra
 - 增加半自动抠图后处理：保留最大主体、羽化边缘、清理背景残留。
 - 把稳定命令封装成 MCP 工具，例如 `photoshop_get_document_info`、`photoshop_create_probe_doc`、`photoshop_extract_subject`。
 - 所有会修改图像的命令默认只输出新文件，不覆盖原图。
+- 为 `ps.camera_raw.tune` 录制、审查并加入 Camera Raw Filter BatchPlay descriptor fixture 后，再开放 confirmed apply。
 
 ## 官方资料
 

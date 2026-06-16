@@ -4,6 +4,7 @@ from typing import Any
 
 from .schemas import (
     batchplay_validate_schema,
+    camera_raw_tune_schema,
     disabled_confirmed_write_schema,
     document_info_schema,
     evidence_capture_schema,
@@ -56,6 +57,7 @@ def build_tool_definitions() -> list[dict[str, Any]]:
         _tool("ps.layer.move", "Photoshop Layer Move", "Plan a layer move limited to sandbox copies.", layer_write_schema(), risk_level="guarded_local_write", safe_default=False, requires_confirmation=True, requires_local_software=True, current_status="planned", read_only=False),
         _tool("ps.layer.visibility", "Photoshop Layer Visibility", "Plan a layer visibility change limited to sandbox copies.", layer_write_schema(), risk_level="guarded_local_write", safe_default=False, requires_confirmation=True, requires_local_software=True, current_status="planned", read_only=False),
         _tool("ps.preview.export", "Photoshop Preview Export", "Export a sandbox preview through node_proxy_uxp when available, otherwise fall back safely.", preview_export_schema(), risk_level="guarded_local_write", safe_default=False, requires_confirmation=True, requires_local_software=True, current_status="experimental", read_only=False),
+        _tool("ps.camera_raw.tune", "Photoshop Camera Raw Tune", "Plan and validate Camera Raw tuning parameters; confirmed apply is blocked until a verified BatchPlay descriptor fixture exists.", camera_raw_tune_schema(), risk_level="guarded_local_write", safe_default=False, requires_confirmation=True, requires_local_software=True, current_status="experimental", read_only=False),
         _tool("ps.evidence.capture", "Photoshop Evidence Capture", "Capture an EvidenceManifest JSON for a local Photoshop job.", evidence_capture_schema(), risk_level="guarded_local_write", safe_default=False, requires_confirmation=True, requires_local_software=False, current_status="experimental", read_only=False),
         _tool("ps.batchplay.validate", "BatchPlay Validate", "Validate typed BatchPlay descriptors against the Python allowlist.", batchplay_validate_schema(), risk_level="safe_read_only", safe_default=True, requires_confirmation=False, requires_local_software=False, current_status="experimental", read_only=True),
         _tool("ps.batchplay.execute_confirmed", "BatchPlay Execute Confirmed", "Execute an allowlisted typed BatchPlay request on sandbox copies only.", disabled_confirmed_write_schema(), risk_level="guarded_local_write", safe_default=False, requires_confirmation=True, requires_local_software=True, current_status="experimental", read_only=False),

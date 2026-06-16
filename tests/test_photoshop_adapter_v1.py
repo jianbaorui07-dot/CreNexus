@@ -33,6 +33,7 @@ class PhotoshopAdapterV1Tests(unittest.TestCase):
             "ps.layer.move",
             "ps.layer.visibility",
             "ps.preview.export",
+            "ps.camera_raw.tune",
             "ps.evidence.capture",
             "ps.batchplay.validate",
         ):
@@ -69,6 +70,62 @@ class PhotoshopAdapterV1Tests(unittest.TestCase):
         self.assertTrue(manifest["dry_run"])
         self.assertIsNone(payload["details"]["evidence_path"])
         self.assertEqual([], payload["details"]["preview_files"])
+
+    def test_camera_raw_tune_defaults_to_dry_run_plan(self) -> None:
+        response = request(45, "tools/call", {"name": "ps.camera_raw.tune", "arguments": {"bridge_kind": "mock"}})
+        payload = response["result"]["structuredContent"]
+
+        self.assertTrue(payload["ok"])
+        self.assertTrue(payload["details"]["dry_run"])
+        self.assertFalse(payload["details"]["confirm_apply"])
+        self.assertEqual("blue_artwork_clean", payload["details"]["plan"]["preset"])
+        self.assertEqual(4800, payload["details"]["plan"]["params"]["temperature"])
+        self.assertIsNone(payload["details"]["evidence_path"])
+
+    def test_camera_raw_tune_rejects_out_of_range_params(self) -> None:
+        response = request(
+            46,
+            "tools/call",
+            {"name": "ps.camera_raw.tune", "arguments": {"params": {"exposure": 8}}},
+        )
+        payload = response["result"]["structuredContent"]
+
+        self.assertFalse(payload["ok"])
+        self.assertIn("params.exposure", " ".join(payload["details"]["errors"]))
+
+    def test_camera_raw_tune_requires_confirm_apply_for_real_apply(self) -> None:
+        response = request(
+            47,
+            "tools/call",
+            {"name": "ps.camera_raw.tune", "arguments": {"dry_run": False}},
+        )
+        payload = response["result"]["structuredContent"]
+
+        self.assertFalse(payload["ok"])
+        self.assertIn("confirm_apply", payload["message"])
+
+    def test_camera_raw_tune_blocks_when_descriptor_is_missing(self) -> None:
+        response = request(
+            48,
+            "tools/call",
+            {"name": "ps.camera_raw.tune", "arguments": {"dry_run": False, "confirm_apply": True}},
+        )
+        payload = response["result"]["structuredContent"]
+
+        self.assertFalse(payload["ok"])
+        self.assertEqual("camera_raw_batchplay_descriptor_not_recorded", payload["details"]["blocked_reason"])
+        self.assertIn("Record a verified Camera Raw Filter descriptor", payload["details"]["next_step"])
+
+    def test_camera_raw_tune_output_dir_cannot_escape_photoshop_output(self) -> None:
+        response = request(
+            49,
+            "tools/call",
+            {"name": "ps.camera_raw.tune", "arguments": {"output_dir": "sandbox"}},
+        )
+        payload = response["result"]["structuredContent"]
+
+        self.assertFalse(payload["ok"])
+        self.assertIn("examples/output/photoshop", payload["error"])
 
     def test_selection_subject_mock_plan_is_available(self) -> None:
         response = request(41, "tools/call", {"name": "ps.selection.subject", "arguments": {"bridge_kind": "mock"}})

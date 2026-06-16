@@ -2,7 +2,42 @@ import { BridgeClient } from "./bridge-client.js";
 import { executeTypedBatchPlay, runModalJob, validateBatchPlay } from "./batchplay-runner.js";
 
 const photoshop = require("photoshop");
-const { app } = photoshop;
+const { action, app } = photoshop;
+
+const CAMERA_RAW_BLOCKED_REASON = "camera_raw_batchplay_descriptor_not_recorded";
+const CAMERA_RAW_NEXT_STEP = "Record a verified Camera Raw Filter descriptor with Alchemist or Photoshop Action listener and add it as a fixture.";
+const CAMERA_RAW_PROTOCOL_VERSION = "camera_raw_tune.v1";
+const CAMERA_RAW_OUTPUT_DIR = "examples/output/photoshop";
+const CAMERA_RAW_DEFAULTS = {
+  temperature: 4800,
+  tint: 10,
+  exposure: 0.35,
+  contrast: 10,
+  highlights: -25,
+  shadows: 35,
+  whites: 12,
+  blacks: -12,
+  texture: 18,
+  clarity: 8,
+  dehaze: 3,
+  vibrance: 14,
+  saturation: -2,
+};
+const CAMERA_RAW_RANGES = {
+  temperature: [2000, 50000],
+  tint: [-150, 150],
+  exposure: [-5, 5],
+  contrast: [-100, 100],
+  highlights: [-100, 100],
+  shadows: [-100, 100],
+  whites: [-100, 100],
+  blacks: [-100, 100],
+  texture: [-100, 100],
+  clarity: [-100, 100],
+  dehaze: [-100, 100],
+  vibrance: [-100, 100],
+  saturation: [-100, 100],
+};
 
 function currentHost() {
   return {
@@ -46,6 +81,78 @@ function flattenLayers(layers, groupPath = []) {
   return rows;
 }
 
+function cameraRawPlan(params = {}) {
+  const preset = String(params.preset || "blue_artwork_clean");
+  const values = { ...CAMERA_RAW_DEFAULTS };
+  const errors = [];
+  if (preset !== "blue_artwork_clean") {
+    errors.push("preset must be blue_artwork_clean");
+  }
+  const supplied = params.params || {};
+  for (const [key, value] of Object.entries(supplied)) {
+    if (!Object.prototype.hasOwnProperty.call(CAMERA_RAW_RANGES, key)) {
+      errors.push(`params.${key} is not supported`);
+      continue;
+    }
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+      errors.push(`params.${key} must be numeric`);
+      continue;
+    }
+    const [minimum, maximum] = CAMERA_RAW_RANGES[key];
+    if (value < minimum || value > maximum) {
+      errors.push(`params.${key} must be between ${minimum} and ${maximum}`);
+      continue;
+    }
+    values[key] = value;
+  }
+  const rawSource = params.source || { mode: "active_document" };
+  const sourceMode = String(rawSource.mode || "active_document");
+  const source = { mode: sourceMode };
+  if (!["active_document", "explicit_path"].includes(sourceMode)) {
+    errors.push("source.mode must be active_document or explicit_path");
+  }
+  if (sourceMode === "explicit_path") {
+    if (!rawSource.path) {
+      errors.push("source.path is required when source.mode is explicit_path");
+    } else {
+      source.path = String(rawSource.path);
+      source.read_policy = "user_explicit_path_only";
+    }
+  }
+  const rawOutput = params.output || {};
+  const outputDir = String(rawOutput.dir || CAMERA_RAW_OUTPUT_DIR).replaceAll("\\", "/");
+  if (outputDir !== CAMERA_RAW_OUTPUT_DIR) {
+    errors.push(`output.dir must stay inside ${CAMERA_RAW_OUTPUT_DIR}`);
+  }
+  const formats = Array.isArray(rawOutput.formats) && rawOutput.formats.length ? rawOutput.formats.map((item) => String(item).toLowerCase()) : ["jpg"];
+  const unsupportedFormats = formats.filter((item) => !["jpg", "png"].includes(item));
+  if (unsupportedFormats.length) {
+    errors.push(`output.formats contains unsupported values: ${unsupportedFormats.join(", ")}`);
+  }
+  const basename = String(rawOutput.basename || "camera_raw_tune_preview");
+  if (!basename || basename.includes("/") || basename.includes("\\") || basename.includes(":") || basename.includes("..")) {
+    errors.push("output.basename must be a simple file stem");
+  }
+  return {
+    errors,
+    plan: {
+      protocol_version: CAMERA_RAW_PROTOCOL_VERSION,
+      method: "ps.camera_raw.tune",
+      preset,
+      params: values,
+      source,
+      output: {
+        dir: outputDir,
+        basename,
+        formats,
+        export_after_apply: Boolean(rawOutput.export_after_apply),
+      },
+      descriptor_status: "missing",
+      execution_path: ["Codex", "StarBridge MCP", "Node Proxy", "UXP Plugin", "Photoshop"],
+    },
+  };
+}
+
 async function ping() {
   return {
     plugin_status: "ok",
@@ -53,6 +160,76 @@ async function ping() {
     plugin_version: "1.0.0",
     now: new Date().toISOString(),
   };
+}
+
+async function cameraRawTune(params) {
+  const dryRun = params?.dry_run !== false;
+  const confirmApply = Boolean(params?.confirm_apply);
+  const confirmExport = Boolean(params?.confirm_export);
+  const { errors, plan } = cameraRawPlan(params || {});
+  if (errors.length) {
+    return { ok: false, errors, plan, photoshop_host: currentHost() };
+  }
+  if (dryRun) {
+    return {
+      ok: true,
+      dry_run: true,
+      confirm_apply: confirmApply,
+      confirm_export: confirmExport,
+      plan,
+      photoshop_host: currentHost(),
+      warnings: ["Camera Raw tuning dry-run validated; Photoshop was not modified."],
+    };
+  }
+  if (!confirmApply) {
+    return {
+      ok: false,
+      dry_run: false,
+      confirm_apply: false,
+      confirm_export: confirmExport,
+      plan,
+      photoshop_host: currentHost(),
+      message: "confirm_apply=true is required when dry_run=false.",
+    };
+  }
+  if (plan.output.export_after_apply && !confirmExport) {
+    return {
+      ok: false,
+      dry_run: false,
+      confirm_apply: true,
+      confirm_export: false,
+      plan,
+      photoshop_host: currentHost(),
+      message: "confirm_export=true is required when output.export_after_apply=true.",
+    };
+  }
+  if (params?.descriptor_fixture_verified === true && Array.isArray(params?.descriptors) && params.descriptors.length) {
+    return runModalJob("ps.camera_raw.tune", { commandName: "StarBridge Camera Raw Tune" }, async () => {
+      const batchplayResult = await action.batchPlay(params.descriptors, { synchronousExecution: true, modalBehavior: "execute" });
+      return {
+        ok: true,
+        executed: true,
+        dry_run: false,
+        confirm_apply: true,
+        confirm_export: confirmExport,
+        batchplay_result: batchplayResult,
+        output_files: plan.output.export_after_apply ? plan.output.formats.map((format) => `${plan.output.dir}/${plan.output.basename}.${format}`) : [],
+        plan,
+        photoshop_host: currentHost(),
+        warnings: plan.output.export_after_apply ? ["Camera Raw descriptor applied; export path remains host-dependent in UXP V1."] : [],
+      };
+    });
+  }
+  return runModalJob("ps.camera_raw.tune", { commandName: "StarBridge Camera Raw Tune" }, async () => ({
+    ok: false,
+    dry_run: false,
+    confirm_apply: true,
+    confirm_export: confirmExport,
+    blocked_reason: CAMERA_RAW_BLOCKED_REASON,
+    next_step: CAMERA_RAW_NEXT_STEP,
+    plan,
+    photoshop_host: currentHost(),
+  }));
 }
 
 async function documentInfo() {
@@ -141,6 +318,7 @@ const handlers = {
   "ps.document.info": documentInfo,
   "ps.layers.list": layersList,
   "ps.preview.export": previewExport,
+  "ps.camera_raw.tune": cameraRawTune,
   "ps.batchplay.validate.local": batchplayValidate,
   "ps.batchplay.execute_confirmed": batchplayExecuteConfirmed,
 };

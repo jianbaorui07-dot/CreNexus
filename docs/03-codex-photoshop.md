@@ -13,6 +13,7 @@
 | 当前文档信息 | `examples/photoshop_bridge/scripts/document_info.ps1` | 读取当前文档名称、尺寸、模式和图层数量 |
 | sandbox PSD demo | `examples/photoshop_bridge/scripts/create_demo_document.ps1` | 默认 dry-run；确认后创建公开安全测试 PSD 和命名图层 |
 | sandbox preview export | `examples/photoshop_bridge/scripts/export_demo_preview.ps1` | 确认后只从 demo PSD 导出 PNG / JPG preview |
+| Camera Raw tuning plan | `ps.camera_raw.tune` / `examples/photoshop_bridge/plans/camera_raw_tune_blue_artwork.example.json` | 默认 dry-run，只验证蓝色织物/蓝晒类作品照片的调色参数计划 |
 | demo manifest | `examples/photoshop_bridge/write_demo_manifest.py` | 汇总本地 demo 输出，manifest 本身不提交 |
 | COM 探针 | `examples/photoshop_bridge/scripts/com_probe.ps1` | 创建测试文档并导出 PNG |
 | 主体抠图实验 | `examples/photoshop_bridge/scripts/extract_subject_to_png.ps1` | 输入和输出路径都由参数传入 |
@@ -79,6 +80,36 @@ npm.cmd run photoshop:manifest
 
 真实输出只写入 `examples/output/photoshop/`，生成的 PSD、PNG、JPG 和 manifest JSON 不提交。
 
+Camera Raw tuning 是实验能力。V1 支持参数规划和安全验证；真实 Photoshop apply 需要先用 Alchemist 或 Photoshop Action listener 录制并审查本机 BatchPlay descriptor，并且必须显式传入 `confirm_apply=true`。当前没有已审 descriptor fixture 时，`dry_run=false` 会返回 `camera_raw_batchplay_descriptor_not_recorded`，不会自动拖动 Camera Raw 弹窗滑块，也不会修改 Photoshop。
+
+可复用协议 schema：
+
+```powershell
+python -m json.tool examples\photoshop_bridge\protocols\camera_raw_tune.v1.schema.json
+```
+
+示例计划：
+
+```powershell
+python -m json.tool examples\photoshop_bridge\plans\camera_raw_tune_blue_artwork.example.json
+```
+
+Codex 调用脚本：
+
+```powershell
+python examples\photoshop_bridge\scripts\camera_raw_tune.py --source-path "<user-provided-raw-file>" --exposure 0.5 --contrast 8 --highlights 20 --shadows -6 --whites 20 --blacks -7 --texture 11 --vibrance 12 --basename blue_artwork_tuned --export-after-apply --write-plan --write-xmp
+```
+
+这个脚本只走 `ps.camera_raw.tune` 参数协议。默认 dry-run，不读取私有 RAW，不写桌面；计划和 XMP sidecar 预览输出固定在 `examples/output/photoshop`。
+
+确认执行本机 Photoshop COM 导出：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\camera_raw_export.ps1 -InputPath "<user-provided-raw-file>" -Basename blue_artwork_tuned -Exposure 0.5 -Contrast 8 -Highlights 20 -Shadows -6 -Whites 20 -Blacks -7 -Texture 11 -Vibrance 12 -ConfirmApply -ConfirmExport
+```
+
+该脚本只处理用户显式传入的 RAW，并先复制到 `examples/output/photoshop` 再写同名 XMP 和导出 JPG；不写桌面，不修改原始目录。
+
 四联科技六边形海报实验：
 
 ```powershell
@@ -95,6 +126,7 @@ powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\experiments\4
 - 不能提交源图路径、桌面路径或导出结果。
 - 不能承诺复杂商业海报、复杂文字背景、线稿背景都能自动抠好。
 - 不能把实验脚本说成稳定生产级工作流。
+- 不能自动控制 Camera Raw modal UI 鼠标拖动；只能走结构化计划和已审 BatchPlay descriptor。
 - 复杂商业修图、主体抠图和真实项目 PSD 仍然需要人工确认。
 
 ## 下一步
