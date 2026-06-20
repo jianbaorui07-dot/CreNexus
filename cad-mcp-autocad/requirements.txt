@@ -1,5 +1,5 @@
 # CAD MCP 服务依赖
 pywin32>=228
-mcp>=1.27.2
+mcp>=1.28.0
 pydantic>=2.13.4
 typing>=3.7.4.3
