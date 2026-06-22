@@ -20,6 +20,8 @@ TOOL_HANDLERS = {
     "ps.preview.export": _ADAPTER.preview_export,
     "ps.camera_raw.tune": _ADAPTER.camera_raw_tune,
     "ps.evidence.capture": _ADAPTER.evidence_capture,
+    "ps.get_preview": _ADAPTER.get_preview,
+    "ps.get_state": _ADAPTER.get_state,
     "ps.batchplay.validate": _ADAPTER.batchplay_validate,
     "ps.batchplay.execute_confirmed": _ADAPTER.batchplay_execute_confirmed,
     "ps.script.execute_confirmed": lambda arguments: _ADAPTER.disabled_write(

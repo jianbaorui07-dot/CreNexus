@@ -255,6 +255,41 @@ def disabled_confirmed_write_schema() -> dict[str, Any]:
     )
 
 
+def get_preview_schema() -> dict[str, Any]:
+    return object_schema(
+        {
+            **common_properties(
+                risk_level="level_0_read_only",
+                requires_confirmation=False,
+                writes_files=False,
+                touches_user_psd=False,
+                default_output_dir="sandbox/evidence",
+            ),
+            "max_side": {"type": "integer", "minimum": 64, "maximum": 4096, "default": 1024},
+            "format": {"type": "string", "enum": ["png", "jpg"], "default": "jpg"},
+            "quality": {"type": "integer", "minimum": 1, "maximum": 100, "default": 80},
+            "include_base64": {"type": "boolean", "default": True, "description": "Return base64 data for vision models."},
+        }
+    )
+
+
+def get_state_schema() -> dict[str, Any]:
+    return object_schema(
+        {
+            **common_properties(
+                risk_level="level_0_read_only",
+                requires_confirmation=False,
+                writes_files=False,
+                touches_user_psd=False,
+                default_output_dir="sandbox/evidence",
+            ),
+            "include_layers": {"type": "boolean", "default": True},
+            "include_history": {"type": "boolean", "default": False},
+            "lightweight": {"type": "boolean", "default": True, "description": "Cheap snapshot without full pixel data."},
+        }
+    )
+
+
 @dataclass(frozen=True)
 class EvidenceManifest:
     job_id: str

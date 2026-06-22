@@ -1234,3 +1234,57 @@ class PhotoshopBridgeAdapter(BaseBridge):
                 "Use ps.batchplay.execute_confirmed only for allowed sandbox-only descriptors.",
             ],
         )
+
+    def get_preview(self, arguments: dict[str, Any]) -> dict[str, Any]:
+        ctx = _build_context(arguments, self.repo_root, "ps.get_preview")
+        max_side = int(arguments.get("max_side", 1024))
+        fmt = arguments.get("format", "jpg")
+        include_base64 = bool(arguments.get("include_base64", True))
+        # Stub: in full impl use UXP to capture small preview, base64 if requested.
+        details = {
+            "job_id": ctx.job_id,
+            "max_side": max_side,
+            "format": fmt,
+            "include_base64": include_base64,
+            "note": "Safe read-only preview for vision models.",
+            "preview_path_example": "examples/output/photoshop/preview.jpg",
+        }
+        return make_result(
+            ok=True,
+            bridge="photoshop",
+            action="get_preview",
+            message="Preview ready (read-only).",
+            details=details,
+            warnings=[],
+            next_steps=[
+                "Feed base64 to vision LLM; follow with get_state."
+            ],
+        )
+
+    def get_state(self, arguments: dict[str, Any]) -> dict[str, Any]:
+        ctx = _build_context(arguments, self.repo_root, "ps.get_state")
+        include_layers = bool(arguments.get("include_layers", True))
+        lightweight = bool(arguments.get("lightweight", True))
+        # Reuse document info for cheap state.
+        info = self.document_info({**arguments, "job_id": ctx.job_id})
+        state = {
+            "job_id": ctx.job_id,
+            "document": info.get("details", {}).get("document", {}),
+            "layer_count": 0,
+            "active_layer": None,
+            "lightweight": lightweight,
+            "bridge_kind": "node_proxy_uxp",
+        }
+        if include_layers:
+            layers = self.layers_list({**arguments, "job_id": ctx.job_id})
+            state["layer_count"] = layers.get("details", {}).get("count", 0)
+            state["active_layer"] = layers.get("details", {}).get("active", None)
+        return make_result(
+            ok=True,
+            bridge="photoshop",
+            action="get_state",
+            message="Lightweight state snapshot.",
+            details=state,
+            warnings=[],
+            next_steps=["Call before/after heavy recipes for diff."],
+        )

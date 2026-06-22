@@ -1054,9 +1054,17 @@ PHOTOSHOP_RECIPE_ID = "sandbox_demo_preview"
 CORE_RECIPES = {
     "remove_background": {
         "goal": "Remove background using select subject, feather mask, apply layer mask. All in sandbox.",
-        "steps": ["select subject", "feather selection", "create mask layer", "apply mask", "refine edges", "export preview"],
-        "tools": ["ps.selection.subject", "ps.layer.mask", "ps.preview.export", "starbridge.evidence"],
-        "safety": "dry_run default; confirm for real mask application on copy.",
+        "steps": [
+            "1. ps.probe + ps.get_state for current doc",
+            "2. ps.selection.subject (subject extract)",
+            "3. feather selection (2-5px)",
+            "4. create mask from selection on copy layer",
+            "5. apply layer mask",
+            "6. ps.get_preview for vision check",
+            "7. starbridge.evidence.capture + manifest",
+        ],
+        "tools": ["ps.probe", "ps.get_state", "ps.selection.subject", "ps.preview.export", "starbridge.evidence"],
+        "safety": "dry_run default; confirm for real mask application on copy. Never on original PSD.",
     },
     "enhance_portrait": {
         "goal": "Enhance portrait with frequency separation or smoothing, tone, skin retouch.",

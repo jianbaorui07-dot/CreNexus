@@ -14,6 +14,19 @@
 * Polished README: added prominent Getting Started / Quick Install section, License badges and section, better onboarding.
 * Central tool capability metadata in `core/tool_registry.py` and bridge profiles in `server.py` — added cross-reference notes to reduce drift.
 
+### Photoshop Enhancements (C + Recipes follow-up)
+* Added `ps.get_preview` (base64/path for vision models) and `ps.get_state` (lightweight snapshot) — read-only, cheap, safe for iterative agent use.
+* Fleshed out 5 core recipes with concrete steps/tools: remove_background, enhance_portrait, frequency_separation, color_grade, prepare_for_web. Recipes return plans with safety gates.
+* Enhanced Action Plan mode in recipe_plan (action_plan=true) for plan-then-execute with repair hints.
+* Updated schemas, tools, bridge adapter, mcp handlers, tool_registry, and docs for new preview/state + recipes.
+* More recipe details: steps now map to existing ps.* tools (selection, layers, batchplay, preview, evidence).
+
+### Release Process
+* Improved install-and-publish.md with clearer PyPI/npm/MCP registry paths, smoke test commands, and productization checklist.
+* Updated CHANGELOG with unreleased long-term optimizations.
+* Added pre-commit config (ruff, mypy) and CI enforcement for consistent releases.
+* VERSION and pyproject kept in sync; recommend `scripts/starbridge_preflight.py` + security check before publish.
+
 ## [0.1.0] - 2026-05-29
 
 ### Added

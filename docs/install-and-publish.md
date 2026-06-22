@@ -80,3 +80,7 @@ npm.cmd run package:python:check
 - MCP registry 示例只包含 stdio 入口、能力摘要和安全说明，不包含真实路径。
 - PyPI / npm 发布动作需要维护者手动 token，不自动登录、不自动上传。
 - 可视化 demo 只展示公开能力矩阵和验证命令，不包含私有素材截图。
+- 新增 `ps.get_preview` / `ps.get_state` 后更新 capability matrix 和示例。
+- Recipes (remove_background 等) 和 Action Plan 模式已添加，保持 dry_run + manifest 安全。
+- 运行 `python -m ruff check . && python scripts/starbridge_preflight.py` 再发布。
+- 考虑 GitHub release: 用 `gh release create` 或 action，附带 CHANGELOG 片段。
