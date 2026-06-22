@@ -4,7 +4,6 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -21,7 +20,11 @@ BRIDGE_ENV_VARS = {
 @dataclass(frozen=True)
 class StarBridgeConfig:
     repo_root: Path = REPO_ROOT
-    comfy_url: str = os.environ.get("STARBRIDGE_COMFYUI_URL") or os.environ.get("COMFY_BASE_URL") or "http://127.0.0.1:8188"
+    comfy_url: str = (
+        os.environ.get("STARBRIDGE_COMFYUI_URL")
+        or os.environ.get("COMFY_BASE_URL")
+        or "http://127.0.0.1:8188"
+    )
     timeout: int = int(os.environ.get("STARBRIDGE_PROBE_TIMEOUT", "8"))
 
 

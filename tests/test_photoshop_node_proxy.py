@@ -3,12 +3,10 @@ from __future__ import annotations
 import json
 import os
 import subprocess
-import sys
 import time
 import unittest
 import urllib.request
 from pathlib import Path
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 NODE_PROXY_ROOT = REPO_ROOT / "node_proxy" / "photoshop-bridge"
@@ -79,7 +77,9 @@ class PhotoshopNodeProxyTests(unittest.TestCase):
     def test_rpc_without_uxp_client_returns_explicit_error(self) -> None:
         request = urllib.request.Request(
             f"http://127.0.0.1:{self.port}/rpc",
-            data=json.dumps({"jsonrpc": "2.0", "id": 1, "method": "starbridge.ping", "params": {}}).encode("utf-8"),
+            data=json.dumps(
+                {"jsonrpc": "2.0", "id": 1, "method": "starbridge.ping", "params": {}}
+            ).encode("utf-8"),
             headers={"Content-Type": "application/json"},
             method="POST",
         )

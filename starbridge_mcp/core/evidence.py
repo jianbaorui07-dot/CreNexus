@@ -1,14 +1,13 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-import json
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
 from starbridge_mcp.core.security import sanitize
-
 
 VALID_JOB_STATUSES = ("queued", "running", "completed", "failed", "cancelled", "needs_user")
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -138,13 +137,28 @@ class EvidenceManifest:
     def __post_init__(self) -> None:
         self.status = ensure_status(self.status)
 
-    def add_output_file(self, path: str, *, label: str | None = None, details: dict[str, Any] | None = None) -> None:
-        self.output_files.append(EvidenceItem(kind="file", path=sanitize_path_string(path), label=label, details=details or {}))
+    def add_output_file(
+        self, path: str, *, label: str | None = None, details: dict[str, Any] | None = None
+    ) -> None:
+        self.output_files.append(
+            EvidenceItem(
+                kind="file", path=sanitize_path_string(path), label=label, details=details or {}
+            )
+        )
         self.redacted_paths.append(sanitize_path_string(path))
         self.updated_at = utc_now_iso()
 
-    def add_screenshot(self, path: str, *, label: str | None = None, details: dict[str, Any] | None = None) -> None:
-        self.screenshots.append(EvidenceItem(kind="screenshot", path=sanitize_path_string(path), label=label, details=details or {}))
+    def add_screenshot(
+        self, path: str, *, label: str | None = None, details: dict[str, Any] | None = None
+    ) -> None:
+        self.screenshots.append(
+            EvidenceItem(
+                kind="screenshot",
+                path=sanitize_path_string(path),
+                label=label,
+                details=details or {},
+            )
+        )
         self.redacted_paths.append(sanitize_path_string(path))
         self.updated_at = utc_now_iso()
 
@@ -257,7 +271,9 @@ def manifest_validation_result(payload: dict[str, Any]) -> ValidationResult:
 def save_manifest(manifest: EvidenceManifest, path: str | Path | None = None) -> Path:
     target = ensure_evidence_path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(json.dumps(manifest.to_dict(), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    target.write_text(
+        json.dumps(manifest.to_dict(), ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
     return target
 
 
@@ -266,4 +282,3 @@ def load_manifest(path: str | Path | None = None) -> dict[str, Any]:
     if not target.exists():
         raise FileNotFoundError(f"missing evidence manifest: {repo_relative(target)}")
     return json.loads(target.read_text(encoding="utf-8"))
-

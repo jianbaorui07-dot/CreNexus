@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-
 REQUIRED_RESULT_FIELDS = ("ok", "bridge", "action", "message", "details", "warnings", "next_steps")
 
 

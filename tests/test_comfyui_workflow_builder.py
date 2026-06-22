@@ -5,11 +5,19 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from examples.comfy_bridge.validate_workflow import validate_workflow_file, validate_workflow_payload
-from examples.comfy_bridge.workflow_agent import workflow_build, workflow_build_plan, workflow_compose, workflow_draft
+from examples.comfy_bridge.validate_workflow import (
+    validate_workflow_file,
+    validate_workflow_payload,
+)
+from examples.comfy_bridge.workflow_agent import (
+    workflow_build,
+    workflow_build_plan,
+    workflow_compose,
+    workflow_draft,
+)
 from examples.comfy_bridge.workflow_template_registry import (
-    REGISTRY_PATH,
     RECOGNIZED_COMPOSER_MODULES,
+    REGISTRY_PATH,
     compose_from_template,
     get_workflow_template,
     list_workflow_templates,
@@ -17,7 +25,6 @@ from examples.comfy_bridge.workflow_template_registry import (
     validate_workflow_template_registry,
 )
 from starbridge_mcp.mcp_server import handle_request
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -49,7 +56,9 @@ class ComfyWorkflowBuilderTests(unittest.TestCase):
     def test_img2img_inpaint_and_upscale_generate_plan_only(self) -> None:
         for workflow_type in ("img2img", "inpaint", "upscale"):
             with self.subTest(workflow_type=workflow_type):
-                result = workflow_build_plan({"goal": "安全测试计划", "workflow_type": workflow_type})
+                result = workflow_build_plan(
+                    {"goal": "安全测试计划", "workflow_type": workflow_type}
+                )
 
                 self.assertTrue(result["ok"])
                 self.assertEqual("dry_run", result["mode"])
@@ -135,7 +144,9 @@ class ComfyWorkflowBuilderTests(unittest.TestCase):
             {
                 "task_type": "img2img",
                 "prompt": "public placeholder prompt",
-                "checkpoint": private_root + "\\ComfyUI\\models\\checkpoints\\private-model." + "ckpt",
+                "checkpoint": private_root
+                + "\\ComfyUI\\models\\checkpoints\\private-model."
+                + "ckpt",
                 "source_image_path": private_root + "\\Pictures\\private-source.png",
             }
         )
@@ -146,12 +157,19 @@ class ComfyWorkflowBuilderTests(unittest.TestCase):
         self.assertNotIn("private-model", encoded)
         self.assertNotIn(".ckpt", encoded.lower())
         self.assertNotIn("Pictures", encoded)
-        self.assertEqual("__checkpoint_placeholder__", result["workflow"]["2"]["inputs"]["ckpt_name"])
+        self.assertEqual(
+            "__checkpoint_placeholder__", result["workflow"]["2"]["inputs"]["ckpt_name"]
+        )
 
     def test_workflow_draft_does_not_submit_or_access_filesystem_or_network(self) -> None:
-        with patch("builtins.open", side_effect=AssertionError("filesystem access blocked")), patch(
-            "urllib.request.urlopen", side_effect=AssertionError("network access blocked")
-        ), patch("examples.comfy_bridge.workflow_agent.submit_workflow", side_effect=AssertionError("submit blocked")):
+        with (
+            patch("builtins.open", side_effect=AssertionError("filesystem access blocked")),
+            patch("urllib.request.urlopen", side_effect=AssertionError("network access blocked")),
+            patch(
+                "examples.comfy_bridge.workflow_agent.submit_workflow",
+                side_effect=AssertionError("submit blocked"),
+            ),
+        ):
             result = workflow_draft({"task_type": "inpaint", "prompt": "public placeholder prompt"})
 
         self.assertTrue(result["valid"])
@@ -188,7 +206,9 @@ class ComfyWorkflowBuilderTests(unittest.TestCase):
             "upscale_draft_workflow.example.json",
         ):
             with self.subTest(filename=filename):
-                result = validate_workflow_file(REPO_ROOT / "examples" / "comfy_bridge" / "workflows" / filename)
+                result = validate_workflow_file(
+                    REPO_ROOT / "examples" / "comfy_bridge" / "workflows" / filename
+                )
 
                 self.assertTrue(result["ok"], result["details"])
                 self.assertTrue(result["details"]["valid"])
@@ -223,14 +243,36 @@ class ComfyWorkflowBuilderTests(unittest.TestCase):
 
     def test_workflow_compose_has_expected_core_chains(self) -> None:
         expectations = {
-            "txt2img": {"CheckpointLoaderSimple", "CLIPTextEncode", "EmptyLatentImage", "KSampler", "VAEDecode", "SaveImage"},
+            "txt2img": {
+                "CheckpointLoaderSimple",
+                "CLIPTextEncode",
+                "EmptyLatentImage",
+                "KSampler",
+                "VAEDecode",
+                "SaveImage",
+            },
             "img2img": {"LoadImage", "VAEEncode", "KSampler", "VAEDecode", "SaveImage"},
-            "inpaint": {"LoadImage", "LoadImageMask", "VAEEncodeForInpaint", "KSampler", "VAEDecode", "SaveImage"},
-            "upscale": {"LoadImage", "UpscaleModelLoader", "ImageUpscaleWithModel", "ImageScale", "SaveImage"},
+            "inpaint": {
+                "LoadImage",
+                "LoadImageMask",
+                "VAEEncodeForInpaint",
+                "KSampler",
+                "VAEDecode",
+                "SaveImage",
+            },
+            "upscale": {
+                "LoadImage",
+                "UpscaleModelLoader",
+                "ImageUpscaleWithModel",
+                "ImageScale",
+                "SaveImage",
+            },
         }
         for task_type, required_classes in expectations.items():
             with self.subTest(task_type=task_type):
-                result = workflow_compose({"task_type": task_type, "prompt": "public placeholder prompt"})
+                result = workflow_compose(
+                    {"task_type": task_type, "prompt": "public placeholder prompt"}
+                )
                 class_types = set(result["node_summary"]["class_types"])
 
                 self.assertTrue(required_classes <= class_types)
@@ -241,7 +283,9 @@ class ComfyWorkflowBuilderTests(unittest.TestCase):
             {
                 "task_type": "txt2img",
                 "prompt": "public placeholder prompt",
-                "checkpoint": private_root + "\\ComfyUI\\models\\checkpoints\\private-model." + "ckpt",
+                "checkpoint": private_root
+                + "\\ComfyUI\\models\\checkpoints\\private-model."
+                + "ckpt",
             }
         )
         encoded = json.dumps(result, ensure_ascii=False)
@@ -251,13 +295,22 @@ class ComfyWorkflowBuilderTests(unittest.TestCase):
         self.assertNotIn("private-model", encoded)
         self.assertNotIn(".ckpt", encoded.lower())
         self.assertNotIn("C:" + "\\Users", encoded)
-        self.assertEqual("__checkpoint_placeholder__", result["workflow"]["2"]["inputs"]["ckpt_name"])
+        self.assertEqual(
+            "__checkpoint_placeholder__", result["workflow"]["2"]["inputs"]["ckpt_name"]
+        )
 
     def test_workflow_compose_does_not_submit_or_access_filesystem_or_network(self) -> None:
-        with patch("builtins.open", side_effect=AssertionError("filesystem access blocked")), patch(
-            "urllib.request.urlopen", side_effect=AssertionError("network access blocked")
-        ), patch("examples.comfy_bridge.workflow_agent.submit_workflow", side_effect=AssertionError("submit blocked")):
-            result = workflow_compose({"task_type": "img2img", "prompt": "public placeholder prompt"})
+        with (
+            patch("builtins.open", side_effect=AssertionError("filesystem access blocked")),
+            patch("urllib.request.urlopen", side_effect=AssertionError("network access blocked")),
+            patch(
+                "examples.comfy_bridge.workflow_agent.submit_workflow",
+                side_effect=AssertionError("submit blocked"),
+            ),
+        ):
+            result = workflow_compose(
+                {"task_type": "img2img", "prompt": "public placeholder prompt"}
+            )
 
         self.assertTrue(result["valid"])
         self.assertEqual("dry_run", result["mode"])
@@ -301,7 +354,9 @@ class ComfyWorkflowBuilderTests(unittest.TestCase):
                 self.assertTrue(result["ok"], result["details"])
                 self.assertTrue(result["details"]["valid"])
                 self.assertEqual(len(workflow), len(set(workflow)))
-                self.assertTrue(workflow["1"]["inputs"]["draft"] or workflow["1"]["inputs"]["safe_placeholder"])
+                self.assertTrue(
+                    workflow["1"]["inputs"]["draft"] or workflow["1"]["inputs"]["safe_placeholder"]
+                )
 
     def test_workflow_template_registry_file_loads(self) -> None:
         payload = json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
@@ -342,7 +397,17 @@ class ComfyWorkflowBuilderTests(unittest.TestCase):
             "task_type": "txt2img",
             "required_modules": ["checkpoint_loader_placeholder"],
             "optional_modules": [],
-            "required_inputs": ["prompt", "negative_prompt", "width", "height", "seed", "steps", "cfg", "sampler", "scheduler"],
+            "required_inputs": [
+                "prompt",
+                "negative_prompt",
+                "width",
+                "height",
+                "seed",
+                "steps",
+                "cfg",
+                "sampler",
+                "scheduler",
+            ],
             "safe_placeholder_policy": {
                 "model_policy": "placeholder_only",
                 "asset_policy": "placeholder_only_no_private_files",
@@ -375,7 +440,9 @@ class ComfyWorkflowBuilderTests(unittest.TestCase):
                 self.assertTrue(result["valid"])
                 self.assertEqual(template_id, result["template_id"])
                 self.assertIn("workflow", result)
-                validation = validate_workflow_payload(result["workflow"], workflow_name=f"{template_id}.json")
+                validation = validate_workflow_payload(
+                    result["workflow"], workflow_name=f"{template_id}.json"
+                )
                 self.assertTrue(validation["ok"], validation["details"])
                 self.assertFalse(result["workflow"]["1"]["inputs"]["production_ready"])
                 self.assertEqual("disabled", result["workflow"]["1"]["inputs"]["queue_submission"])
@@ -391,10 +458,14 @@ class ComfyWorkflowBuilderTests(unittest.TestCase):
             with self.subTest(filename=filename):
                 path = REPO_ROOT / "examples" / "comfy_bridge" / "templates" / filename
                 payload = json.loads(path.read_text(encoding="utf-8"))
-                result = compose_from_template(payload["template_id"], payload.get("arguments") or {})
+                result = compose_from_template(
+                    payload["template_id"], payload.get("arguments") or {}
+                )
 
                 self.assertTrue(result["ok"], result["validation_report"])
-                self.assertTrue(validate_workflow_payload(result["workflow"], workflow_name=filename)["ok"])
+                self.assertTrue(
+                    validate_workflow_payload(result["workflow"], workflow_name=filename)["ok"]
+                )
 
     def test_mcp_workflow_template_tool_schema_and_calls(self) -> None:
         listed = handle_request({"jsonrpc": "2.0", "id": 21, "method": "tools/list", "params": {}})
@@ -404,10 +475,17 @@ class ComfyWorkflowBuilderTests(unittest.TestCase):
         self.assertIn("comfy.workflow_template_list", tools)
         self.assertIn("comfy.workflow_template_get", tools)
         self.assertIn("comfy.workflow_from_template", tools)
-        self.assertEqual("safe_read_only", tools["comfy.workflow_from_template"]["annotations"]["riskLevel"])
+        self.assertEqual(
+            "safe_read_only", tools["comfy.workflow_from_template"]["annotations"]["riskLevel"]
+        )
 
         list_response = handle_request(
-            {"jsonrpc": "2.0", "id": 22, "method": "tools/call", "params": {"name": "comfy.workflow_template_list", "arguments": {}}}
+            {
+                "jsonrpc": "2.0",
+                "id": 22,
+                "method": "tools/call",
+                "params": {"name": "comfy.workflow_template_list", "arguments": {}},
+            }
         )
         assert list_response is not None
         self.assertTrue(list_response["result"]["structuredContent"]["ok"])
@@ -417,11 +495,17 @@ class ComfyWorkflowBuilderTests(unittest.TestCase):
                 "jsonrpc": "2.0",
                 "id": 23,
                 "method": "tools/call",
-                "params": {"name": "comfy.workflow_template_get", "arguments": {"template_id": "txt2img_basic_v1"}},
+                "params": {
+                    "name": "comfy.workflow_template_get",
+                    "arguments": {"template_id": "txt2img_basic_v1"},
+                },
             }
         )
         assert get_response is not None
-        self.assertEqual("txt2img_basic_v1", get_response["result"]["structuredContent"]["template"]["template_id"])
+        self.assertEqual(
+            "txt2img_basic_v1",
+            get_response["result"]["structuredContent"]["template"]["template_id"],
+        )
 
         compose_response = handle_request(
             {
@@ -430,7 +514,10 @@ class ComfyWorkflowBuilderTests(unittest.TestCase):
                 "method": "tools/call",
                 "params": {
                     "name": "comfy.workflow_from_template",
-                    "arguments": {"template_id": "creative_poster_complex_v1", "arguments": {"prompt": "public placeholder poster"}},
+                    "arguments": {
+                        "template_id": "creative_poster_complex_v1",
+                        "arguments": {"prompt": "public placeholder poster"},
+                    },
                 },
             }
         )
@@ -439,14 +526,24 @@ class ComfyWorkflowBuilderTests(unittest.TestCase):
         self.assertTrue(payload["valid"], payload["validation_report"])
         self.assertEqual("creative_poster_complex_v1", payload["template_id"])
 
-    def test_workflow_from_template_does_not_submit_or_use_network_or_private_filesystem(self) -> None:
+    def test_workflow_from_template_does_not_submit_or_use_network_or_private_filesystem(
+        self,
+    ) -> None:
         list_workflow_templates()
-        with patch("builtins.open", side_effect=AssertionError("filesystem access blocked")), patch(
-            "pathlib.Path.read_text", side_effect=AssertionError("filesystem access blocked")
-        ), patch("urllib.request.urlopen", side_effect=AssertionError("network access blocked")), patch(
-            "examples.comfy_bridge.workflow_agent.submit_workflow", side_effect=AssertionError("submit blocked")
+        with (
+            patch("builtins.open", side_effect=AssertionError("filesystem access blocked")),
+            patch(
+                "pathlib.Path.read_text", side_effect=AssertionError("filesystem access blocked")
+            ),
+            patch("urllib.request.urlopen", side_effect=AssertionError("network access blocked")),
+            patch(
+                "examples.comfy_bridge.workflow_agent.submit_workflow",
+                side_effect=AssertionError("submit blocked"),
+            ),
         ):
-            result = compose_from_template("img2img_basic_v1", {"prompt": "public placeholder prompt"})
+            result = compose_from_template(
+                "img2img_basic_v1", {"prompt": "public placeholder prompt"}
+            )
 
         self.assertTrue(result["ok"], result["validation_report"])
         self.assertEqual("safe_read_only", result["mode"])

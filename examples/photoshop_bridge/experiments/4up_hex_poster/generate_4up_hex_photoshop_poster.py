@@ -5,7 +5,6 @@ import math
 import random
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parent
 WORK = ROOT / "photoshop_4up_hex_automation"
 TEMPLATE_DIR = WORK / "templates"
@@ -94,9 +93,14 @@ def lerp_rgb(a: str, b: str, t: float) -> str:
     return rgb_to_hex((round(lerp(ar, br, t)), round(lerp(ag, bg, t)), round(lerp(ab, bb, t))))
 
 
-def hex_points(cx: float, cy: float, r: float, rotation: float = math.pi / 6) -> list[tuple[float, float]]:
+def hex_points(
+    cx: float, cy: float, r: float, rotation: float = math.pi / 6
+) -> list[tuple[float, float]]:
     return [
-        (cx + math.cos(rotation + i * math.tau / 6) * r, cy + math.sin(rotation + i * math.tau / 6) * r)
+        (
+            cx + math.cos(rotation + i * math.tau / 6) * r,
+            cy + math.sin(rotation + i * math.tau / 6) * r,
+        )
         for i in range(6)
     ]
 
@@ -122,37 +126,37 @@ def write_template_svgs() -> dict[str, Path]:
       <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
   </defs>
-  <polygon points="{outer}" fill="{COLORS['deep']}" opacity=".85" filter="url(#softGlow)"/>
-  <polyline points="{outer}" fill="none" stroke="{COLORS['sky']}" stroke-width="5" opacity=".34" stroke-linejoin="round"/>
+  <polygon points="{outer}" fill="{COLORS["deep"]}" opacity=".85" filter="url(#softGlow)"/>
+  <polyline points="{outer}" fill="none" stroke="{COLORS["sky"]}" stroke-width="5" opacity=".34" stroke-linejoin="round"/>
 </svg>
 """,
         "Hex_TechBlue_Solid": f"""<svg xmlns="http://www.w3.org/2000/svg" width="360" height="360" viewBox="0 0 360 360">
   <defs>
     <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="{COLORS['sky']}" stop-opacity=".70"/>
-      <stop offset=".55" stop-color="{COLORS['tech']}" stop-opacity=".70"/>
-      <stop offset="1" stop-color="{COLORS['deep']}" stop-opacity=".62"/>
+      <stop offset="0" stop-color="{COLORS["sky"]}" stop-opacity=".70"/>
+      <stop offset=".55" stop-color="{COLORS["tech"]}" stop-opacity=".70"/>
+      <stop offset="1" stop-color="{COLORS["deep"]}" stop-opacity=".62"/>
     </linearGradient>
     <filter id="innerEdge" x="-30%" y="-30%" width="160%" height="160%">
       <feGaussianBlur stdDeviation="1.2"/>
     </filter>
   </defs>
   <polygon points="{outer}" fill="url(#g)" opacity=".70"/>
-  <polygon points="{inner}" fill="none" stroke="{COLORS['ice']}" stroke-width="3" opacity=".24" filter="url(#innerEdge)"/>
-  <polyline points="{outer}" fill="none" stroke="{COLORS['sky']}" stroke-width="4" opacity=".42" stroke-linejoin="round"/>
+  <polygon points="{inner}" fill="none" stroke="{COLORS["ice"]}" stroke-width="3" opacity=".24" filter="url(#innerEdge)"/>
+  <polyline points="{outer}" fill="none" stroke="{COLORS["sky"]}" stroke-width="4" opacity=".42" stroke-linejoin="round"/>
 </svg>
 """,
         "Hex_Ice_Transparent": f"""<svg xmlns="http://www.w3.org/2000/svg" width="360" height="360" viewBox="0 0 360 360">
   <defs>
     <linearGradient id="ice" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="{COLORS['white']}" stop-opacity=".45"/>
-      <stop offset=".56" stop-color="{COLORS['ice']}" stop-opacity=".30"/>
-      <stop offset="1" stop-color="{COLORS['sky']}" stop-opacity=".14"/>
+      <stop offset="0" stop-color="{COLORS["white"]}" stop-opacity=".45"/>
+      <stop offset=".56" stop-color="{COLORS["ice"]}" stop-opacity=".30"/>
+      <stop offset="1" stop-color="{COLORS["sky"]}" stop-opacity=".14"/>
     </linearGradient>
   </defs>
   <polygon points="{outer}" fill="url(#ice)" opacity=".82"/>
-  <polyline points="{outer}" fill="none" stroke="{COLORS['white']}" stroke-width="5" opacity=".70" stroke-linejoin="round"/>
-  <polyline points="{inner}" fill="none" stroke="{COLORS['sky']}" stroke-width="2" opacity=".16" stroke-linejoin="round"/>
+  <polyline points="{outer}" fill="none" stroke="{COLORS["white"]}" stroke-width="5" opacity=".70" stroke-linejoin="round"/>
+  <polyline points="{inner}" fill="none" stroke="{COLORS["sky"]}" stroke-width="2" opacity=".16" stroke-linejoin="round"/>
 </svg>
 """,
         "Hex_Outline_Frame": f"""<svg xmlns="http://www.w3.org/2000/svg" width="360" height="360" viewBox="0 0 360 360">
@@ -162,21 +166,21 @@ def write_template_svgs() -> dict[str, Path]:
       <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
   </defs>
-  <polyline points="{outer}" fill="none" stroke="{COLORS['sky']}" stroke-width="5" opacity=".62" stroke-linejoin="round" filter="url(#lineGlow)"/>
-  <polyline points="{inner}" fill="none" stroke="{COLORS['ice']}" stroke-width="2" opacity=".26" stroke-linejoin="round"/>
+  <polyline points="{outer}" fill="none" stroke="{COLORS["sky"]}" stroke-width="5" opacity=".62" stroke-linejoin="round" filter="url(#lineGlow)"/>
+  <polyline points="{inner}" fill="none" stroke="{COLORS["ice"]}" stroke-width="2" opacity=".26" stroke-linejoin="round"/>
 </svg>
 """,
         "Hex_Micro_Particle": f"""<svg xmlns="http://www.w3.org/2000/svg" width="360" height="360" viewBox="0 0 360 360">
-  <polygon points="{small_outer}" fill="{COLORS['sky']}" opacity=".38"/>
-  <polyline points="{small_outer}" fill="none" stroke="{COLORS['ice']}" stroke-width="3" opacity=".55" stroke-linejoin="round"/>
+  <polygon points="{small_outer}" fill="{COLORS["sky"]}" opacity=".38"/>
+  <polyline points="{small_outer}" fill="none" stroke="{COLORS["ice"]}" stroke-width="3" opacity=".55" stroke-linejoin="round"/>
 </svg>
 """,
         "Hex_Glass_Glow": f"""<svg xmlns="http://www.w3.org/2000/svg" width="360" height="360" viewBox="0 0 360 360">
   <defs>
     <radialGradient id="glass" cx=".35" cy=".28" r=".86">
-      <stop offset="0" stop-color="{COLORS['white']}" stop-opacity=".68"/>
-      <stop offset=".44" stop-color="{COLORS['ice']}" stop-opacity=".36"/>
-      <stop offset="1" stop-color="{COLORS['tech']}" stop-opacity=".18"/>
+      <stop offset="0" stop-color="{COLORS["white"]}" stop-opacity=".68"/>
+      <stop offset=".44" stop-color="{COLORS["ice"]}" stop-opacity=".36"/>
+      <stop offset="1" stop-color="{COLORS["tech"]}" stop-opacity=".18"/>
     </radialGradient>
     <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
       <feGaussianBlur stdDeviation="5" result="blur"/>
@@ -185,8 +189,8 @@ def write_template_svgs() -> dict[str, Path]:
     </filter>
   </defs>
   <polygon points="{outer}" fill="url(#glass)" opacity=".74" filter="url(#glow)"/>
-  <polyline points="{outer}" fill="none" stroke="{COLORS['white']}" stroke-width="5" opacity=".66" stroke-linejoin="round"/>
-  <path d="M99 108 L180 62 L260 108" fill="none" stroke="{COLORS['white']}" stroke-width="5" opacity=".42" stroke-linecap="round" stroke-linejoin="round"/>
+  <polyline points="{outer}" fill="none" stroke="{COLORS["white"]}" stroke-width="5" opacity=".66" stroke-linejoin="round"/>
+  <path d="M99 108 L180 62 L260 108" fill="none" stroke="{COLORS["white"]}" stroke-width="5" opacity=".42" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
 """,
     }
@@ -281,13 +285,53 @@ def generate_dense(poster: dict, rng: random.Random) -> tuple[list[dict], dict]:
             template = "Hex_DeepBlue_Solid"
             group = "B_主六边形层"
             blend = "normal"
-        add_hex(items, poster, group, template, lx, ly, radius, opacity, rng.uniform(-7, 7), blend, blur, "p1_hex")
+        add_hex(
+            items,
+            poster,
+            group,
+            template,
+            lx,
+            ly,
+            radius,
+            opacity,
+            rng.uniform(-7, 7),
+            blend,
+            blur,
+            "p1_hex",
+        )
 
     effects = {
         "fog": [
-            {"x": 210, "y": 170, "rx": 620, "ry": 430, "color": COLORS["ice"], "opacity": 18, "blur": 84, "blend": "screen"},
-            {"x": 520, "y": 470, "rx": 560, "ry": 390, "color": COLORS["sky"], "opacity": 13, "blur": 98, "blend": "screen"},
-            {"x": 870, "y": 850, "rx": 540, "ry": 430, "color": COLORS["ice"], "opacity": 10, "blur": 110, "blend": "softLight"},
+            {
+                "x": 210,
+                "y": 170,
+                "rx": 620,
+                "ry": 430,
+                "color": COLORS["ice"],
+                "opacity": 18,
+                "blur": 84,
+                "blend": "screen",
+            },
+            {
+                "x": 520,
+                "y": 470,
+                "rx": 560,
+                "ry": 390,
+                "color": COLORS["sky"],
+                "opacity": 13,
+                "blur": 98,
+                "blend": "screen",
+            },
+            {
+                "x": 870,
+                "y": 850,
+                "rx": 540,
+                "ry": 430,
+                "color": COLORS["ice"],
+                "opacity": 10,
+                "blur": 110,
+                "blend": "softLight",
+            },
         ],
         "bokeh": [],
         "data": [],
@@ -323,11 +367,33 @@ def generate_minimal(poster: dict, rng: random.Random) -> tuple[list[dict], dict
         opacity = clamp(8 + 42 * close**1.7 + rng.gauss(0, 2.5), 6, 48)
         template = "Hex_Outline_Frame" if rng.random() < 0.58 else "Hex_Ice_Transparent"
         group = "B_主六边形层" if template == "Hex_Outline_Frame" else "D_玻璃透明六边形层"
-        add_hex(items, poster, group, template, lx, ly, radius, opacity, rng.uniform(-5, 5), "screen", rng.uniform(0, 0.8), "p2_hex")
+        add_hex(
+            items,
+            poster,
+            group,
+            template,
+            lx,
+            ly,
+            radius,
+            opacity,
+            rng.uniform(-5, 5),
+            "screen",
+            rng.uniform(0, 0.8),
+            "p2_hex",
+        )
 
     effects = {
         "fog": [
-            {"x": 1450, "y": 230, "rx": 510, "ry": 360, "color": COLORS["ice"], "opacity": 6, "blur": 120, "blend": "softLight"},
+            {
+                "x": 1450,
+                "y": 230,
+                "rx": 510,
+                "ry": 360,
+                "color": COLORS["ice"],
+                "opacity": 6,
+                "blur": 120,
+                "blend": "softLight",
+            },
         ],
         "bokeh": [],
         "data": [],
@@ -370,7 +436,20 @@ def generate_data(poster: dict, rng: random.Random) -> tuple[list[dict], dict]:
             template = "Hex_TechBlue_Solid" if rng.random() < 0.64 else "Hex_DeepBlue_Solid"
             group = "B_主六边形层"
             blend = "normal"
-        add_hex(items, poster, group, template, lx, ly, radius, opacity, rng.uniform(-6, 6), blend, rng.uniform(0, 1.6 if radius < 26 else 0.4), "p3_hex")
+        add_hex(
+            items,
+            poster,
+            group,
+            template,
+            lx,
+            ly,
+            radius,
+            opacity,
+            rng.uniform(-6, 6),
+            blend,
+            rng.uniform(0, 1.6 if radius < 26 else 0.4),
+            "p3_hex",
+        )
         if radius > 32 and ly < 1180:
             nodes.append({"x": lx, "y": ly, "r": radius})
 
@@ -435,8 +514,26 @@ def generate_data(poster: dict, rng: random.Random) -> tuple[list[dict], dict]:
 
     effects = {
         "fog": [
-            {"x": 1460, "y": 300, "rx": 560, "ry": 390, "color": COLORS["ice"], "opacity": 11, "blur": 100, "blend": "screen"},
-            {"x": 1290, "y": 850, "rx": 410, "ry": 720, "color": COLORS["sky"], "opacity": 6, "blur": 130, "blend": "softLight"},
+            {
+                "x": 1460,
+                "y": 300,
+                "rx": 560,
+                "ry": 390,
+                "color": COLORS["ice"],
+                "opacity": 11,
+                "blur": 100,
+                "blend": "screen",
+            },
+            {
+                "x": 1290,
+                "y": 850,
+                "rx": 410,
+                "ry": 720,
+                "color": COLORS["sky"],
+                "opacity": 6,
+                "blur": 130,
+                "blend": "softLight",
+            },
         ],
         "bokeh": [
             {"x": 1530, "y": 260, "r": 44, "color": COLORS["ice"], "opacity": 8, "blur": 32},
@@ -468,7 +565,9 @@ def generate_diagonal(poster: dict, rng: random.Random) -> tuple[list[dict], dic
             radius = rng.uniform(44, 132) * edge_density
         else:
             radius = rng.uniform(8, 42)
-        opacity = clamp(12 + 56 * (0.72 + 0.28 * math.cos((t - 0.18) * math.pi)) + rng.gauss(0, 8), 8, 78)
+        opacity = clamp(
+            12 + 56 * (0.72 + 0.28 * math.cos((t - 0.18) * math.pi)) + rng.gauss(0, 8), 8, 78
+        )
         if radius < 16:
             template = "Hex_Micro_Particle"
             group = "C_远景粒子六边形层"
@@ -491,12 +590,43 @@ def generate_diagonal(poster: dict, rng: random.Random) -> tuple[list[dict], dic
             template = "Hex_TechBlue_Solid" if rng.random() < 0.6 else "Hex_DeepBlue_Solid"
             group = "B_主六边形层"
             blend = "normal"
-        add_hex(items, poster, group, template, lx, ly, radius, opacity, rng.uniform(-7, 7), blend, rng.uniform(0, 1.7 if radius < 24 else 0.45), "p4_hex")
+        add_hex(
+            items,
+            poster,
+            group,
+            template,
+            lx,
+            ly,
+            radius,
+            opacity,
+            rng.uniform(-7, 7),
+            blend,
+            rng.uniform(0, 1.7 if radius < 24 else 0.45),
+            "p4_hex",
+        )
 
     effects = {
         "fog": [
-            {"x": 420, "y": 360, "rx": 480, "ry": 330, "color": COLORS["ice"], "opacity": 9, "blur": 90, "blend": "screen"},
-            {"x": 1280, "y": 1270, "rx": 520, "ry": 430, "color": COLORS["sky"], "opacity": 8, "blur": 115, "blend": "softLight"},
+            {
+                "x": 420,
+                "y": 360,
+                "rx": 480,
+                "ry": 330,
+                "color": COLORS["ice"],
+                "opacity": 9,
+                "blur": 90,
+                "blend": "screen",
+            },
+            {
+                "x": 1280,
+                "y": 1270,
+                "rx": 520,
+                "ry": 430,
+                "color": COLORS["sky"],
+                "opacity": 8,
+                "blur": 115,
+                "blend": "softLight",
+            },
         ],
         "bokeh": [],
         "data": [],

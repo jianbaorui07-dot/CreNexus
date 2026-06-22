@@ -14,7 +14,6 @@ if str(REPO_ROOT) not in sys.path:
 from starbridge_mcp.core.result_schema import make_result, validate_result
 from starbridge_mcp.core.security import sanitize_result
 
-
 BRIDGE_ID = "comfyui"
 BRIDGE_ROOT = Path(__file__).resolve().parent
 DEFAULT_WORKFLOW = BRIDGE_ROOT / "workflows" / "txt2img_basic_api.json"
@@ -47,7 +46,9 @@ def detect_workflow_format(payload: Any) -> str:
         return "invalid"
     if isinstance(payload.get("nodes"), list) and isinstance(payload.get("links"), list):
         return "visual"
-    if payload and all(isinstance(node, dict) and "class_type" in node for node in payload.values()):
+    if payload and all(
+        isinstance(node, dict) and "class_type" in node for node in payload.values()
+    ):
         return "api"
     if payload and all(isinstance(node, dict) for node in payload.values()):
         if any("class_type" in node or "inputs" in node for node in payload.values()):
@@ -76,7 +77,13 @@ def _is_link(value: Any) -> bool:
     )
 
 
-def _empty_report(*, workflow_name: str, workflow_format: str, errors: list[str], warnings: list[str] | None = None) -> dict[str, Any]:
+def _empty_report(
+    *,
+    workflow_name: str,
+    workflow_format: str,
+    errors: list[str],
+    warnings: list[str] | None = None,
+) -> dict[str, Any]:
     return {
         "workflow": workflow_name,
         "format": workflow_format,
@@ -93,7 +100,9 @@ def _empty_report(*, workflow_name: str, workflow_format: str, errors: list[str]
     }
 
 
-def _append_model_value(detected_models: list[dict[str, str]], *, node_id: str, input_name: str, value: Any) -> None:
+def _append_model_value(
+    detected_models: list[dict[str, str]], *, node_id: str, input_name: str, value: Any
+) -> None:
     if isinstance(value, str) and value.strip():
         detected_models.append({"node_id": node_id, "input": input_name, "value": value.strip()})
 
@@ -146,13 +155,22 @@ def validate_api_workflow(payload: dict[str, Any], *, workflow_name: str) -> dic
             continue
         for input_name, input_value in inputs.items():
             if input_name in MODEL_INPUT_KEYS:
-                _append_model_value(detected_models, node_id=node_label, input_name=str(input_name), value=input_value)
+                _append_model_value(
+                    detected_models,
+                    node_id=node_label,
+                    input_name=str(input_name),
+                    value=input_value,
+                )
             if _is_link(input_value):
                 link_count += 1
                 if input_value[0] not in payload:
-                    errors.append(f"节点 {node_label}.{input_name} 引用了不存在的节点 {input_value[0]}。")
+                    errors.append(
+                        f"节点 {node_label}.{input_name} 引用了不存在的节点 {input_value[0]}。"
+                    )
             elif isinstance(input_value, list) and input_value:
-                missing_or_suspicious_fields.append(f"节点 {node_label}.{input_name} 是列表但不是标准 ComfyUI link。")
+                missing_or_suspicious_fields.append(
+                    f"节点 {node_label}.{input_name} 是列表但不是标准 ComfyUI link。"
+                )
 
     prompt_text_nodes = []
     output_nodes = []
@@ -168,10 +186,14 @@ def validate_api_workflow(payload: dict[str, Any], *, workflow_name: str) -> dic
             output_nodes.append(str(node_id))
 
     if not prompt_text_nodes:
-        warnings.append("workflow 未包含带 text prompt 的 CLIPTextEncode 节点；仅适合非 prompt 类草案或后续人工补齐。")
+        warnings.append(
+            "workflow 未包含带 text prompt 的 CLIPTextEncode 节点；仅适合非 prompt 类草案或后续人工补齐。"
+        )
     if not output_nodes:
         errors.append("workflow 必须包含至少一个带 images 输入的 SaveImage 输出节点。")
-    if class_types and not any(class_type not in KNOWN_DRAFT_METADATA_CLASSES for class_type in class_types):
+    if class_types and not any(
+        class_type not in KNOWN_DRAFT_METADATA_CLASSES for class_type in class_types
+    ):
         errors.append("workflow 必须包含至少一个非 metadata 的 ComfyUI 节点。")
 
     details = {
@@ -190,7 +212,9 @@ def validate_api_workflow(payload: dict[str, Any], *, workflow_name: str) -> dic
     }
     return _result(
         ok=not errors,
-        message="ComfyUI API workflow 校验通过。" if not errors else "ComfyUI API workflow 校验失败。",
+        message="ComfyUI API workflow 校验通过。"
+        if not errors
+        else "ComfyUI API workflow 校验失败。",
         details=details,
         warnings=warnings,
         next_steps=[] if not errors else ["修复 errors 后再提交到 ComfyUI /prompt。"],
@@ -240,21 +264,31 @@ def validate_workflow_file(path: Path) -> dict[str, Any]:
         return _result(
             ok=False,
             message="workflow 文件不存在。",
-            details=_empty_report(workflow_name=path.name, workflow_format="missing", errors=["找不到 workflow 文件。"]),
-            next_steps=["传入 examples/comfy_bridge/workflows 下的公开 workflow，或用户明确提供的 API workflow。"],
+            details=_empty_report(
+                workflow_name=path.name,
+                workflow_format="missing",
+                errors=["找不到 workflow 文件。"],
+            ),
+            next_steps=[
+                "传入 examples/comfy_bridge/workflows 下的公开 workflow，或用户明确提供的 API workflow。"
+            ],
         )
     except json.JSONDecodeError as exc:
         return _result(
             ok=False,
             message="workflow JSON 解析失败。",
-            details=_empty_report(workflow_name=path.name, workflow_format="invalid_json", errors=[str(exc)]),
+            details=_empty_report(
+                workflow_name=path.name, workflow_format="invalid_json", errors=[str(exc)]
+            ),
             next_steps=["先修复 JSON 语法。"],
         )
     return validate_workflow_payload(payload, workflow_name=path.name)
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Validate a ComfyUI workflow without submitting a generation job.")
+    parser = argparse.ArgumentParser(
+        description="Validate a ComfyUI workflow without submitting a generation job."
+    )
     parser.add_argument("--workflow", type=Path, default=DEFAULT_WORKFLOW)
     parser.add_argument("--json", action="store_true", help="保留给兼容；当前始终输出 JSON。")
     args = parser.parse_args(argv)

@@ -4,7 +4,6 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 OUTPUT_DIR = REPO_ROOT / "examples" / "output" / "illustrator"
 
@@ -51,14 +50,18 @@ def main() -> None:
             "npm.cmd run illustrator:demo",
             "npm.cmd run illustrator:manifest",
         ],
-        "warnings": [] if ai_path.exists() else ["Sandbox Illustrator demo outputs were not all found."],
+        "warnings": []
+        if ai_path.exists()
+        else ["Sandbox Illustrator demo outputs were not all found."],
         "next_steps": [
             "Inspect local demo exports.",
             "Do not commit generated AI, SVG, PNG, PDF, or manifest outputs.",
         ],
     }
     manifest_path = OUTPUT_DIR / "demo_manifest.json"
-    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    manifest_path.write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
     print(json.dumps(manifest, ensure_ascii=False, indent=2))
 
 

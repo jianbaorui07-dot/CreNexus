@@ -5,7 +5,6 @@ from typing import Any
 
 from starbridge_mcp.core.security import sanitize
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 

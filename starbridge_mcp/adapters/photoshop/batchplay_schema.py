@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-
 ALLOWLIST: dict[str, dict[str, Any]] = {
     "get": {
         "descriptor_id": "get_document_or_layer_info",

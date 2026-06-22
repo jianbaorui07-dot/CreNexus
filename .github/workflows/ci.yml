@@ -49,6 +49,11 @@ jobs:
       - name: Run pytest if available
         run: python -m pytest --tb=short || echo "pytest optional"
 
+      - name: Lint with ruff (check + format)
+        run: |
+          python -m ruff check .
+          python -m ruff format --check .
+
       - name: Run StarBridge preflight
         run: python scripts/starbridge_preflight.py --markdown
 
@@ -86,6 +91,9 @@ jobs:
 
       - name: Run basic Python tests
         run: python -m unittest discover -s tests
+
+      - name: Lint with ruff
+        run: python -m ruff check .
 
       - name: Verify npm
         run: npm test

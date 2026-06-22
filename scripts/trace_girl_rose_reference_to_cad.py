@@ -1,5 +1,4 @@
 import argparse
-import math
 import pathlib
 import time
 from collections import defaultdict
@@ -8,7 +7,6 @@ import cv2
 import numpy as np
 import pythoncom
 import win32com.client
-
 
 WORKSPACE = pathlib.Path(__file__).resolve().parents[1]
 IMAGE_PATH: pathlib.Path | None = None
@@ -81,7 +79,7 @@ def add_polyline(model, points, layer, color, lineweight=25):
 
 
 def filter_components(mask, min_area, remove_bottom_bar=False):
-    mask_u8 = (mask.astype(np.uint8) * 255)
+    mask_u8 = mask.astype(np.uint8) * 255
     count, labels, stats, _ = cv2.connectedComponentsWithStats(mask_u8, 8)
     keep = np.zeros(mask.shape, dtype=bool)
     h, w = mask.shape
@@ -136,7 +134,9 @@ def zhang_suen_thin(binary):
             p1 = img[1:-1, 1:-1]
 
             neighbors = [p2, p3, p4, p5, p6, p7, p8, p9]
-            transitions = sum(((neighbors[i] == 0) & (neighbors[(i + 1) % 8] == 1)) for i in range(8))
+            transitions = sum(
+                ((neighbors[i] == 0) & (neighbors[(i + 1) % 8] == 1)) for i in range(8)
+            )
             neighbor_count = sum(neighbors)
 
             if step == 0:
@@ -236,7 +236,9 @@ def skeleton_to_paths(skeleton, min_pixels=8):
         visited_edges.add(edge_key(prev, cur))
         while True:
             path.append(cur)
-            options = [n for n in neighbors(cur) if n != prev and edge_key(cur, n) not in visited_edges]
+            options = [
+                n for n in neighbors(cur) if n != prev and edge_key(cur, n) not in visited_edges
+            ]
             if not options:
                 break
             nxt = options[0]
@@ -272,15 +274,17 @@ def build_masks():
     roi = image[ROI["y0"] : ROI["y1"], ROI["x0"] : ROI["x1"]]
     hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
 
-    red = (((hsv[:, :, 0] < 8) | (hsv[:, :, 0] > 168)) & (hsv[:, :, 1] > 70) & (hsv[:, :, 2] > 90))
-    green = ((hsv[:, :, 0] > 38) & (hsv[:, :, 0] < 80) & (hsv[:, :, 1] > 80) & (hsv[:, :, 2] > 90))
-    white = ((hsv[:, :, 1] < 75) & (hsv[:, :, 2] > 155))
+    red = ((hsv[:, :, 0] < 8) | (hsv[:, :, 0] > 168)) & (hsv[:, :, 1] > 70) & (hsv[:, :, 2] > 90)
+    green = (hsv[:, :, 0] > 38) & (hsv[:, :, 0] < 80) & (hsv[:, :, 1] > 80) & (hsv[:, :, 2] > 90)
+    white = (hsv[:, :, 1] < 75) & (hsv[:, :, 2] > 155)
     white[:20, :] = False
 
     masks = {}
     for name, mask in {"red": red, "green": green, "white": white}.items():
         mask = cv2.medianBlur(mask.astype(np.uint8) * 255, 3) > 0
-        mask = filter_components(mask, 16 if name != "white" else 20, remove_bottom_bar=(name == "white"))
+        mask = filter_components(
+            mask, 16 if name != "white" else 20, remove_bottom_bar=(name == "white")
+        )
         if name == "white":
             mask = remove_bottom_horizontal_runs(mask)
         masks[name] = mask
@@ -352,12 +356,22 @@ def draw():
     except Exception:
         pass
     doc.SaveAs(str(OUTPUT))
-    return doc.Name, OUTPUT, PREVIEW, entity_count, {key: len(value) for key, value in paths.items()}
+    return (
+        doc.Name,
+        OUTPUT,
+        PREVIEW,
+        entity_count,
+        {key: len(value) for key, value in paths.items()},
+    )
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Trace a local reference image into AutoCAD polylines.")
-    parser.add_argument("--image", required=True, help="Local reference image path. The path is not stored in Git.")
+    parser = argparse.ArgumentParser(
+        description="Trace a local reference image into AutoCAD polylines."
+    )
+    parser.add_argument(
+        "--image", required=True, help="Local reference image path. The path is not stored in Git."
+    )
     args = parser.parse_args()
     IMAGE_PATH = pathlib.Path(args.image)
     doc_name, output, preview, entity_count, path_counts = draw()

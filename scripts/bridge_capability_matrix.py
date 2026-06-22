@@ -2,10 +2,8 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from pathlib import Path
 from typing import Any
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CAPABILITY_PATH = REPO_ROOT / "examples" / "bridge_capabilities.json"
@@ -90,13 +88,19 @@ def validate_registry(registry: dict[str, Any]) -> list[str]:
                 failures.append(f"{bridge_id} primary_docs does not exist: {doc}")
 
     status_ids = existing_status_ids()
-    capability_ids = {str(bridge.get("bridge_id")) for bridge in bridges if isinstance(bridge, dict)}
+    capability_ids = {
+        str(bridge.get("bridge_id")) for bridge in bridges if isinstance(bridge, dict)
+    }
     missing_from_registry = status_ids - capability_ids
     extra_in_registry = capability_ids - status_ids
     if missing_from_registry:
-        failures.append(f"bridge_status exists but registry is missing: {sorted(missing_from_registry)}")
+        failures.append(
+            f"bridge_status exists but registry is missing: {sorted(missing_from_registry)}"
+        )
     if extra_in_registry:
-        failures.append(f"registry exists but bridge_status is missing: {sorted(extra_in_registry)}")
+        failures.append(
+            f"registry exists but bridge_status is missing: {sorted(extra_in_registry)}"
+        )
 
     return failures
 
@@ -141,12 +145,20 @@ def write_reports(registry: dict[str, Any], report_dir: Path) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Validate and render the public bridge capability matrix.")
+    parser = argparse.ArgumentParser(
+        description="Validate and render the public bridge capability matrix."
+    )
     parser.add_argument("--json", action="store_true", help="Output JSON.")
     parser.add_argument("--markdown", action="store_true", help="Output Markdown.")
     parser.add_argument("--check", action="store_true", help="Validate only.")
-    parser.add_argument("--write-report", action="store_true", help="Write reports into output/bridge_capabilities/.")
-    parser.add_argument("--report-dir", default=str(default_report_dir()), help="Custom local report directory.")
+    parser.add_argument(
+        "--write-report",
+        action="store_true",
+        help="Write reports into output/bridge_capabilities/.",
+    )
+    parser.add_argument(
+        "--report-dir", default=str(default_report_dir()), help="Custom local report directory."
+    )
     args = parser.parse_args()
 
     registry = load_registry()
@@ -172,6 +184,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    if sys.version_info < (3, 10):
-        raise SystemExit("Use Python 3.10 or newer to run this script.")
     main()

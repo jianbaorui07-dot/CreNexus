@@ -9,7 +9,6 @@ from pathlib import Path
 
 from starbridge_mcp.mcp_server import handle_request, serve_stdio
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BANNED_OUTPUT_FRAGMENTS = ("C:\\Users\\", "/Users/", "/home/", "Desktop", "Documents", "AppData")
 
@@ -33,7 +32,11 @@ class McpStdioServerTests(unittest.TestCase):
         response = request(
             1,
             "initialize",
-            {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "test", "version": "1"}},
+            {
+                "protocolVersion": "2025-06-18",
+                "capabilities": {},
+                "clientInfo": {"name": "test", "version": "1"},
+            },
         )
 
         self.assertEqual("2.0", response["jsonrpc"])
@@ -68,8 +71,12 @@ class McpStdioServerTests(unittest.TestCase):
         result = response["result"]
         self.assertFalse(result["isError"])
         self.assertEqual("tools", result["structuredContent"]["action"])
-        self.assertTrue(all(item["safe_default"] for item in result["structuredContent"]["capabilities"]))
-        self.assertTrue(all("current_status" in item for item in result["structuredContent"]["capabilities"]))
+        self.assertTrue(
+            all(item["safe_default"] for item in result["structuredContent"]["capabilities"])
+        )
+        self.assertTrue(
+            all("current_status" in item for item in result["structuredContent"]["capabilities"])
+        )
         self.assert_no_private_paths(response)
 
     def test_safe_roots_tool_returns_repo_relative_boundaries(self) -> None:
@@ -109,7 +116,10 @@ class McpStdioServerTests(unittest.TestCase):
         response = request(
             31,
             "tools/call",
-            {"name": "comfyui.system_probe", "arguments": {"comfy_url": "http://127.0.0.1:9", "timeout": 1}},
+            {
+                "name": "comfyui.system_probe",
+                "arguments": {"comfy_url": "http://127.0.0.1:9", "timeout": 1},
+            },
         )
         structured = response["result"]["structuredContent"]
 
@@ -143,9 +153,12 @@ class McpStdioServerTests(unittest.TestCase):
 
     def test_stdio_loop_handles_initialize_and_list(self) -> None:
         input_stream = io.StringIO(
-            json.dumps({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}) + "\n"
-            + json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}) + "\n"
-            + json.dumps({"jsonrpc": "2.0", "id": 2, "method": "tools/list"}) + "\n"
+            json.dumps({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}})
+            + "\n"
+            + json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"})
+            + "\n"
+            + json.dumps({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
+            + "\n"
         )
         output_stream = io.StringIO()
 

@@ -2,10 +2,8 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from pathlib import Path
 from typing import Any
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 EXAMPLES_DIR = REPO_ROOT / "examples"
@@ -110,6 +108,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    if sys.version_info < (3, 10):
-        raise SystemExit("建议使用 Python 3.10 或更新版本运行本脚本。")
     main()

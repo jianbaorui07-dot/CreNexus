@@ -10,13 +10,14 @@ import cv2
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_OUTPUT_DIR = REPO_ROOT / "examples" / "output" / "photoshop" / "subject-layer-practice"
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Create local subject cutout layers for Photoshop practice.")
+    parser = argparse.ArgumentParser(
+        description="Create local subject cutout layers for Photoshop practice."
+    )
     parser.add_argument("--input", required=True)
     parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR))
     parser.add_argument("--rect", default="70,330,900,850", help="GrabCut rectangle: x,y,w,h")
@@ -58,7 +59,9 @@ def load_rgb(path: str) -> tuple[np.ndarray, dict[str, Any]]:
     }
 
 
-def grabcut_subject(rgb: np.ndarray, rect: tuple[int, int, int, int], iterations: int) -> np.ndarray:
+def grabcut_subject(
+    rgb: np.ndarray, rect: tuple[int, int, int, int], iterations: int
+) -> np.ndarray:
     h, w = rgb.shape[:2]
     x, y, rw, rh = rect
     x = max(0, min(x, w - 2))
@@ -76,7 +79,9 @@ def grabcut_subject(rgb: np.ndarray, rect: tuple[int, int, int, int], iterations
     foreground = keep_subject_components(foreground)
     kernel = np.ones((5, 5), np.uint8)
     foreground = cv2.morphologyEx(foreground, cv2.MORPH_CLOSE, kernel, iterations=2)
-    foreground = cv2.morphologyEx(foreground, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8), iterations=1)
+    foreground = cv2.morphologyEx(
+        foreground, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8), iterations=1
+    )
     foreground = cv2.GaussianBlur(foreground, (5, 5), 0)
     return foreground
 
@@ -84,11 +89,11 @@ def grabcut_subject(rgb: np.ndarray, rect: tuple[int, int, int, int], iterations
 def add_subject_seeds(mask: np.ndarray) -> None:
     h, w = mask.shape
     seeds = [
-        ((0.60, 0.38), (0.15, 0.12), 0),   # child face and head
+        ((0.60, 0.38), (0.15, 0.12), 0),  # child face and head
         ((0.50, 0.50), (0.20, 0.16), -18),  # blue upper body
-        ((0.61, 0.59), (0.34, 0.18), 0),   # red fish body
+        ((0.61, 0.59), (0.34, 0.18), 0),  # red fish body
         ((0.25, 0.55), (0.22, 0.16), -8),  # fish tail
-        ((0.56, 0.68), (0.18, 0.10), 0),   # hands and lower body
+        ((0.56, 0.68), (0.18, 0.10), 0),  # hands and lower body
         ((0.82, 0.45), (0.13, 0.11), 20),  # fish eye/head area
     ]
     for (cx, cy), (ax, ay), angle in seeds:
@@ -110,9 +115,12 @@ def keep_subject_components(mask: np.ndarray) -> np.ndarray:
         area = stats[label, cv2.CC_STAT_AREA]
         component = labels == label
         overlaps_seed = bool(np.any(component & (seed > 0)))
-        if overlaps_seed and area > 800:
-            kept[component] = 255
-        elif area > 18000 and stats[label, cv2.CC_STAT_TOP] > int(h * 0.25):
+        if (
+            overlaps_seed
+            and area > 800
+            or area > 18000
+            and stats[label, cv2.CC_STAT_TOP] > int(h * 0.25)
+        ):
             kept[component] = 255
     return kept
 
@@ -157,7 +165,9 @@ def build_layer_masks(rgb: np.ndarray, subject: np.ndarray) -> dict[str, np.ndar
     }
 
 
-def save_layers(rgb: np.ndarray, masks: dict[str, np.ndarray], output_dir: Path) -> list[dict[str, Any]]:
+def save_layers(
+    rgb: np.ndarray, masks: dict[str, np.ndarray], output_dir: Path
+) -> list[dict[str, Any]]:
     layer_dir = output_dir / "layers"
     layer_dir.mkdir(parents=True, exist_ok=True)
     layers: list[dict[str, Any]] = []
@@ -227,7 +237,17 @@ def main() -> None:
     }
     report_path = output_dir / "subject_layer_report.json"
     report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(json.dumps({"ok": True, "report": report_path.relative_to(REPO_ROOT).as_posix(), "layers": len(layers)}, ensure_ascii=False, indent=2))
+    print(
+        json.dumps(
+            {
+                "ok": True,
+                "report": report_path.relative_to(REPO_ROOT).as_posix(),
+                "layers": len(layers),
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
 
 
 if __name__ == "__main__":

@@ -13,7 +13,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-
 BRIDGE_ID = "comfyui"
 DEFAULT_BASE_URL = os.environ.get("STARBRIDGE_COMFYUI_URL") or os.environ.get(
     "COMFY_BASE_URL",
@@ -208,7 +207,9 @@ def resolve_checkpoint(args: argparse.Namespace, checkpoints: list[str]) -> str:
     return checkpoints[0]
 
 
-def build_prompt(args: argparse.Namespace, workflow: dict[str, Any], checkpoint: str) -> tuple[dict[str, Any], int]:
+def build_prompt(
+    args: argparse.Namespace, workflow: dict[str, Any], checkpoint: str
+) -> tuple[dict[str, Any], int]:
     prompt = copy.deepcopy(workflow)
     seed = args.seed if args.seed is not None else random.randint(1, 2**48)
 
@@ -250,7 +251,11 @@ def wait_for_job_status(
         history = get_json(base_url, f"/history/{prompt_id}", request_timeout)
         if prompt_id in history:
             filenames = output_filenames_from_history(prompt_id, history)
-            return {"status": "completed", "output_count": len(filenames), "output_filenames": filenames}
+            return {
+                "status": "completed",
+                "output_count": len(filenames),
+                "output_filenames": filenames,
+            }
         time.sleep(2)
     raise BridgeError(
         "timeout",
@@ -289,10 +294,21 @@ def write_manifest(manifest: dict[str, Any], path: Path) -> None:
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = JsonArgumentParser(description="Submit a safe txt2img workflow to local ComfyUI.")
     parser.add_argument("--comfy-url", default=DEFAULT_BASE_URL, help="ComfyUI API base URL.")
-    parser.add_argument("--workflow", type=Path, default=WORKFLOW_PATH, help="ComfyUI API workflow JSON path.")
-    parser.add_argument("--manifest-path", type=Path, default=DEFAULT_MANIFEST_PATH, help="Local ignored evidence manifest path.")
+    parser.add_argument(
+        "--workflow", type=Path, default=WORKFLOW_PATH, help="ComfyUI API workflow JSON path."
+    )
+    parser.add_argument(
+        "--manifest-path",
+        type=Path,
+        default=DEFAULT_MANIFEST_PATH,
+        help="Local ignored evidence manifest path.",
+    )
     parser.add_argument("--prompt", required=True, help="Positive prompt.")
-    parser.add_argument("--negative", default="low quality, blurry, distorted, watermark, text", help="Negative prompt.")
+    parser.add_argument(
+        "--negative",
+        default="low quality, blurry, distorted, watermark, text",
+        help="Negative prompt.",
+    )
     parser.add_argument("--ckpt", default=None, help="Exact checkpoint name from ComfyUI.")
     parser.add_argument(
         "--allow-first-checkpoint",
@@ -305,18 +321,28 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--cfg", type=float, default=7.0, help="Classifier-free guidance scale.")
     parser.add_argument("--sampler", default="euler", help="ComfyUI sampler_name for KSampler.")
     parser.add_argument("--scheduler", default="normal", help="ComfyUI scheduler for KSampler.")
-    parser.add_argument("--seed", type=int, default=None, help="Random seed. Omit to generate one locally.")
+    parser.add_argument(
+        "--seed", type=int, default=None, help="Random seed. Omit to generate one locally."
+    )
     parser.add_argument("--prefix", default="codex_txt2img", help="Output filename prefix.")
     parser.add_argument("--timeout", type=int, default=600, help="Maximum wait time in seconds.")
-    parser.add_argument("--request-timeout", type=int, default=30, help="Single HTTP request timeout in seconds.")
-    parser.add_argument("--soft-exit", action="store_true", help="Return exit code 0 after writing an error manifest when ComfyUI is unavailable.")
+    parser.add_argument(
+        "--request-timeout", type=int, default=30, help="Single HTTP request timeout in seconds."
+    )
+    parser.add_argument(
+        "--soft-exit",
+        action="store_true",
+        help="Return exit code 0 after writing an error manifest when ComfyUI is unavailable.",
+    )
     return parser.parse_args(argv)
 
 
 def run(args: argparse.Namespace) -> dict[str, Any]:
     workflow = load_workflow(args.workflow)
     stats = get_json(args.comfy_url, "/system_stats", args.request_timeout)
-    checkpoint = resolve_checkpoint(args, get_checkpoint_names(args.comfy_url, args.request_timeout))
+    checkpoint = resolve_checkpoint(
+        args, get_checkpoint_names(args.comfy_url, args.request_timeout)
+    )
     prompt, seed = build_prompt(args, workflow, checkpoint)
     response = post_json(args.comfy_url, "/prompt", {"prompt": prompt}, args.request_timeout)
     prompt_id = response.get("prompt_id")

@@ -4,19 +4,25 @@ import argparse
 import json
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
-from starbridge_mcp.bridges import autocad_dxf
 from starbridge_mcp.adapters.photoshop import TOOL_DEFINITIONS as PHOTOSHOP_V1_TOOL_DEFINITIONS
 from starbridge_mcp.adapters.photoshop import TOOL_HANDLERS as PHOTOSHOP_V1_TOOL_HANDLERS
-from starbridge_mcp.core.evidence import DEFAULT_MANIFEST_FILENAME, ensure_evidence_path, load_manifest, manifest_validation_result, repo_relative
+from starbridge_mcp.bridges import autocad_dxf
+from starbridge_mcp.core.evidence import (
+    DEFAULT_MANIFEST_FILENAME,
+    ensure_evidence_path,
+    load_manifest,
+    manifest_validation_result,
+    repo_relative,
+)
 from starbridge_mcp.core.job_status import JobStatus
 from starbridge_mcp.core.safe_roots import safe_roots_summary
 from starbridge_mcp.core.security import sanitize
 from starbridge_mcp.core.tool_registry import capability_summary, list_capabilities
 from starbridge_mcp.server import BRIDGE_ALIASES, build_response
-
 
 PROTOCOL_VERSION = "2025-06-18"
 SERVER_INFO = {"name": "starbridge", "version": "0.1.0"}
@@ -144,7 +150,10 @@ TOOL_DEFINITIONS: list[JsonObject] = [
         description="对单个 bridge 做只读探针检查。等价于 status + bridge filter。",
         input_schema=_object_schema(
             {
-                "bridge": {"type": "string", "enum": [item for item in BRIDGE_ENUM if item != "all"]},
+                "bridge": {
+                    "type": "string",
+                    "enum": [item for item in BRIDGE_ENUM if item != "all"],
+                },
                 "timeout": {"type": "integer", "minimum": 1, "maximum": 60, "default": 8},
                 "probe_executables": {"type": "boolean", "default": True},
                 "comfy_url": {"type": "string"},
@@ -197,7 +206,10 @@ TOOL_DEFINITIONS: list[JsonObject] = [
         "description": "Validate the current redacted EvidenceManifest shape and path boundary.",
         "inputSchema": _object_schema(
             {
-                "manifest_path": {"type": "string", "default": "examples/output/evidence/manifest.latest.json"},
+                "manifest_path": {
+                    "type": "string",
+                    "default": "examples/output/evidence/manifest.latest.json",
+                },
             }
         ),
         "annotations": _safe_read_annotations(),
@@ -249,7 +261,11 @@ TOOL_DEFINITIONS: list[JsonObject] = [
         input_schema=_object_schema(
             {
                 "goal": {"type": "string", "default": ""},
-                "workflow_type": {"type": "string", "enum": ["txt2img", "img2img", "inpaint", "upscale"], "default": "txt2img"},
+                "workflow_type": {
+                    "type": "string",
+                    "enum": ["txt2img", "img2img", "inpaint", "upscale"],
+                    "default": "txt2img",
+                },
                 "style": {"type": "string", "default": ""},
                 "width": {"type": "integer", "default": 1024, "minimum": 64, "maximum": 4096},
                 "height": {"type": "integer", "default": 1024, "minimum": 64, "maximum": 4096},
@@ -265,7 +281,11 @@ TOOL_DEFINITIONS: list[JsonObject] = [
         input_schema=_object_schema(
             {
                 "goal": {"type": "string", "default": ""},
-                "workflow_type": {"type": "string", "enum": ["txt2img", "img2img", "inpaint", "upscale"], "default": "txt2img"},
+                "workflow_type": {
+                    "type": "string",
+                    "enum": ["txt2img", "img2img", "inpaint", "upscale"],
+                    "default": "txt2img",
+                },
                 "style": {"type": "string", "default": ""},
                 "prompt": {"type": "string", "default": ""},
                 "negative_prompt": {"type": "string", "default": ""},
@@ -308,7 +328,11 @@ TOOL_DEFINITIONS: list[JsonObject] = [
         input_schema=_object_schema(
             {
                 "goal": {"type": "string", "default": ""},
-                "workflow_type": {"type": "string", "enum": ["txt2img", "img2img", "inpaint", "upscale"], "default": "txt2img"},
+                "workflow_type": {
+                    "type": "string",
+                    "enum": ["txt2img", "img2img", "inpaint", "upscale"],
+                    "default": "txt2img",
+                },
                 "style": {"type": "string", "default": ""},
                 "prompt": {"type": "string", "default": ""},
                 "negative_prompt": {"type": "string", "default": ""},
@@ -334,7 +358,11 @@ TOOL_DEFINITIONS: list[JsonObject] = [
         description="Generate a safe placeholder draft workflow for txt2img, img2img, inpaint, or upscale and validate it immediately.",
         input_schema=_object_schema(
             {
-                "task_type": {"type": "string", "enum": ["txt2img", "img2img", "inpaint", "upscale"], "default": "txt2img"},
+                "task_type": {
+                    "type": "string",
+                    "enum": ["txt2img", "img2img", "inpaint", "upscale"],
+                    "default": "txt2img",
+                },
                 "prompt": {"type": "string", "default": ""},
                 "negative_prompt": {"type": "string", "default": ""},
                 "width": {"type": "integer", "default": 1024, "minimum": 64, "maximum": 4096},
@@ -358,7 +386,11 @@ TOOL_DEFINITIONS: list[JsonObject] = [
         description="Compose a safe placeholder ComfyUI graph from reviewed modules and validate it immediately.",
         input_schema=_object_schema(
             {
-                "task_type": {"type": "string", "enum": ["txt2img", "img2img", "inpaint", "upscale"], "default": "txt2img"},
+                "task_type": {
+                    "type": "string",
+                    "enum": ["txt2img", "img2img", "inpaint", "upscale"],
+                    "default": "txt2img",
+                },
                 "prompt": {"type": "string", "default": ""},
                 "negative_prompt": {"type": "string", "default": ""},
                 "width": {"type": "integer", "default": 1024, "minimum": 64, "maximum": 4096},
@@ -416,7 +448,13 @@ TOOL_DEFINITIONS: list[JsonObject] = [
         title="Probe Photoshop Session",
         description="通过状态探针检查 Photoshop COM 线索；只读，不打开 PSD，不保存导出。",
         input_schema=_object_schema(
-            {"probe_com": {"type": "boolean", "default": True, "description": "是否尝试连接已打开的 Photoshop COM 对象。"}}
+            {
+                "probe_com": {
+                    "type": "boolean",
+                    "default": True,
+                    "description": "是否尝试连接已打开的 Photoshop COM 对象。",
+                }
+            }
         ),
     ),
     _standard_tool(
@@ -526,7 +564,13 @@ TOOL_DEFINITIONS: list[JsonObject] = [
         title="Probe Illustrator Document",
         description="Read the active Illustrator document summary through COM without opening private AI files.",
         input_schema=_object_schema(
-            {"probe_com": {"type": "boolean", "default": True, "description": "是否尝试连接已打开的 Illustrator COM 对象。"}}
+            {
+                "probe_com": {
+                    "type": "boolean",
+                    "default": True,
+                    "description": "是否尝试连接已打开的 Illustrator COM 对象。",
+                }
+            }
         ),
     ),
     _standard_tool(
@@ -659,9 +703,15 @@ def _enrich_tool_annotations() -> None:
             read_only=read_only,
         )
         annotations["safeDefault"] = bool(capability["safe_default"]) if capability else read_only
-        annotations["requiresConfirmation"] = bool(capability["requires_confirmation"]) if capability else not read_only
-        annotations["requiresLocalSoftware"] = bool(capability["requires_local_software"]) if capability else False
-        annotations["currentStatus"] = str(capability["current_status"]) if capability else "experimental"
+        annotations["requiresConfirmation"] = (
+            bool(capability["requires_confirmation"]) if capability else not read_only
+        )
+        annotations["requiresLocalSoftware"] = (
+            bool(capability["requires_local_software"]) if capability else False
+        )
+        annotations["currentStatus"] = (
+            str(capability["current_status"]) if capability else "experimental"
+        )
         tool["annotations"] = annotations
         if not read_only:
             if tool["name"] == "comfyui.agent_run":
@@ -677,7 +727,9 @@ def _enrich_tool_annotations() -> None:
 _enrich_tool_annotations()
 
 
-def _namespace_for_status(arguments: JsonObject, *, probe_default: bool = False) -> argparse.Namespace:
+def _namespace_for_status(
+    arguments: JsonObject, *, probe_default: bool = False
+) -> argparse.Namespace:
     return argparse.Namespace(
         action="status",
         bridge=str(arguments.get("bridge") or "all"),
@@ -699,12 +751,18 @@ def _handle_probe(arguments: JsonObject) -> JsonObject:
 
 
 def _handle_tools(arguments: JsonObject) -> JsonObject:
-    bridge = BRIDGE_ALIASES.get(str(arguments.get("bridge") or "all"), str(arguments.get("bridge") or "all"))
-    return capability_summary(bridge=bridge, include_guarded=not bool(arguments.get("safe_only", False)))
+    bridge = BRIDGE_ALIASES.get(
+        str(arguments.get("bridge") or "all"), str(arguments.get("bridge") or "all")
+    )
+    return capability_summary(
+        bridge=bridge, include_guarded=not bool(arguments.get("safe_only", False))
+    )
 
 
 def _handle_safe_roots(arguments: JsonObject) -> JsonObject:
-    bridge = BRIDGE_ALIASES.get(str(arguments.get("bridge") or "all"), str(arguments.get("bridge") or "all"))
+    bridge = BRIDGE_ALIASES.get(
+        str(arguments.get("bridge") or "all"), str(arguments.get("bridge") or "all")
+    )
     return safe_roots_summary(bridge=bridge)
 
 
@@ -722,13 +780,17 @@ def _handle_evidence_init(arguments: JsonObject) -> JsonObject:
                 "status": "queued",
                 "dry_run": True,
             },
-            "next_steps": ["Review the manifest preview, then use the CLI if you want to materialize or validate a local file."],
+            "next_steps": [
+                "Review the manifest preview, then use the CLI if you want to materialize or validate a local file."
+            ],
         }
     )
 
 
 def _handle_evidence_validate(arguments: JsonObject) -> JsonObject:
-    manifest_path = ensure_evidence_path(str(arguments.get("manifest_path") or DEFAULT_MANIFEST_FILENAME))
+    manifest_path = ensure_evidence_path(
+        str(arguments.get("manifest_path") or DEFAULT_MANIFEST_FILENAME)
+    )
     if not manifest_path.exists():
         return sanitize(
             {
@@ -779,7 +841,9 @@ def _handle_job_status(arguments: JsonObject) -> JsonObject:
     return sanitize(payload)
 
 
-def _report_to_result(*, bridge: str, action: str, report: JsonObject, display_name: str) -> JsonObject:
+def _report_to_result(
+    *, bridge: str, action: str, report: JsonObject, display_name: str
+) -> JsonObject:
     errors = report.get("errors", [])
     raw_warnings = report.get("warnings", [])
     warnings = []
@@ -820,7 +884,9 @@ def _handle_comfy_system_probe(arguments: JsonObject) -> JsonObject:
     )
 
 
-def _handle_python_probe(*, bridge: str, action: str, display_name: str, module_name: str) -> JsonObject:
+def _handle_python_probe(
+    *, bridge: str, action: str, display_name: str, module_name: str
+) -> JsonObject:
     module = __import__(module_name, fromlist=["probe"])
     return _report_to_result(
         bridge=bridge,
@@ -927,7 +993,9 @@ def _handle_write_dxf(arguments: JsonObject) -> JsonObject:
                     "output_root": "examples/cad/output",
                 },
                 "warnings": ["MCP write calls must be explicitly confirmed."],
-                "next_steps": ["Call again with dry_run=true first, or set confirm_write=true for a sandboxed output path."],
+                "next_steps": [
+                    "Call again with dry_run=true first, or set confirm_write=true for a sandboxed output path."
+                ],
             }
         )
     return autocad_dxf.write_dxf(
@@ -950,8 +1018,16 @@ def _recipe_output_dir(arguments: JsonObject) -> str:
 
 def _recipe_validations(output_dir: str) -> list[JsonObject]:
     return [
-        {"name": "output_dir_sandboxed", "ok": output_dir.startswith("examples/output/photoshop"), "expected_root": "examples/output/photoshop"},
-        {"name": "manifest_schema", "ok": True, "path": "examples/output/evidence/manifest.latest.json"},
+        {
+            "name": "output_dir_sandboxed",
+            "ok": output_dir.startswith("examples/output/photoshop"),
+            "expected_root": "examples/output/photoshop",
+        },
+        {
+            "name": "manifest_schema",
+            "ok": True,
+            "path": "examples/output/evidence/manifest.latest.json",
+        },
         {"name": "no_private_path_leak", "ok": True},
         {"name": "confirm_write_required", "ok": True},
     ]
@@ -962,19 +1038,42 @@ def _recipe_definition(output_dir: str) -> JsonObject:
         "recipe_id": PHOTOSHOP_RECIPE_ID,
         "goal": "Create a sandbox Photoshop demo document, export previews, and record evidence without exposing private PSD paths.",
         "allowed_inputs": ["recipe_id", "dry_run", "confirm_write", "output_dir"],
-        "allowed_outputs": [f"{output_dir}/starbridge_ps_demo.psd", f"{output_dir}/starbridge_ps_demo.png", f"{output_dir}/starbridge_ps_demo.jpg"],
-        "steps": ["plan sandbox outputs", "create sandbox PSD", "export preview assets", "validate evidence manifest"],
-        "tools": ["photoshop.create_demo_document", "photoshop.export_demo_preview", "starbridge.evidence_init", "starbridge.evidence_validate"],
+        "allowed_outputs": [
+            f"{output_dir}/starbridge_ps_demo.psd",
+            f"{output_dir}/starbridge_ps_demo.png",
+            f"{output_dir}/starbridge_ps_demo.jpg",
+        ],
+        "steps": [
+            "plan sandbox outputs",
+            "create sandbox PSD",
+            "export preview assets",
+            "validate evidence manifest",
+        ],
+        "tools": [
+            "photoshop.create_demo_document",
+            "photoshop.export_demo_preview",
+            "starbridge.evidence_init",
+            "starbridge.evidence_validate",
+        ],
         "validations": [item["name"] for item in _recipe_validations(output_dir)],
-        "retry_policy": ["retry after local Photoshop authorization is ready", "rerun dry_run before enabling confirm_write"],
-        "evidence_requirements": ["redacted EvidenceManifest JSON", "declared output file list", "no private path leakage"],
+        "retry_policy": [
+            "retry after local Photoshop authorization is ready",
+            "rerun dry_run before enabling confirm_write",
+        ],
+        "evidence_requirements": [
+            "redacted EvidenceManifest JSON",
+            "declared output file list",
+            "no private path leakage",
+        ],
         "safety_boundary": "Writes stay inside examples/output/photoshop and require confirm_write=true for real execution.",
     }
 
 
 def _handle_photoshop_recipe_list(_arguments: JsonObject) -> JsonObject:
     recipe = _recipe_definition("examples/output/photoshop")
-    return sanitize({"ok": True, "bridge": "photoshop", "action": "recipe_list", "recipes": [recipe]})
+    return sanitize(
+        {"ok": True, "bridge": "photoshop", "action": "recipe_list", "recipes": [recipe]}
+    )
 
 
 def _handle_photoshop_recipe_plan(arguments: JsonObject) -> JsonObject:
@@ -1017,7 +1116,11 @@ def _handle_photoshop_recipe_run(arguments: JsonObject) -> JsonObject:
                 "dry_run": True,
                 "recipe_id": str(arguments.get("recipe_id") or PHOTOSHOP_RECIPE_ID),
                 "output_dir": output_dir,
-                "commands": ["npm.cmd run photoshop:demo:plan", "npm.cmd run photoshop:demo", "npm.cmd run photoshop:manifest"],
+                "commands": [
+                    "npm.cmd run photoshop:demo:plan",
+                    "npm.cmd run photoshop:demo",
+                    "npm.cmd run photoshop:manifest",
+                ],
                 "quality_gates": [item["name"] for item in _recipe_validations(output_dir)],
             }
         )
@@ -1040,7 +1143,9 @@ def _handle_photoshop_recipe_run(arguments: JsonObject) -> JsonObject:
             "dry_run": False,
             "confirm_write": True,
             "output_dir": output_dir,
-            "next_steps": ["Run npm.cmd run photoshop:demo on the authorized Windows machine if you want to execute the live sandbox flow."],
+            "next_steps": [
+                "Run npm.cmd run photoshop:demo on the authorized Windows machine if you want to execute the live sandbox flow."
+            ],
         }
     )
 
@@ -1086,7 +1191,14 @@ def _run_powershell_json(script_relative: str, extra_args: list[str] | None = No
     if not script_path.exists():
         raise ValueError(f"missing script: {script_relative}")
     completed = subprocess.run(
-        ["powershell", "-ExecutionPolicy", "Bypass", "-File", str(script_path), *(extra_args or [])],
+        [
+            "powershell",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(script_path),
+            *(extra_args or []),
+        ],
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,
@@ -1101,7 +1213,9 @@ def _run_powershell_json(script_relative: str, extra_args: list[str] | None = No
                 "bridge": "adobe",
                 "task": "script_call",
                 "warnings": ["PowerShell script returned no JSON output."],
-                "next_steps": ["Run the matching npm.cmd script locally to inspect the environment error."],
+                "next_steps": [
+                    "Run the matching npm.cmd script locally to inspect the environment error."
+                ],
             }
         )
     try:
@@ -1127,12 +1241,16 @@ def _adobe_refusal(*, bridge: str, task: str, confirm_key: str) -> JsonObject:
             "dry_run": False,
             confirm_key: False,
             "warnings": [f"Refusing real {bridge} write/export without {confirm_key}=true."],
-            "next_steps": ["Run the dry-run plan first, then call again with explicit confirmation for sandbox output."],
+            "next_steps": [
+                "Run the dry-run plan first, then call again with explicit confirmation for sandbox output."
+            ],
         }
     )
 
 
-def _handle_adobe_document_info(arguments: JsonObject, bridge: str, script_relative: str) -> JsonObject:
+def _handle_adobe_document_info(
+    arguments: JsonObject, bridge: str, script_relative: str
+) -> JsonObject:
     if not bool(arguments.get("probe_com", True)):
         return sanitize(
             {
@@ -1141,7 +1259,9 @@ def _handle_adobe_document_info(arguments: JsonObject, bridge: str, script_relat
                 "task": "document_info",
                 "active_document": False,
                 "warnings": ["COM probing was skipped by request."],
-                "next_steps": [f"Run the {bridge}:info npm script on a Windows machine with the Adobe app available."],
+                "next_steps": [
+                    f"Run the {bridge}:info npm script on a Windows machine with the Adobe app available."
+                ],
             }
         )
     return _run_powershell_json(script_relative)
@@ -1159,18 +1279,35 @@ def _handle_illustrator_create(arguments: JsonObject) -> JsonObject:
         "task": "create_demo_artboard",
         "dry_run": dry_run,
         "confirm_write": confirm_write,
-        "document": {"name": "starbridge_ai_demo.ai", "width": width, "height": height, "color_space": "RGB"},
+        "document": {
+            "name": "starbridge_ai_demo.ai",
+            "width": width,
+            "height": height,
+            "color_space": "RGB",
+        },
         "artboards": [{"index": 0, "width": width, "height": height}],
         "layers": ["background", "foreground"],
-        "objects_created": ["background rectangle", "title text", "subtitle text", "circle", "rectangle", "line", "path"],
+        "objects_created": [
+            "background rectangle",
+            "title text",
+            "subtitle text",
+            "circle",
+            "rectangle",
+            "line",
+            "path",
+        ],
         "output_ai_path": f"{output_dir}/starbridge_ai_demo.ai",
         "warnings": [],
-        "next_steps": ["Call again with dry_run=false and confirm_write=true to create the sandbox demo document."],
+        "next_steps": [
+            "Call again with dry_run=false and confirm_write=true to create the sandbox demo document."
+        ],
     }
     if dry_run:
         return sanitize(result)
     if not confirm_write:
-        return _adobe_refusal(bridge="illustrator", task="create_demo_artboard", confirm_key="confirm_write")
+        return _adobe_refusal(
+            bridge="illustrator", task="create_demo_artboard", confirm_key="confirm_write"
+        )
     return _run_powershell_json(
         "examples/illustrator_bridge/scripts/create_demo_artboard.ps1",
         ["-Width", str(width), "-Height", str(height), "-OutputDir", output_dir, "-ConfirmWrite"],
@@ -1196,12 +1333,16 @@ def _handle_illustrator_export(arguments: JsonObject) -> JsonObject:
         "png_path": f"{output_dir}/starbridge_ai_demo.png",
         "pdf_path": f"{output_dir}/starbridge_ai_demo.pdf",
         "warnings": [],
-        "next_steps": ["Call again with dry_run=false and confirm_export=true after creating the sandbox demo document."],
+        "next_steps": [
+            "Call again with dry_run=false and confirm_export=true after creating the sandbox demo document."
+        ],
     }
     if dry_run:
         return sanitize(result)
     if not confirm_export:
-        return _adobe_refusal(bridge="illustrator", task="export_demo_assets", confirm_key="confirm_export")
+        return _adobe_refusal(
+            bridge="illustrator", task="export_demo_assets", confirm_key="confirm_export"
+        )
     return _run_powershell_json(
         "examples/illustrator_bridge/scripts/export_demo_assets.ps1",
         ["-OutputDir", output_dir, "-ConfirmExport"],
@@ -1217,15 +1358,25 @@ def _handle_illustrator_run(arguments: JsonObject) -> JsonObject:
                 "bridge": "illustrator",
                 "task": "sandbox_vector_demo",
                 "dry_run": True,
-                "commands": ["npm.cmd run illustrator:demo:plan", "npm.cmd run illustrator:demo", "npm.cmd run illustrator:manifest"],
+                "commands": [
+                    "npm.cmd run illustrator:demo:plan",
+                    "npm.cmd run illustrator:demo",
+                    "npm.cmd run illustrator:manifest",
+                ],
                 "warnings": [],
-                "next_steps": ["Call again with dry_run=false, confirm_write=true, and confirm_export=true to run the local demo."],
+                "next_steps": [
+                    "Call again with dry_run=false, confirm_write=true, and confirm_export=true to run the local demo."
+                ],
             }
         )
     if not bool(arguments.get("confirm_write", False)):
-        return _adobe_refusal(bridge="illustrator", task="sandbox_vector_demo", confirm_key="confirm_write")
+        return _adobe_refusal(
+            bridge="illustrator", task="sandbox_vector_demo", confirm_key="confirm_write"
+        )
     if not bool(arguments.get("confirm_export", False)):
-        return _adobe_refusal(bridge="illustrator", task="sandbox_vector_demo", confirm_key="confirm_export")
+        return _adobe_refusal(
+            bridge="illustrator", task="sandbox_vector_demo", confirm_key="confirm_export"
+        )
     return _run_powershell_json("examples/illustrator_bridge/scripts/run_demo.ps1")
 
 
@@ -1242,19 +1393,45 @@ def _handle_photoshop_create(arguments: JsonObject) -> JsonObject:
         "task": "create_demo_document",
         "dry_run": dry_run,
         "confirm_write": confirm_write,
-        "document": {"name": "starbridge_ps_demo.psd", "width": width, "height": height, "dpi": dpi, "color_mode": "RGB"},
-        "layers_created": ["background", "color_block_left", "color_block_right", "title_text", "subtitle_text"],
+        "document": {
+            "name": "starbridge_ps_demo.psd",
+            "width": width,
+            "height": height,
+            "dpi": dpi,
+            "color_mode": "RGB",
+        },
+        "layers_created": [
+            "background",
+            "color_block_left",
+            "color_block_right",
+            "title_text",
+            "subtitle_text",
+        ],
         "output_psd_path": f"{output_dir}/starbridge_ps_demo.psd",
         "warnings": [],
-        "next_steps": ["Call again with dry_run=false and confirm_write=true to create the sandbox demo PSD."],
+        "next_steps": [
+            "Call again with dry_run=false and confirm_write=true to create the sandbox demo PSD."
+        ],
     }
     if dry_run:
         return sanitize(result)
     if not confirm_write:
-        return _adobe_refusal(bridge="photoshop", task="create_demo_document", confirm_key="confirm_write")
+        return _adobe_refusal(
+            bridge="photoshop", task="create_demo_document", confirm_key="confirm_write"
+        )
     return _run_powershell_json(
         "examples/photoshop_bridge/scripts/create_demo_document.ps1",
-        ["-Width", str(width), "-Height", str(height), "-Dpi", str(dpi), "-OutputDir", output_dir, "-ConfirmWrite"],
+        [
+            "-Width",
+            str(width),
+            "-Height",
+            str(height),
+            "-Dpi",
+            str(dpi),
+            "-OutputDir",
+            output_dir,
+            "-ConfirmWrite",
+        ],
     )
 
 
@@ -1268,17 +1445,24 @@ def _handle_photoshop_export(arguments: JsonObject) -> JsonObject:
         "task": "export_demo_preview",
         "dry_run": dry_run,
         "confirm_export": confirm_export,
-        "exported_files": [f"{output_dir}/starbridge_ps_demo.png", f"{output_dir}/starbridge_ps_demo.jpg"],
+        "exported_files": [
+            f"{output_dir}/starbridge_ps_demo.png",
+            f"{output_dir}/starbridge_ps_demo.jpg",
+        ],
         "width": 1080,
         "height": 1080,
         "layer_count": None,
         "warnings": [],
-        "next_steps": ["Call again with dry_run=false and confirm_export=true after creating the sandbox demo PSD."],
+        "next_steps": [
+            "Call again with dry_run=false and confirm_export=true after creating the sandbox demo PSD."
+        ],
     }
     if dry_run:
         return sanitize(result)
     if not confirm_export:
-        return _adobe_refusal(bridge="photoshop", task="export_demo_preview", confirm_key="confirm_export")
+        return _adobe_refusal(
+            bridge="photoshop", task="export_demo_preview", confirm_key="confirm_export"
+        )
     return _run_powershell_json(
         "examples/photoshop_bridge/scripts/export_demo_preview.ps1",
         ["-OutputDir", output_dir, "-ConfirmExport"],
@@ -1294,15 +1478,25 @@ def _handle_photoshop_run(arguments: JsonObject) -> JsonObject:
                 "bridge": "photoshop",
                 "task": "sandbox_ps_demo",
                 "dry_run": True,
-                "commands": ["npm.cmd run photoshop:demo:plan", "npm.cmd run photoshop:demo", "npm.cmd run photoshop:manifest"],
+                "commands": [
+                    "npm.cmd run photoshop:demo:plan",
+                    "npm.cmd run photoshop:demo",
+                    "npm.cmd run photoshop:manifest",
+                ],
                 "warnings": [],
-                "next_steps": ["Call again with dry_run=false, confirm_write=true, and confirm_export=true to run the local demo."],
+                "next_steps": [
+                    "Call again with dry_run=false, confirm_write=true, and confirm_export=true to run the local demo."
+                ],
             }
         )
     if not bool(arguments.get("confirm_write", False)):
-        return _adobe_refusal(bridge="photoshop", task="sandbox_ps_demo", confirm_key="confirm_write")
+        return _adobe_refusal(
+            bridge="photoshop", task="sandbox_ps_demo", confirm_key="confirm_write"
+        )
     if not bool(arguments.get("confirm_export", False)):
-        return _adobe_refusal(bridge="photoshop", task="sandbox_ps_demo", confirm_key="confirm_export")
+        return _adobe_refusal(
+            bridge="photoshop", task="sandbox_ps_demo", confirm_key="confirm_export"
+        )
     return _run_powershell_json("examples/photoshop_bridge/scripts/run_demo.ps1")
 
 
@@ -1336,7 +1530,11 @@ def _handle_photoshop_recipe_plan(arguments: JsonObject) -> JsonObject:
             "action": "recipe_plan",
             "dry_run": bool(arguments.get("dry_run", True)),
             "output_dir": output_dir,
-            "plan": ["validate manifest", "probe local Photoshop bridge", "write only into sandbox output"],
+            "plan": [
+                "validate manifest",
+                "probe local Photoshop bridge",
+                "write only into sandbox output",
+            ],
         }
     )
 
@@ -1393,7 +1591,10 @@ def _handle_photoshop_recipe_debug(_arguments: JsonObject) -> JsonObject:
             "bridge": "photoshop",
             "action": "recipe_debug",
             "status": "safe_read_only",
-            "notes": ["Use ps.probe for live bridge details.", "Recipe debug does not open or overwrite PSD files."],
+            "notes": [
+                "Use ps.probe for live bridge details.",
+                "Recipe debug does not open or overwrite PSD files.",
+            ],
         }
     )
 
@@ -1458,9 +1659,15 @@ TOOL_HANDLERS: dict[str, ToolHandler] = {
         module_name="examples.capcut_jianying_bridge.probe",
     ),
     "autocad_dxf.status": lambda _arguments: autocad_dxf.status(),
-    "autocad_dxf.validate_cad_plan": lambda arguments: autocad_dxf.validate_cad_plan(arguments.get("plan")),
-    "autocad_dxf.create_dxf_plan": lambda arguments: autocad_dxf.create_dxf_plan(arguments.get("prompt_or_spec")),
-    "autocad_dxf.summarize_plan": lambda arguments: autocad_dxf.summarize_plan(arguments.get("plan")),
+    "autocad_dxf.validate_cad_plan": lambda arguments: autocad_dxf.validate_cad_plan(
+        arguments.get("plan")
+    ),
+    "autocad_dxf.create_dxf_plan": lambda arguments: autocad_dxf.create_dxf_plan(
+        arguments.get("prompt_or_spec")
+    ),
+    "autocad_dxf.summarize_plan": lambda arguments: autocad_dxf.summarize_plan(
+        arguments.get("plan")
+    ),
     "autocad_dxf.write_dxf": _handle_write_dxf,
 }
 
@@ -1472,7 +1679,11 @@ def _response(message_id: Any, result: JsonObject) -> JsonObject:
 
 
 def _error(message_id: Any, code: int, message: str, data: Any | None = None) -> JsonObject:
-    payload: JsonObject = {"jsonrpc": "2.0", "id": message_id, "error": {"code": code, "message": message}}
+    payload: JsonObject = {
+        "jsonrpc": "2.0",
+        "id": message_id,
+        "error": {"code": code, "message": message},
+    }
     if data is not None:
         payload["error"]["data"] = data
     return payload
@@ -1520,9 +1731,14 @@ def handle_request(message: JsonObject) -> JsonObject | None:
         try:
             result = handler(arguments)
         except (TypeError, ValueError) as exc:
-            return _response(message_id, _text_tool_result({"ok": False, "error": str(exc)}, is_error=True))
+            return _response(
+                message_id, _text_tool_result({"ok": False, "error": str(exc)}, is_error=True)
+            )
         except Exception as exc:  # pragma: no cover - defensive server boundary
-            return _response(message_id, _text_tool_result({"ok": False, "error": type(exc).__name__}, is_error=True))
+            return _response(
+                message_id,
+                _text_tool_result({"ok": False, "error": type(exc).__name__}, is_error=True),
+            )
         return _response(message_id, _text_tool_result(result))
 
     if isinstance(method, str) and method.startswith("notifications/"):
@@ -1548,7 +1764,15 @@ def serve_stdio(stdin: Any = None, stdout: Any = None) -> int:
             output_stream.flush()
             continue
         if not isinstance(message, dict) or message.get("jsonrpc") != "2.0":
-            output_stream.write(encode_message(_error(message.get("id") if isinstance(message, dict) else None, -32600, "invalid request")))
+            output_stream.write(
+                encode_message(
+                    _error(
+                        message.get("id") if isinstance(message, dict) else None,
+                        -32600,
+                        "invalid request",
+                    )
+                )
+            )
             output_stream.flush()
             continue
         response = handle_request(message)

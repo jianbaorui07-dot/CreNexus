@@ -6,10 +6,8 @@ import os
 import platform
 import re
 import shutil
-import sys
 from pathlib import Path
 from typing import Any
-
 
 BRIDGE_ID = "blender"
 
@@ -42,16 +40,23 @@ def probe() -> dict[str, Any]:
     }
     if env_value and not env_exists:
         report["warnings"].append(
-            {"code": "blender_env_missing", "message": "Configured Blender executable does not exist."}
+            {
+                "code": "blender_env_missing",
+                "message": "Configured Blender executable does not exist.",
+            }
         )
     if not report["ok"]:
-        report["errors"].append({"code": "blender_not_detected", "message": "Blender executable was not detected."})
+        report["errors"].append(
+            {"code": "blender_not_detected", "message": "Blender executable was not detected."}
+        )
     return report
 
 
 def write_report(report: dict[str, Any], report_path: Path) -> None:
     report_path.parent.mkdir(parents=True, exist_ok=True)
-    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    report_path.write_text(
+        json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
 
 
 def print_text(report: dict[str, Any]) -> None:
@@ -68,7 +73,9 @@ def print_text(report: dict[str, Any]) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="只读检测本机 Blender bridge，输出安全 JSON report。")
+    parser = argparse.ArgumentParser(
+        description="只读检测本机 Blender bridge，输出安全 JSON report。"
+    )
     parser.add_argument("--json", action="store_true", help="只向 stdout 输出 JSON。")
     parser.add_argument(
         "--report-path",
@@ -86,6 +93,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    if sys.version_info < (3, 10):
-        raise SystemExit("建议使用 Python 3.10 或更新版本运行本 probe。")
     main()

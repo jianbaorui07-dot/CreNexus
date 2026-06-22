@@ -6,8 +6,14 @@ import unittest
 
 from examples.comfy_bridge import run_txt2img
 
-
-BANNED_OUTPUT_FRAGMENTS = ("C:" + "\\Users\\", "/Users/", "/home/", "Desktop", "Documents", "AppData")
+BANNED_OUTPUT_FRAGMENTS = (
+    "C:" + "\\Users\\",
+    "/Users/",
+    "/home/",
+    "Desktop",
+    "Documents",
+    "AppData",
+)
 
 
 class ComfyTxt2ImgWorkflowTest(unittest.TestCase):
@@ -92,8 +98,16 @@ class ComfyTxt2ImgWorkflowTest(unittest.TestCase):
                 "outputs": {
                     "9": {
                         "images": [
-                            {"filename": "C:" + r"\Users\demo\ComfyUI\output\secret.png", "subfolder": "private", "type": "output"},
-                            {"filename": "/ho" + "me/demo/ComfyUI/output/public.webp", "subfolder": "", "type": "output"},
+                            {
+                                "filename": "C:" + r"\Users\demo\ComfyUI\output\secret.png",
+                                "subfolder": "private",
+                                "type": "output",
+                            },
+                            {
+                                "filename": "/ho" + "me/demo/ComfyUI/output/public.webp",
+                                "subfolder": "",
+                                "type": "output",
+                            },
                         ]
                     }
                 }
@@ -113,7 +127,9 @@ class ComfyTxt2ImgWorkflowTest(unittest.TestCase):
         )
 
         self.assertEqual("ComfyUI", manifest["bridge_name"])
-        self.assertEqual("examples/comfy_bridge/workflows/txt2img_basic_api.json", manifest["workflow_file"])
+        self.assertEqual(
+            "examples/comfy_bridge/workflows/txt2img_basic_api.json", manifest["workflow_file"]
+        )
         self.assertEqual("completed", manifest["job_status"])
         self.assertEqual(1, manifest["output_count"])
         self.assertEqual(["image_00001.png"], manifest["output_filenames"])

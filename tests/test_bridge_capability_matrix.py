@@ -8,7 +8,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_DIR = REPO_ROOT / "scripts"
 SCRIPT_PATH = SCRIPT_DIR / "bridge_capability_matrix.py"
@@ -87,7 +86,9 @@ class BridgeCapabilityMatrixTest(unittest.TestCase):
             markdown_report = report_dir / "bridge_capability_matrix.md"
             self.assertTrue(json_report.exists())
             self.assertTrue(markdown_report.exists())
-            self.assertEqual("1.0", json.loads(json_report.read_text(encoding="utf-8"))["schema_version"])
+            self.assertEqual(
+                "1.0", json.loads(json_report.read_text(encoding="utf-8"))["schema_version"]
+            )
             self.assertIn("ComfyUI", markdown_report.read_text(encoding="utf-8"))
 
 

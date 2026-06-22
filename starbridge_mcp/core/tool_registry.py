@@ -45,14 +45,13 @@ class ToolCapability:
             "bridge": self.bridge,
             "action": self.action,
             "maturity": self.maturity,
-            "current_status": _current_status(self.maturity),
+            "current_status": self.current_status,
             "risk_level": self.risk_level,
             "description": self.description,
             "side_effects": self.side_effects,
             "safe_default": self.safe_default,
             "requires_confirmation": self.requires_confirmation,
             "requires_local_software": self.requires_local_software,
-            "current_status": self.current_status,
             "source_projects": list(self.source_projects),
             "invocation": self.invocation,
             "next_step": self.next_step,
@@ -99,7 +98,10 @@ CAPABILITIES: tuple[ToolCapability, ...] = (
         safe_default=True,
         requires_confirmation=False,
         requires_local_software=False,
-        source_projects=("modelcontextprotocol/specification", "adobe/generator-app-remote-mcp-server-generic"),
+        source_projects=(
+            "modelcontextprotocol/specification",
+            "adobe/generator-app-remote-mcp-server-generic",
+        ),
         invocation="python -m starbridge_mcp.server roots --json",
     ),
     ToolCapability(
@@ -238,7 +240,11 @@ CAPABILITIES: tuple[ToolCapability, ...] = (
         safe_default=True,
         requires_confirmation=False,
         requires_local_software=False,
-        source_projects=("IO-AtelierTech/comfyui-mcp", "artokun/comfyui-mcp", "joenorton/comfyui-mcp-server"),
+        source_projects=(
+            "IO-AtelierTech/comfyui-mcp",
+            "artokun/comfyui-mcp",
+            "joenorton/comfyui-mcp-server",
+        ),
     ),
     ToolCapability(
         name="comfyui.workflow_build",
@@ -277,7 +283,11 @@ CAPABILITIES: tuple[ToolCapability, ...] = (
         safe_default=False,
         requires_confirmation=True,
         requires_local_software=True,
-        source_projects=("IO-AtelierTech/comfyui-mcp", "artokun/comfyui-mcp", "joenorton/comfyui-mcp-server"),
+        source_projects=(
+            "IO-AtelierTech/comfyui-mcp",
+            "artokun/comfyui-mcp",
+            "joenorton/comfyui-mcp-server",
+        ),
     ),
     ToolCapability(
         name="comfy.workflow_draft",
@@ -504,7 +514,11 @@ CAPABILITIES: tuple[ToolCapability, ...] = (
         safe_default=True,
         requires_confirmation=False,
         requires_local_software=False,
-        source_projects=("loonghao/photoshop-python-api-mcp-server", "mikechambers/adb-mcp", "dcc-mcp-photoshop"),
+        source_projects=(
+            "loonghao/photoshop-python-api-mcp-server",
+            "mikechambers/adb-mcp",
+            "dcc-mcp-photoshop",
+        ),
         next_step="Run this first, then use document, layers, preview, or evidence tools against the same job_id.",
     ),
     ToolCapability(
@@ -954,7 +968,9 @@ def capability_summary(*, bridge: str = "all", include_guarded: bool = True) -> 
             "bridge": bridge,
             "capability_count": len(capabilities),
             "capabilities": capabilities,
-            "bridge_categories": {name: sorted(values) for name, values in bridge_categories.items()},
+            "bridge_categories": {
+                name: sorted(values) for name, values in bridge_categories.items()
+            },
             "adoption_policy": {
                 "third_party_source": "third_party_research is local-only and ignored by Git.",
                 "copy_policy": "借鉴架构和接口形状；不直接复制第三方源码到公开仓库。",

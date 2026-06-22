@@ -7,7 +7,6 @@ from unittest.mock import patch
 from examples.comfy_bridge.workflow_agent import agent_run
 from starbridge_mcp.mcp_server import handle_request
 
-
 BANNED_OUTPUT_FRAGMENTS = ("C:\\Users\\", "/Users/", "/home/", "Desktop", "Documents", "AppData")
 
 
@@ -38,11 +37,20 @@ class ComfyAgentRunTests(unittest.TestCase):
                 "output_manifest": {
                     "prompt_id": "abc-123",
                     "image_count": 1,
-                    "images": [{"node_id": "9", "filename": "agent_00001.png", "subfolder": "", "type": "output"}],
+                    "images": [
+                        {
+                            "node_id": "9",
+                            "filename": "agent_00001.png",
+                            "subfolder": "",
+                            "type": "output",
+                        }
+                    ],
                 },
             },
         }
-        with patch("examples.comfy_bridge.workflow_agent.submit_workflow", return_value=fake_submission) as submit:
+        with patch(
+            "examples.comfy_bridge.workflow_agent.submit_workflow", return_value=fake_submission
+        ) as submit:
             result = agent_run(
                 {
                     "goal": "生成一张国风 Q版 明代街市人物场景图",

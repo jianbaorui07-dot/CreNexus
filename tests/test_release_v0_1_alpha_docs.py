@@ -3,7 +3,6 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -15,7 +14,10 @@ class ReleaseV01AlphaDocsTest(unittest.TestCase):
         for term in ("v0.1-alpha", "stable", "experimental", "planned", "not implemented"):
             self.assertIn(term, first_screen)
         self.assertIn("AutoCAD/DXF plan validate / dry-run / guarded write", first_screen)
-        self.assertIn("Photoshop, Illustrator, Blender, and CapCut write flows are experimental or planned", first_screen)
+        self.assertIn(
+            "Photoshop, Illustrator, Blender, and CapCut write flows are experimental or planned",
+            first_screen,
+        )
 
     def test_capability_matrix_has_required_columns(self) -> None:
         matrix = (REPO_ROOT / "docs" / "CAPABILITY_MATRIX.md").read_text(encoding="utf-8")

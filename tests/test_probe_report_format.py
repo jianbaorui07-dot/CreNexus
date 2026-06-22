@@ -4,7 +4,6 @@ import json
 import unittest
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 REQUIRED_REPORT_FIELDS = {"bridge_id", "ok", "detected", "errors", "warnings", "safe_to_commit"}
 

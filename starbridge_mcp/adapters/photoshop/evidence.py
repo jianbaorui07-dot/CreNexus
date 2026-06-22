@@ -8,7 +8,6 @@ from uuid import uuid4
 
 from .schemas import ADAPTER_NAME, ADAPTER_VERSION, EvidenceManifest
 
-
 _PNG_1X1 = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wn13dQAAAAASUVORK5CYII="
 )

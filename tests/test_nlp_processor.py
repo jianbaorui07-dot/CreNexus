@@ -4,7 +4,6 @@ import sys
 import unittest
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CAD_SRC = REPO_ROOT / "cad-mcp-autocad" / "src"
 sys.path.insert(0, str(CAD_SRC))
@@ -26,9 +25,7 @@ class NLPProcessorTest(unittest.TestCase):
         self.assertEqual(self.processor.extract_color_from_command("30"), 30)
 
     def test_hatch_command_parses_points_pattern_and_scale(self) -> None:
-        parsed = self.processor.parse_command(
-            "绘制填充 (0,0), (10,0), (10,10) 图案 ANSI31 比例 2"
-        )
+        parsed = self.processor.parse_command("绘制填充 (0,0), (10,0), (10,10) 图案 ANSI31 比例 2")
 
         self.assertEqual(parsed["type"], "draw_hatch")
         self.assertEqual(len(parsed["points"]), 3)

@@ -8,7 +8,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_DIR = REPO_ROOT / "scripts"
 SCRIPT_PATH = SCRIPT_DIR / "starbridge_preflight.py"
@@ -50,8 +49,13 @@ class StarbridgePreflightTest(unittest.TestCase):
 
         self.assertIn("python scripts\\starbridge_preflight.py --markdown", readme)
         self.assertIn("python scripts\\starbridge_preflight.py --write-report --soft-exit", readme)
-        self.assertIn('"preflight": "python scripts/starbridge_preflight.py --markdown"', package_json)
-        self.assertIn('"bridge:capabilities": "python scripts/bridge_capability_matrix.py --markdown"', package_json)
+        self.assertIn(
+            '"preflight": "python scripts/starbridge_preflight.py --markdown"', package_json
+        )
+        self.assertIn(
+            '"bridge:capabilities": "python scripts/bridge_capability_matrix.py --markdown"',
+            package_json,
+        )
 
     def test_write_report_creates_json_and_markdown_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

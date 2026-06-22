@@ -4,7 +4,6 @@ import copy
 from pathlib import PureWindowsPath
 from typing import Any
 
-
 SUPPORTED_UNITS = {"mm", "cm", "m", "inch"}
 SUPPORTED_ENTITY_TYPES = {"line", "polyline", "circle", "rectangle", "text"}
 MAX_ABS_COORDINATE = 1_000_000
@@ -107,7 +106,9 @@ def normalize_entity(entity: Any, index: int) -> tuple[dict[str, Any] | None, li
                 if error:
                     errors.append(error)
                 else:
-                    range_error = _validate_coordinate_range(point, f"entities[{index}].points[{point_index}]")
+                    range_error = _validate_coordinate_range(
+                        point, f"entities[{index}].points[{point_index}]"
+                    )
                     if range_error:
                         errors.append(range_error)
                     normalized_points.append(point)

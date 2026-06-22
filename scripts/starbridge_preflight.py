@@ -3,14 +3,12 @@ from __future__ import annotations
 import argparse
 import json
 import re
-import sys
 from pathlib import Path
 from typing import Any
 from urllib.parse import unquote
 
-import security_check
 import bridge_capability_matrix
-
+import security_check
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 EXAMPLES_DIR = REPO_ROOT / "examples"
@@ -33,7 +31,9 @@ VALID_MATURITY = {"stable", "prototype", "planned", "research", "deprecated"}
 LINK_PATTERN = re.compile(r"(?<!!)\[[^\]]+\]\(([^)]+)\)")
 
 
-def make_result(check_id: str, status: str, message: str, data: dict[str, Any] | None = None) -> dict[str, Any]:
+def make_result(
+    check_id: str, status: str, message: str, data: dict[str, Any] | None = None
+) -> dict[str, Any]:
     return {
         "check_id": check_id,
         "status": status,
@@ -87,7 +87,9 @@ def check_bridge_metadata() -> dict[str, Any]:
                 failures.append(f"{relative(status_path)} {field} 必须是布尔值。")
 
     if failures:
-        return make_result("bridge_metadata", "fail", "桥状态元数据不符合公开契约。", {"failures": failures})
+        return make_result(
+            "bridge_metadata", "fail", "桥状态元数据不符合公开契约。", {"failures": failures}
+        )
     return make_result(
         "bridge_metadata",
         "pass",
@@ -120,7 +122,9 @@ def check_sample_reports() -> dict[str, Any]:
             failures.append(f"{relative(sample_path)} errors/warnings 必须是列表。")
 
     if failures:
-        return make_result("sample_reports", "fail", "probe 示例报告不符合契约。", {"failures": failures})
+        return make_result(
+            "sample_reports", "fail", "probe 示例报告不符合契约。", {"failures": failures}
+        )
     return make_result(
         "sample_reports",
         "pass",
@@ -133,7 +137,9 @@ def check_bridge_capabilities() -> dict[str, Any]:
     registry = bridge_capability_matrix.load_registry()
     failures = bridge_capability_matrix.validate_registry(registry)
     if failures:
-        return make_result("bridge_capabilities", "fail", "桥应用能力矩阵不符合契约。", {"failures": failures})
+        return make_result(
+            "bridge_capabilities", "fail", "桥应用能力矩阵不符合契约。", {"failures": failures}
+        )
     return make_result(
         "bridge_capabilities",
         "pass",
@@ -186,7 +192,9 @@ def check_markdown_links() -> dict[str, Any]:
                 failures.append(f"{relative(markdown_path)} 本地链接不存在：{link}")
 
     if failures:
-        return make_result("markdown_links", "fail", "Markdown 本地链接检查失败。", {"failures": failures})
+        return make_result(
+            "markdown_links", "fail", "Markdown 本地链接检查失败。", {"failures": failures}
+        )
     return make_result(
         "markdown_links",
         "pass",
@@ -233,7 +241,9 @@ def write_reports(payload: dict[str, Any], report_dir: Path) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="星桥公开发布前体检：安全、桥元数据、probe 报告和文档链接。")
+    parser = argparse.ArgumentParser(
+        description="星桥公开发布前体检：安全、桥元数据、probe 报告和文档链接。"
+    )
     parser.add_argument("--json", action="store_true", help="输出 JSON。")
     parser.add_argument("--markdown", action="store_true", help="输出 Markdown 表格。")
     parser.add_argument(
@@ -246,7 +256,9 @@ def main() -> None:
         default=str(default_report_dir()),
         help="配合 --write-report 指定本地报告目录；应保持在 Git 提交之外。",
     )
-    parser.add_argument("--soft-exit", action="store_true", help="发现失败也返回 0，适合只生成报告。")
+    parser.add_argument(
+        "--soft-exit", action="store_true", help="发现失败也返回 0，适合只生成报告。"
+    )
     args = parser.parse_args()
 
     results = run_checks()
@@ -264,6 +276,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    if sys.version_info < (3, 10):
-        raise SystemExit("建议使用 Python 3.10 或更新版本运行本脚本。")
     main()

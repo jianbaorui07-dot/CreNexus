@@ -5,10 +5,10 @@ from pathlib import Path
 from typing import Any
 
 from starbridge_mcp.core.computer_use import (
+    REPO_ROOT,
     ActionPlan,
     CodexComputerUseAdapter,
     GuiStep,
-    REPO_ROOT,
     evaluate_safety,
 )
 from starbridge_mcp.core.security import sanitize
@@ -30,7 +30,9 @@ def _write_text(path: Path, text: str, *, confirm_write: bool) -> str | None:
     return path.relative_to(REPO_ROOT).as_posix()
 
 
-def build_photoshop_gui_demo(*, allow_computer_use: bool = False, confirm_write: bool = False) -> ActionPlan:
+def build_photoshop_gui_demo(
+    *, allow_computer_use: bool = False, confirm_write: bool = False
+) -> ActionPlan:
     return ActionPlan(
         id="photoshop-demo",
         app="photoshop",
@@ -39,16 +41,58 @@ def build_photoshop_gui_demo(*, allow_computer_use: bool = False, confirm_write:
         execution_mode="computer_use",
         structured_method="none",
         gui_steps=[
-            GuiStep("ps-01", "Open Photoshop and create a new 1080 by 1350 RGB document.", "photoshop", "A blank Photoshop document is visible.", evidence_required=True),
-            GuiStep("ps-02", "Create a solid or gradient background layer named background.", "photoshop", "The Layers panel contains a background layer."),
-            GuiStep("ps-03", "Add a main title text layer near the top named main_title.", "photoshop", "The title is visible and selected."),
-            GuiStep("ps-04", "Add a smaller subtitle text layer named subtitle.", "photoshop", "The subtitle sits below the title."),
-            GuiStep("ps-05", "Add geometric decorative layers such as circles, lines, or rectangles.", "photoshop", "At least two decorative layers are visible."),
-            GuiStep("ps-06", "Add a small explanatory text layer near the bottom.", "photoshop", "The poster has readable explanatory text."),
-            GuiStep("ps-07", "Export a PNG preview or save a PSD under outputs/photoshop_demo/.", "photoshop", "The export/save dialog targets outputs/photoshop_demo/.", fallback_if_failed="Cancel the dialog and record failure.", requires_confirmation=True, evidence_required=True),
+            GuiStep(
+                "ps-01",
+                "Open Photoshop and create a new 1080 by 1350 RGB document.",
+                "photoshop",
+                "A blank Photoshop document is visible.",
+                evidence_required=True,
+            ),
+            GuiStep(
+                "ps-02",
+                "Create a solid or gradient background layer named background.",
+                "photoshop",
+                "The Layers panel contains a background layer.",
+            ),
+            GuiStep(
+                "ps-03",
+                "Add a main title text layer near the top named main_title.",
+                "photoshop",
+                "The title is visible and selected.",
+            ),
+            GuiStep(
+                "ps-04",
+                "Add a smaller subtitle text layer named subtitle.",
+                "photoshop",
+                "The subtitle sits below the title.",
+            ),
+            GuiStep(
+                "ps-05",
+                "Add geometric decorative layers such as circles, lines, or rectangles.",
+                "photoshop",
+                "At least two decorative layers are visible.",
+            ),
+            GuiStep(
+                "ps-06",
+                "Add a small explanatory text layer near the bottom.",
+                "photoshop",
+                "The poster has readable explanatory text.",
+            ),
+            GuiStep(
+                "ps-07",
+                "Export a PNG preview or save a PSD under outputs/photoshop_demo/.",
+                "photoshop",
+                "The export/save dialog targets outputs/photoshop_demo/.",
+                fallback_if_failed="Cancel the dialog and record failure.",
+                requires_confirmation=True,
+                evidence_required=True,
+            ),
         ],
         expected_result="A sandbox Photoshop poster plan with layered structure and export verification evidence.",
-        output_paths=["outputs/photoshop_demo/starbridge_ps_gui_demo.png", "outputs/photoshop_demo/starbridge_ps_gui_demo.psd"],
+        output_paths=[
+            "outputs/photoshop_demo/starbridge_ps_gui_demo.png",
+            "outputs/photoshop_demo/starbridge_ps_gui_demo.psd",
+        ],
         needs_screenshot_evidence=True,
         risk_level="write",
         dry_run=not confirm_write,
@@ -58,7 +102,9 @@ def build_photoshop_gui_demo(*, allow_computer_use: bool = False, confirm_write:
     )
 
 
-def build_illustrator_gui_demo(*, allow_computer_use: bool = False, confirm_write: bool = False) -> ActionPlan:
+def build_illustrator_gui_demo(
+    *, allow_computer_use: bool = False, confirm_write: bool = False
+) -> ActionPlan:
     return ActionPlan(
         id="illustrator-demo",
         app="illustrator",
@@ -67,12 +113,46 @@ def build_illustrator_gui_demo(*, allow_computer_use: bool = False, confirm_writ
         execution_mode="hybrid",
         structured_method="svg",
         gui_steps=[
-            GuiStep("ai-01", "Open Illustrator and create a 1080 by 1080 RGB artboard.", "illustrator", "A blank square artboard is visible.", evidence_required=True),
-            GuiStep("ai-02", "Add a title text object at the top.", "illustrator", "The title is visible on the artboard."),
-            GuiStep("ai-03", "Draw two or more lines as layout guides or design accents.", "illustrator", "Line objects are visible."),
-            GuiStep("ai-04", "Add geometric vector symbols such as circles, triangles, or hexagons.", "illustrator", "Vector symbols are visible."),
-            GuiStep("ai-05", "Add annotation text near one symbol.", "illustrator", "Annotation text is readable."),
-            GuiStep("ai-06", "Export SVG, PDF, and PNG into outputs/illustrator_demo/.", "illustrator", "Export targets outputs/illustrator_demo/.", fallback_if_failed="Use the generated SVG fallback file.", requires_confirmation=True, evidence_required=True),
+            GuiStep(
+                "ai-01",
+                "Open Illustrator and create a 1080 by 1080 RGB artboard.",
+                "illustrator",
+                "A blank square artboard is visible.",
+                evidence_required=True,
+            ),
+            GuiStep(
+                "ai-02",
+                "Add a title text object at the top.",
+                "illustrator",
+                "The title is visible on the artboard.",
+            ),
+            GuiStep(
+                "ai-03",
+                "Draw two or more lines as layout guides or design accents.",
+                "illustrator",
+                "Line objects are visible.",
+            ),
+            GuiStep(
+                "ai-04",
+                "Add geometric vector symbols such as circles, triangles, or hexagons.",
+                "illustrator",
+                "Vector symbols are visible.",
+            ),
+            GuiStep(
+                "ai-05",
+                "Add annotation text near one symbol.",
+                "illustrator",
+                "Annotation text is readable.",
+            ),
+            GuiStep(
+                "ai-06",
+                "Export SVG, PDF, and PNG into outputs/illustrator_demo/.",
+                "illustrator",
+                "Export targets outputs/illustrator_demo/.",
+                fallback_if_failed="Use the generated SVG fallback file.",
+                requires_confirmation=True,
+                evidence_required=True,
+            ),
         ],
         expected_result="A sandbox Illustrator vector layout plus optional SVG fallback output.",
         output_paths=[
@@ -89,7 +169,9 @@ def build_illustrator_gui_demo(*, allow_computer_use: bool = False, confirm_writ
     )
 
 
-def build_capcut_gui_demo(*, allow_computer_use: bool = False, confirm_write: bool = False) -> ActionPlan:
+def build_capcut_gui_demo(
+    *, allow_computer_use: bool = False, confirm_write: bool = False
+) -> ActionPlan:
     return ActionPlan(
         id="capcut-demo",
         app="capcut",
@@ -98,13 +180,49 @@ def build_capcut_gui_demo(*, allow_computer_use: bool = False, confirm_write: bo
         execution_mode="computer_use",
         structured_method="none",
         gui_steps=[
-            GuiStep("cc-01", "Open Jianying or CapCut.", "capcut", "The home screen is visible.", fallback_if_failed="Record that the app is not installed and keep the plan only.", evidence_required=True),
-            GuiStep("cc-02", "Create a new project.", "capcut", "A blank timeline project is visible."),
-            GuiStep("cc-03", "Import placeholder images or videos from the approved demo asset directory.", "capcut", "Demo media appears in the media bin.", requires_confirmation=True),
-            GuiStep("cc-04", "Place one placeholder item on the timeline.", "capcut", "The media item is visible on the timeline."),
-            GuiStep("cc-05", "Add a title text clip.", "capcut", "The title appears in the preview and on the timeline."),
-            GuiStep("cc-06", "Set a simple duration or transition.", "capcut", "The timeline duration or transition is visible."),
-            GuiStep("cc-07", "Inspect the timeline before export and take a screenshot.", "capcut", "Timeline structure is visible.", evidence_required=True),
+            GuiStep(
+                "cc-01",
+                "Open Jianying or CapCut.",
+                "capcut",
+                "The home screen is visible.",
+                fallback_if_failed="Record that the app is not installed and keep the plan only.",
+                evidence_required=True,
+            ),
+            GuiStep(
+                "cc-02", "Create a new project.", "capcut", "A blank timeline project is visible."
+            ),
+            GuiStep(
+                "cc-03",
+                "Import placeholder images or videos from the approved demo asset directory.",
+                "capcut",
+                "Demo media appears in the media bin.",
+                requires_confirmation=True,
+            ),
+            GuiStep(
+                "cc-04",
+                "Place one placeholder item on the timeline.",
+                "capcut",
+                "The media item is visible on the timeline.",
+            ),
+            GuiStep(
+                "cc-05",
+                "Add a title text clip.",
+                "capcut",
+                "The title appears in the preview and on the timeline.",
+            ),
+            GuiStep(
+                "cc-06",
+                "Set a simple duration or transition.",
+                "capcut",
+                "The timeline duration or transition is visible.",
+            ),
+            GuiStep(
+                "cc-07",
+                "Inspect the timeline before export and take a screenshot.",
+                "capcut",
+                "Timeline structure is visible.",
+                evidence_required=True,
+            ),
         ],
         expected_result="A CapCut/Jianying GUI plan and evidence record; real export is not required.",
         output_paths=["outputs/capcut_demo/timeline_evidence.png"],
@@ -140,15 +258,21 @@ def run_demo(
     if mode != "gui":
         raise ValueError("only --mode gui is implemented for computer use demos")
     if app == "photoshop":
-        plan = build_photoshop_gui_demo(allow_computer_use=allow_computer_use, confirm_write=confirm_write)
+        plan = build_photoshop_gui_demo(
+            allow_computer_use=allow_computer_use, confirm_write=confirm_write
+        )
         plan_path = REPO_ROOT / "outputs/photoshop_demo/photoshop_gui_plan.json"
         fallback_path = None
     elif app == "illustrator":
-        plan = build_illustrator_gui_demo(allow_computer_use=allow_computer_use, confirm_write=confirm_write)
+        plan = build_illustrator_gui_demo(
+            allow_computer_use=allow_computer_use, confirm_write=confirm_write
+        )
         plan_path = REPO_ROOT / "outputs/illustrator_demo/illustrator_gui_plan.json"
         fallback_path = REPO_ROOT / "outputs/illustrator_demo/starbridge_ai_gui_demo.svg"
     elif app == "capcut":
-        plan = build_capcut_gui_demo(allow_computer_use=allow_computer_use, confirm_write=confirm_write)
+        plan = build_capcut_gui_demo(
+            allow_computer_use=allow_computer_use, confirm_write=confirm_write
+        )
         plan_path = REPO_ROOT / "outputs/capcut_demo/capcut_gui_plan.json"
         fallback_path = None
     else:
@@ -157,7 +281,9 @@ def run_demo(
     written_plan = _write_json(plan_path, plan.to_dict(), confirm_write=confirm_write)
     written_fallback = None
     if app == "illustrator":
-        written_fallback = _write_text(fallback_path, illustrator_svg_fallback(), confirm_write=confirm_write)
+        written_fallback = _write_text(
+            fallback_path, illustrator_svg_fallback(), confirm_write=confirm_write
+        )
 
     instructions = CodexComputerUseAdapter().generate_codex_gui_instructions(plan)
     decision = evaluate_safety(plan)
@@ -178,4 +304,3 @@ def run_demo(
             ),
         }
     )
-

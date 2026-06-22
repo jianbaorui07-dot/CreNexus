@@ -3,7 +3,6 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -18,7 +17,13 @@ class ReleaseAlphaDocsTest(unittest.TestCase):
             "| Bridge | Capability categories | Stable | Experimental | Planned | Evidence / job lifecycle | Writes files | CI safe | Needs local app | Safety notes |",
             matrix,
         )
-        for phrase in ("`starbridge.status`", "`comfyui.workflow_validate`", "Photoshop", "CapCut / Jianying", "EvidenceManifest"):
+        for phrase in (
+            "`starbridge.status`",
+            "`comfyui.workflow_validate`",
+            "Photoshop",
+            "CapCut / Jianying",
+            "EvidenceManifest",
+        ):
             self.assertIn(phrase, matrix)
 
     def test_release_doc_has_required_sections(self) -> None:

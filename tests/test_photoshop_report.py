@@ -8,7 +8,6 @@ import unittest
 import zlib
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
@@ -80,7 +79,9 @@ class PhotoshopReportTest(unittest.TestCase):
             expected_input = practice_dir / "subject_input_clean.png"
             expected_input.write_bytes(rgba_png(1, 1, [(0, 0, 0, 255)]))
 
-            practice = add_expected_practice_paths({"ok": False, "stderr": "Photoshop busy"}, practice_dir)
+            practice = add_expected_practice_paths(
+                {"ok": False, "stderr": "Photoshop busy"}, practice_dir
+            )
             artifacts = collect_artifacts({"practice": practice})
 
             self.assertEqual(practice["subject_input"], str(expected_input))

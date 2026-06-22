@@ -4,12 +4,15 @@ import json
 import sys
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from starbridge_mcp.bridges.autocad_dxf import summarize_plan, validate_cad_plan, write_dxf  # noqa: E402
+from starbridge_mcp.bridges.autocad_dxf import (  # noqa: E402
+    summarize_plan,
+    validate_cad_plan,
+    write_dxf,
+)
 from starbridge_mcp.core.security import sanitize_result  # noqa: E402
 
 

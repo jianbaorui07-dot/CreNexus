@@ -4,7 +4,6 @@ import re
 from pathlib import Path
 from typing import Any
 
-
 SENSITIVE_FILE_EXTENSIONS = {
     ".safetensors",
     ".ckpt",
@@ -39,7 +38,9 @@ SENSITIVE_KEYWORDS = (
 
 
 def _safe_tail(parts: list[str], separator: str) -> str:
-    cleaned = [("<REDACTED>" if part.lower() in PRIVATE_PATH_PARTS else part) for part in parts if part]
+    cleaned = [
+        ("<REDACTED>" if part.lower() in PRIVATE_PATH_PARTS else part) for part in parts if part
+    ]
     if not cleaned:
         return ""
     if len(cleaned) == 1:
@@ -48,7 +49,12 @@ def _safe_tail(parts: list[str], separator: str) -> str:
 
 
 REDACTION_PATTERNS = [
-    (re.compile(r"(?i)(password|token|cookie|oauth_secret|api[_-]?key)\s*[:=]\s*['\"]?[^'\"\s,;}]+"), r"\1=<REDACTED>"),
+    (
+        re.compile(
+            r"(?i)(password|token|cookie|oauth_secret|api[_-]?key)\s*[:=]\s*['\"]?[^'\"\s,;}]+"
+        ),
+        r"\1=<REDACTED>",
+    ),
 ]
 
 
@@ -66,8 +72,15 @@ def sanitize_path(value: str) -> str:
 
     home = str(Path.home())
     if home:
-        home_pattern = re.compile(re.escape(home) + r"(?P<tail>(?:[\\/][^\s\"'<>，）)]+)*)", re.IGNORECASE)
-        redacted = home_pattern.sub(lambda match: replace_windows_user(match) if "\\" in match.group(0) else replace_unix_user(match), redacted)
+        home_pattern = re.compile(
+            re.escape(home) + r"(?P<tail>(?:[\\/][^\s\"'<>，）)]+)*)", re.IGNORECASE
+        )
+        redacted = home_pattern.sub(
+            lambda match: (
+                replace_windows_user(match) if "\\" in match.group(0) else replace_unix_user(match)
+            ),
+            redacted,
+        )
 
     redacted = re.sub(
         "C:" + r"[\\/]Users[\\/][^\\/\s\"'<>，）)]+(?P<tail>(?:[\\/][^\s\"'<>，）)]+)*)",
@@ -94,9 +107,13 @@ def sanitize_path(value: str) -> str:
     )
     redacted = re.sub(r"<REDACTED_PATH>[^\"'<>，）\]\r\n]+", "<REDACTED_PATH>", redacted)
     for private_part in PRIVATE_PATH_PARTS:
-        redacted = re.sub(rf"(?i)([\\/]){re.escape(private_part)}(?=([\\/])|$)", r"\1<REDACTED_PATH>", redacted)
+        redacted = re.sub(
+            rf"(?i)([\\/]){re.escape(private_part)}(?=([\\/])|$)", r"\1<REDACTED_PATH>", redacted
+        )
     for filename in SENSITIVE_FILENAMES:
-        redacted = re.sub(re.escape(filename), "<SENSITIVE_DRAFT_FILE>", redacted, flags=re.IGNORECASE)
+        redacted = re.sub(
+            re.escape(filename), "<SENSITIVE_DRAFT_FILE>", redacted, flags=re.IGNORECASE
+        )
     for extension in SENSITIVE_FILE_EXTENSIONS:
         escaped = re.escape(extension.lstrip("."))
         redacted = re.sub(

@@ -2,8 +2,13 @@ from __future__ import annotations
 
 import unittest
 
-from starbridge_mcp.core.security import contains_sensitive_text, redact_path, sanitize_details, sanitize_path, sanitize_text
-
+from starbridge_mcp.core.security import (
+    contains_sensitive_text,
+    redact_path,
+    sanitize_details,
+    sanitize_path,
+    sanitize_text,
+)
 
 BANNED_OUTPUT_FRAGMENTS = ("C:\\Users\\", "/Users/", "/home/", "AppData", "Desktop", "Documents")
 

@@ -15,9 +15,18 @@ class McpToolSchemasTest(unittest.TestCase):
                 self.assertIsInstance(tool.get("annotations"), dict)
 
                 annotations = tool["annotations"]
-                for key in ("riskLevel", "safeDefault", "requiresConfirmation", "requiresLocalSoftware", "currentStatus"):
+                for key in (
+                    "riskLevel",
+                    "safeDefault",
+                    "requiresConfirmation",
+                    "requiresLocalSoftware",
+                    "currentStatus",
+                ):
                     self.assertIn(key, annotations)
-                self.assertIn(annotations["riskLevel"], {"safe_read_only", "guarded_local_write", "guarded_local_process"})
+                self.assertIn(
+                    annotations["riskLevel"],
+                    {"safe_read_only", "guarded_local_write", "guarded_local_process"},
+                )
 
     def test_guarded_write_tools_declare_dry_run_and_confirmation(self) -> None:
         for tool in TOOL_DEFINITIONS:
@@ -38,7 +47,11 @@ class McpToolSchemasTest(unittest.TestCase):
 
     def test_safe_only_evidence_tools_are_declared(self) -> None:
         by_name = {tool["name"]: tool for tool in TOOL_DEFINITIONS}
-        for name in ("starbridge.evidence_init", "starbridge.evidence_validate", "starbridge.job_status"):
+        for name in (
+            "starbridge.evidence_init",
+            "starbridge.evidence_validate",
+            "starbridge.job_status",
+        ):
             with self.subTest(tool=name):
                 self.assertIn(name, by_name)
                 self.assertTrue(by_name[name]["annotations"]["readOnlyHint"])
@@ -63,6 +76,7 @@ class McpToolSchemasTest(unittest.TestCase):
         self.assertEqual("examples/output/photoshop", properties["output_dir"]["default"])
         self.assertFalse(run_tool["annotations"]["safeDefault"])
         self.assertTrue(run_tool["annotations"]["requiresConfirmation"])
+
 
 if __name__ == "__main__":
     unittest.main()

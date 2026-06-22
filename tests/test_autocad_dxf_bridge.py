@@ -14,7 +14,6 @@ from starbridge_mcp.bridges.autocad_dxf import (
     write_dxf,
 )
 
-
 BANNED_OUTPUT_FRAGMENTS = ("C:\\Users\\", "/Users/", "/home/", "Desktop", "Documents", "AppData")
 
 
@@ -27,7 +26,13 @@ def minimal_plan() -> dict:
             {"type": "line", "layer": "OUTLINE", "start": [0, 0], "end": [1000, 500]},
             {"type": "circle", "layer": "OUTLINE", "center": [500, 250], "radius": 80},
             {"type": "polyline", "layer": "OUTLINE", "points": [[0, 0], [100, 0], [100, 100]]},
-            {"type": "text", "layer": "TEXT", "position": [20, 620], "height": 120, "value": "demo"},
+            {
+                "type": "text",
+                "layer": "TEXT",
+                "position": [20, 620],
+                "height": 120,
+                "value": "demo",
+            },
         ],
         "output": "demo.dxf",
     }
@@ -35,7 +40,9 @@ def minimal_plan() -> dict:
 
 class AutoCadDxfBridgeTests(unittest.TestCase):
     def assert_schema(self, result: dict, action: str) -> None:
-        self.assertEqual({"ok", "bridge", "action", "message", "details", "warnings", "next_steps"}, set(result))
+        self.assertEqual(
+            {"ok", "bridge", "action", "message", "details", "warnings", "next_steps"}, set(result)
+        )
         self.assertEqual("autocad_dxf", result["bridge"])
         self.assertEqual(action, result["action"])
         text = json.dumps(result, ensure_ascii=False)
@@ -49,7 +56,12 @@ class AutoCadDxfBridgeTests(unittest.TestCase):
         self.assertFalse(result["details"]["requires_autocad"])
 
     def test_validate_cad_plan_rejects_invalid_inputs(self) -> None:
-        for bad_plan in ("not a dict", {}, {"units": "mm"}, {"units": "mm", "entities": [{"type": "unknown"}]}):
+        for bad_plan in (
+            "not a dict",
+            {},
+            {"units": "mm"},
+            {"units": "mm", "entities": [{"type": "unknown"}]},
+        ):
             with self.subTest(plan=bad_plan):
                 result = validate_cad_plan(bad_plan)
                 self.assert_schema(result, "validate_cad_plan")
@@ -100,7 +112,9 @@ class AutoCadDxfBridgeTests(unittest.TestCase):
         self.assertEqual(1, result["details"]["entity_types"]["line"])
         self.assertEqual(1, result["details"]["entity_types"]["rectangle"])
         self.assertEqual(["0", "OUTLINE", "TEXT"], result["details"]["layers"])
-        self.assertEqual({"min_x": 0.0, "min_y": 0.0, "max_x": 1000.0, "max_y": 620.0}, result["details"]["bbox"])
+        self.assertEqual(
+            {"min_x": 0.0, "min_y": 0.0, "max_x": 1000.0, "max_y": 620.0}, result["details"]["bbox"]
+        )
 
     def test_write_dxf_dry_run_does_not_write_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

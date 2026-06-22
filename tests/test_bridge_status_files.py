@@ -4,7 +4,6 @@ import json
 import unittest
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_BRIDGES = {
     "comfy_bridge": "comfyui",
@@ -36,9 +35,16 @@ class BridgeStatusFilesTest(unittest.TestCase):
         for directory in EXPECTED_BRIDGES:
             bridge_dir = REPO_ROOT / "examples" / directory
             self.assertTrue(bridge_dir.exists(), f"{directory} is missing")
-            self.assertTrue((bridge_dir / "README.md").exists(), f"{directory}/README.md is missing")
-            self.assertTrue((bridge_dir / "bridge.json").exists(), f"{directory}/bridge.json is missing")
-            self.assertTrue((bridge_dir / "bridge_status.json").exists(), f"{directory}/bridge_status.json is missing")
+            self.assertTrue(
+                (bridge_dir / "README.md").exists(), f"{directory}/README.md is missing"
+            )
+            self.assertTrue(
+                (bridge_dir / "bridge.json").exists(), f"{directory}/bridge.json is missing"
+            )
+            self.assertTrue(
+                (bridge_dir / "bridge_status.json").exists(),
+                f"{directory}/bridge_status.json is missing",
+            )
             self.assertTrue(
                 (bridge_dir / "probe.py").exists() or (bridge_dir / "probe.ps1").exists(),
                 f"{directory} probe script is missing",

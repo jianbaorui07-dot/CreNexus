@@ -14,7 +14,11 @@ class SecurityCheckTest(unittest.TestCase):
         self.assertIn(".ai", security_check.FORBIDDEN_EXTENSIONS)
 
     def test_example_reports_are_allowed(self) -> None:
-        self.assertTrue(security_check.is_allowed_example(security_check.REPO_ROOT / "sample_report.example.json"))
+        self.assertTrue(
+            security_check.is_allowed_example(
+                security_check.REPO_ROOT / "sample_report.example.json"
+            )
+        )
 
     def test_security_check_script_runs(self) -> None:
         completed = subprocess.run(

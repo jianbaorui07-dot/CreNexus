@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-
 ADAPTER_NAME = "codex_photoshop_bridge_v1"
 ADAPTER_VERSION = "1.0.0"
 
@@ -53,7 +52,10 @@ def common_properties(
         "touches_user_psd": {"type": "boolean", "default": touches_user_psd},
         "bridge_kind": {"type": "string", "enum": list(BRIDGE_KINDS), "default": "auto"},
         "output_dir": {"type": "string", "default": default_output_dir},
-        "evidence_path": {"type": "string", "description": "Optional manifest output path inside sandbox/evidence or output/evidence."},
+        "evidence_path": {
+            "type": "string",
+            "description": "Optional manifest output path inside sandbox/evidence or output/evidence.",
+        },
     }
 
 
@@ -112,7 +114,10 @@ def selection_subject_schema() -> dict[str, Any]:
                 touches_user_psd=True,
                 default_output_dir="sandbox/evidence",
             ),
-            "source_layer_id": {"type": "string", "description": "Optional source layer identifier for future UXP routing."},
+            "source_layer_id": {
+                "type": "string",
+                "description": "Optional source layer identifier for future UXP routing.",
+            },
         }
     )
 

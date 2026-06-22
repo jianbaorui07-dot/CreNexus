@@ -11,9 +11,14 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-
 DEFAULT_COMFY_URL = "http://127.0.0.1:8188"
-BASIC_COMFY_NODES = ["CheckpointLoaderSimple", "CLIPTextEncode", "KSampler", "VAEDecode", "SaveImage"]
+BASIC_COMFY_NODES = [
+    "CheckpointLoaderSimple",
+    "CLIPTextEncode",
+    "KSampler",
+    "VAEDecode",
+    "SaveImage",
+]
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
@@ -44,7 +49,9 @@ def unique_paths(paths: list[Path]) -> list[Path]:
     return result
 
 
-def status(name: str, state: str, details: list[str], data: dict | None = None, label: str | None = None) -> dict:
+def status(
+    name: str, state: str, details: list[str], data: dict | None = None, label: str | None = None
+) -> dict:
     return {
         "name": name,
         "label": label or name,
@@ -97,7 +104,7 @@ def check_comfy(base_url: str, timeout: int) -> dict:
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         details = [
             f"接口地址：{base_url}",
-            f"状态说明：无法连接 ComfyUI。",
+            "状态说明：无法连接 ComfyUI。",
             f"错误信息：{exc}",
             "处理建议：先启动 ComfyUI，再重新运行本脚本。",
         ]
@@ -206,7 +213,9 @@ def find_blender_mcp_dir() -> Path | None:
     )
 
     for candidate in unique_paths(candidates):
-        if (candidate / "start_blender_mcp_server.py").exists() or (candidate / "addon.py").exists():
+        if (candidate / "start_blender_mcp_server.py").exists() or (
+            candidate / "addon.py"
+        ).exists():
             return candidate
     return None
 
@@ -235,7 +244,9 @@ def check_blender(probe_executable: bool, timeout: int) -> dict:
                 ],
                 {
                     "blender_mcp_dir": str(blender_mcp),
-                    "blender_mcp_launcher": str(blender_mcp_launcher) if blender_mcp_launcher else None,
+                    "blender_mcp_launcher": str(blender_mcp_launcher)
+                    if blender_mcp_launcher
+                    else None,
                 },
                 "Blender 三维场景桥",
             )
@@ -256,9 +267,13 @@ def check_blender(probe_executable: bool, timeout: int) -> dict:
         try:
             details.append(f"版本探测：{command_version(blender, ['--version'], timeout)}")
         except Exception as exc:  # noqa: BLE001 - status script should keep going.
-            return status("Blender", "warn", [*details, f"版本探测失败：{exc}"], label="Blender 三维场景桥")
+            return status(
+                "Blender", "warn", [*details, f"版本探测失败：{exc}"], label="Blender 三维场景桥"
+            )
     else:
-        details.append("已跳过可执行文件探测。需要运行 blender --version 时加 --probe-executables。")
+        details.append(
+            "已跳过可执行文件探测。需要运行 blender --version 时加 --probe-executables。"
+        )
 
     return status(
         "Blender",
@@ -314,7 +329,13 @@ def check_cad() -> dict:
         state = "missing"
         details.append("AutoCAD MCP 服务项目缺失。")
 
-    return status("CAD", state, details, {"autocad_executable": str(autocad) if autocad else None}, "CAD 工程制图桥")
+    return status(
+        "CAD",
+        state,
+        details,
+        {"autocad_executable": str(autocad) if autocad else None},
+        "CAD 工程制图桥",
+    )
 
 
 def find_photoshop() -> Path | None:
@@ -343,7 +364,9 @@ def check_photoshop(probe_com: bool) -> dict:
 
     if not probe_com:
         details.append("已跳过 COM 探测。需要连接已打开的 Photoshop 时加 --probe-executables。")
-        return status("Photoshop", "warn" if not has_win32com else "ok", details, data, "Photoshop 修图桥")
+        return status(
+            "Photoshop", "warn" if not has_win32com else "ok", details, data, "Photoshop 修图桥"
+        )
 
     if not has_win32com:
         details.append("处理建议：如需 Python COM 探测，请安装 pywin32。")
@@ -396,7 +419,9 @@ def check_illustrator(probe_com: bool) -> dict:
             state = "ok"
         elif has_win32com:
             state = "warn"
-            details.append("pywin32/win32com 可用，但还没有确认 Illustrator 可执行文件或正在运行的 COM 对象。")
+            details.append(
+                "pywin32/win32com 可用，但还没有确认 Illustrator 可执行文件或正在运行的 COM 对象。"
+            )
         else:
             state = "warn"
         return status("Illustrator", state, details, data, "AI 矢量文件桥")
@@ -482,7 +507,8 @@ def main() -> None:
     parser.add_argument("-h", "--help", action="help", help="显示帮助并退出。")
     parser.add_argument(
         "--comfy-url",
-        default=os.environ.get("STARBRIDGE_COMFYUI_URL") or os.environ.get("COMFY_BASE_URL", DEFAULT_COMFY_URL),
+        default=os.environ.get("STARBRIDGE_COMFYUI_URL")
+        or os.environ.get("COMFY_BASE_URL", DEFAULT_COMFY_URL),
     )
     parser.add_argument("--timeout", type=int, default=8)
     parser.add_argument(
@@ -523,6 +549,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    if sys.version_info < (3, 10):
-        raise SystemExit("建议使用 Python 3.10 或更新版本运行本状态脚本。")
     main()

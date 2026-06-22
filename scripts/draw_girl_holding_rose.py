@@ -5,7 +5,6 @@ import time
 import pythoncom
 import win32com.client
 
-
 WORKSPACE = pathlib.Path(__file__).resolve().parents[1]
 OUTPUT = WORKSPACE / "output" / "girl_holding_rose.dwg"
 
@@ -157,7 +156,9 @@ def draw():
     detail = "DETAIL"
 
     # Body and dress.
-    skirt = lwpoly(model, [(-42, 42), (-27, 98), (-13, 108), (13, 108), (27, 98), (42, 42)], dress, 5, True, 35)
+    skirt = lwpoly(
+        model, [(-42, 42), (-27, 98), (-13, 108), (13, 108), (27, 98), (42, 42)], dress, 5, True, 35
+    )
     solid_hatch(model, skirt, dress, 5)
     lwpoly(model, [(-24, 97), (0, 84), (24, 97)], dress_detail, 6, False, 25)
     lwpoly(model, [(-28, 77), (-12, 69), (0, 76), (12, 69), (28, 77)], dress_detail, 6, False, 20)

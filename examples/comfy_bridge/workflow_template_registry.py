@@ -11,13 +11,11 @@ from typing import Any
 from examples.comfy_bridge.validate_workflow import validate_workflow_payload
 from examples.comfy_bridge.workflow_agent import (
     RECOGNIZED_COMPOSER_MODULES,
-    SUPPORTED_WORKFLOW_TYPES,
     workflow_compose,
     workflow_hash,
     workflow_summary,
 )
 from starbridge_mcp.core.security import sanitize
-
 
 BRIDGE_ID = "comfyui"
 REGISTRY_PATH = Path(__file__).resolve().parent / "templates" / "workflow_template_registry.json"
@@ -36,11 +34,48 @@ REQUIRED_TEMPLATE_FIELDS = {
 VALIDATION_STATUSES = {"draft_validated", "composed_validated", "needs_review"}
 SAFE_TEMPLATE_SAFETY_LEVELS = {"safe_read_only", "safe_placeholder_only"}
 TASK_REQUIRED_INPUTS: dict[str, set[str]] = {
-    "txt2img": {"prompt", "negative_prompt", "width", "height", "seed", "steps", "cfg", "sampler", "scheduler"},
-    "img2img": {"prompt", "negative_prompt", "source_image_placeholder", "denoise", "seed", "steps", "cfg"},
-    "inpaint": {"prompt", "negative_prompt", "source_image_placeholder", "mask_image_placeholder", "denoise", "seed", "steps", "cfg"},
+    "txt2img": {
+        "prompt",
+        "negative_prompt",
+        "width",
+        "height",
+        "seed",
+        "steps",
+        "cfg",
+        "sampler",
+        "scheduler",
+    },
+    "img2img": {
+        "prompt",
+        "negative_prompt",
+        "source_image_placeholder",
+        "denoise",
+        "seed",
+        "steps",
+        "cfg",
+    },
+    "inpaint": {
+        "prompt",
+        "negative_prompt",
+        "source_image_placeholder",
+        "mask_image_placeholder",
+        "denoise",
+        "seed",
+        "steps",
+        "cfg",
+    },
     "upscale": {"source_image_placeholder", "scale_by", "upscale_model_placeholder"},
-    "complex_creative_poster": {"prompt", "negative_prompt", "width", "height", "seed", "steps", "cfg", "sampler", "scheduler"},
+    "complex_creative_poster": {
+        "prompt",
+        "negative_prompt",
+        "width",
+        "height",
+        "seed",
+        "steps",
+        "cfg",
+        "sampler",
+        "scheduler",
+    },
 }
 TEMPLATE_TASK_TO_COMPOSER_TASK = {
     "txt2img": "txt2img",
@@ -128,7 +163,9 @@ def validate_workflow_template(template: dict[str, Any]) -> dict[str, Any]:
     if task_type not in TASK_REQUIRED_INPUTS:
         errors.append(f"unsupported template task_type: {task_type}")
     if validation_status not in VALIDATION_STATUSES:
-        errors.append("validation_status must be draft_validated, composed_validated, or needs_review")
+        errors.append(
+            "validation_status must be draft_validated, composed_validated, or needs_review"
+        )
     if safety_level not in SAFE_TEMPLATE_SAFETY_LEVELS:
         errors.append("safety_level must be safe_read_only or safe_placeholder_only")
 
@@ -137,14 +174,18 @@ def validate_workflow_template(template: dict[str, Any]) -> dict[str, Any]:
     else:
         unknown_modules = sorted(set(map(str, required_modules)) - RECOGNIZED_COMPOSER_MODULES)
         if unknown_modules:
-            errors.append(f"required_modules are not recognized by composer: {', '.join(unknown_modules)}")
+            errors.append(
+                f"required_modules are not recognized by composer: {', '.join(unknown_modules)}"
+            )
 
     if not isinstance(optional_modules, list):
         errors.append("optional_modules must be a list")
     else:
         unknown_optional = sorted(set(map(str, optional_modules)) - RECOGNIZED_COMPOSER_MODULES)
         if unknown_optional:
-            errors.append(f"optional_modules are not recognized by composer: {', '.join(unknown_optional)}")
+            errors.append(
+                f"optional_modules are not recognized by composer: {', '.join(unknown_optional)}"
+            )
 
     if not isinstance(required_inputs, list) or not required_inputs:
         errors.append("required_inputs must be a non-empty list")
@@ -165,7 +206,9 @@ def validate_workflow_template(template: dict[str, Any]) -> dict[str, Any]:
         if policy.get("model_policy") != "placeholder_only":
             errors.append("safe_placeholder_policy.model_policy must be placeholder_only")
         if policy.get("asset_policy") != "placeholder_only_no_private_files":
-            errors.append("safe_placeholder_policy.asset_policy must be placeholder_only_no_private_files")
+            errors.append(
+                "safe_placeholder_policy.asset_policy must be placeholder_only_no_private_files"
+            )
         if policy.get("queue_submission") != "disabled":
             errors.append("safe_placeholder_policy.queue_submission must be disabled")
         if policy.get("network") != "disabled":
@@ -276,7 +319,9 @@ def get_workflow_template(template_id: str) -> dict[str, Any]:
     )
 
 
-def compose_from_template(template_id: str, arguments: dict[str, Any] | None = None) -> dict[str, Any]:
+def compose_from_template(
+    template_id: str, arguments: dict[str, Any] | None = None
+) -> dict[str, Any]:
     arguments = dict(arguments or {})
     template_result = get_workflow_template(template_id)
     template = template_result.get("template")
@@ -290,8 +335,14 @@ def compose_from_template(template_id: str, arguments: dict[str, Any] | None = N
         "task_type": composer_task_type,
     }
     if task_type == "complex_creative_poster":
-        compose_arguments.setdefault("prompt", "public creative poster concept, bold central composition, layered typography areas, product-safe placeholder scene")
-        compose_arguments.setdefault("negative_prompt", "private logo, real person, customer material, watermark, low quality")
+        compose_arguments.setdefault(
+            "prompt",
+            "public creative poster concept, bold central composition, layered typography areas, product-safe placeholder scene",
+        )
+        compose_arguments.setdefault(
+            "negative_prompt",
+            "private logo, real person, customer material, watermark, low quality",
+        )
         compose_arguments.setdefault("width", 1024)
         compose_arguments.setdefault("height", 1536)
         compose_arguments.setdefault("seed", 246813579)
@@ -300,7 +351,11 @@ def compose_from_template(template_id: str, arguments: dict[str, Any] | None = N
 
     composed = workflow_compose(compose_arguments)
     workflow = composed.get("workflow")
-    validation = validate_workflow_payload(workflow, workflow_name=f"{template_id}_from_template") if isinstance(workflow, dict) else composed.get("validation_report", {})
+    validation = (
+        validate_workflow_payload(workflow, workflow_name=f"{template_id}_from_template")
+        if isinstance(workflow, dict)
+        else composed.get("validation_report", {})
+    )
     return sanitize(
         {
             "ok": bool(composed.get("ok")) and bool(validation.get("ok")),

@@ -5,12 +5,10 @@ import hashlib
 import json
 import struct
 import subprocess
-import sys
 import zlib
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-
 
 BRIDGE_ROOT = Path(__file__).resolve().parent
 REPO_ROOT = BRIDGE_ROOT.parents[1]
@@ -102,8 +100,8 @@ def png_chunks(path: Path) -> list[tuple[bytes, bytes]]:
 def png_header(path: Path) -> dict[str, int] | None:
     for chunk_type, data in png_chunks(path):
         if chunk_type == b"IHDR" and len(data) >= 13:
-            width, height, bit_depth, color_type, compression, filter_method, interlace = struct.unpack(
-                ">IIBBBBB", data[:13]
+            width, height, bit_depth, color_type, compression, filter_method, interlace = (
+                struct.unpack(">IIBBBBB", data[:13])
             )
             return {
                 "width": width,
@@ -486,7 +484,9 @@ def render_markdown(report: dict[str, Any]) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="生成 Photoshop 本机接入中文报告。")
-    parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR, help="报告输出目录。")
+    parser.add_argument(
+        "--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR, help="报告输出目录。"
+    )
     parser.add_argument("--run-practice", action="store_true", help="同时运行一键实操并记录输出。")
     args = parser.parse_args()
 
@@ -532,6 +532,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    if sys.version_info < (3, 10):
-        raise SystemExit("Python 3.10+ is required.")
     main()

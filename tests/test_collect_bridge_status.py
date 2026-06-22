@@ -6,7 +6,6 @@ import sys
 import unittest
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = REPO_ROOT / "scripts" / "collect_bridge_status.py"
 
@@ -36,7 +35,9 @@ class CollectBridgeStatusTest(unittest.TestCase):
         for bridge in data["bridges"]:
             self.assertIn("_path", bridge)
             self.assertTrue(bridge["_path"].endswith("bridge_status.json"))
-            self.assertIn(bridge["maturity"], {"stable", "prototype", "research", "planned", "deprecated"})
+            self.assertIn(
+                bridge["maturity"], {"stable", "prototype", "research", "planned", "deprecated"}
+            )
 
     def test_markdown_flag_outputs_table(self) -> None:
         completed = self.run_script("--markdown")

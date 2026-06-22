@@ -18,11 +18,51 @@ def mock_document() -> dict[str, Any]:
 
 def mock_layers() -> list[dict[str, Any]]:
     return [
-        {"id": "group-hero", "name": "Hero", "kind": "group", "depth": 0, "visible": True, "locked": False, "opacity": 100},
-        {"id": "layer-bg", "name": "Background", "kind": "pixel", "depth": 1, "visible": True, "locked": True, "opacity": 100},
-        {"id": "layer-subject", "name": "Subject", "kind": "smartObject", "depth": 1, "visible": True, "locked": False, "opacity": 100},
-        {"id": "layer-copy", "name": "Subject Mask", "kind": "mask", "depth": 1, "visible": True, "locked": False, "opacity": 100},
-        {"id": "layer-text", "name": "Title", "kind": "text", "depth": 0, "visible": True, "locked": False, "opacity": 92},
+        {
+            "id": "group-hero",
+            "name": "Hero",
+            "kind": "group",
+            "depth": 0,
+            "visible": True,
+            "locked": False,
+            "opacity": 100,
+        },
+        {
+            "id": "layer-bg",
+            "name": "Background",
+            "kind": "pixel",
+            "depth": 1,
+            "visible": True,
+            "locked": True,
+            "opacity": 100,
+        },
+        {
+            "id": "layer-subject",
+            "name": "Subject",
+            "kind": "smartObject",
+            "depth": 1,
+            "visible": True,
+            "locked": False,
+            "opacity": 100,
+        },
+        {
+            "id": "layer-copy",
+            "name": "Subject Mask",
+            "kind": "mask",
+            "depth": 1,
+            "visible": True,
+            "locked": False,
+            "opacity": 100,
+        },
+        {
+            "id": "layer-text",
+            "name": "Title",
+            "kind": "text",
+            "depth": 0,
+            "visible": True,
+            "locked": False,
+            "opacity": 92,
+        },
     ]
 
 

@@ -6,7 +6,6 @@ import sys
 import unittest
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 REQUIRED_CI_COMMANDS = [
@@ -58,7 +57,13 @@ class CiCommandsTest(unittest.TestCase):
         commands = [
             [sys.executable, "scripts/security_check.py"],
             [sys.executable, "scripts/collect_bridge_status.py", "--json"],
-            [sys.executable, "examples/bridge_status.py", "--json", "--redact-paths", "--soft-exit"],
+            [
+                sys.executable,
+                "examples/bridge_status.py",
+                "--json",
+                "--redact-paths",
+                "--soft-exit",
+            ],
             [sys.executable, "-m", "starbridge_mcp.server", "tools", "--json", "--safe-only"],
             [sys.executable, "-m", "starbridge_mcp.server", "evidence", "--init", "--json"],
             [sys.executable, "-m", "starbridge_mcp.server", "evidence", "--validate", "--json"],
@@ -66,7 +71,9 @@ class CiCommandsTest(unittest.TestCase):
         ]
         for command in commands:
             with self.subTest(command=" ".join(command)):
-                completed = subprocess.run(command, cwd=REPO_ROOT, capture_output=True, text=True, check=False, timeout=30)
+                completed = subprocess.run(
+                    command, cwd=REPO_ROOT, capture_output=True, text=True, check=False, timeout=30
+                )
                 self.assertEqual(0, completed.returncode, completed.stderr)
                 if "--json" in command:
                     json.loads(completed.stdout)

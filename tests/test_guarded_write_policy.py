@@ -4,7 +4,6 @@ import unittest
 
 from starbridge_mcp.mcp_server import handle_request
 
-
 SIMPLE_PLAN = {
     "units": "mm",
     "entities": [{"type": "rectangle", "x": 0, "y": 0, "width": 10, "height": 10}],
@@ -13,7 +12,14 @@ SIMPLE_PLAN = {
 
 class GuardedWritePolicyTest(unittest.TestCase):
     def call_tool(self, name: str, arguments: dict) -> dict:
-        response = handle_request({"jsonrpc": "2.0", "id": 101, "method": "tools/call", "params": {"name": name, "arguments": arguments}})
+        response = handle_request(
+            {
+                "jsonrpc": "2.0",
+                "id": 101,
+                "method": "tools/call",
+                "params": {"name": name, "arguments": arguments},
+            }
+        )
         assert response is not None
         return response["result"]["structuredContent"]
 

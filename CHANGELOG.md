@@ -8,6 +8,7 @@
 * Enhanced `pyproject.toml`: added classifiers, project.urls (GitHub repo, issues, docs), expanded description and keywords for better discoverability.
 * Improved CI workflow: added Windows runner (project is Windows-first), pip/npm caching, modern actions, broader Python matrix.
 * Centralized `BRIDGE_PROFILES`, `BRIDGE_NAME_MAP`, `BRIDGE_ALIASES` in `core/tool_registry.py` as single source of truth (previously duplicated in server.py). Updated imports and test. This eliminates metadata duplication while keeping compat.
+* Added long-term code quality tooling: ruff (lint + formatter) to dev dependencies and pyproject.toml config. Integrated into CI (both ubuntu and windows jobs) with `ruff check` and `ruff format --check`. Auto-fixed 100+ issues (imports, formatting, outdated guards, etc.). Added npm scripts for lint/format. Removed outdated Python version checks. All checks now enforced for sustainable quality.
 
 ### Documentation & Structure
 * Polished README: added prominent Getting Started / Quick Install section, License badges and section, better onboarding.

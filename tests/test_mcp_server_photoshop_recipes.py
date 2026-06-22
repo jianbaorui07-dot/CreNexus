@@ -7,7 +7,6 @@ from unittest.mock import patch
 
 from starbridge_mcp.mcp_server import handle_request
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BANNED_OUTPUT_FRAGMENTS = ("C:\\Users\\", "/Users/", "/home/", str(REPO_ROOT))
 
@@ -42,7 +41,10 @@ class PhotoshopRecipeMcpTests(unittest.TestCase):
         )
 
     def test_recipe_run_dry_run_does_not_start_photoshop(self) -> None:
-        with patch("starbridge_mcp.mcp_server.subprocess.run", side_effect=AssertionError("subprocess.run should not be called")):
+        with patch(
+            "starbridge_mcp.mcp_server.subprocess.run",
+            side_effect=AssertionError("subprocess.run should not be called"),
+        ):
             response = request(
                 2,
                 "tools/call",

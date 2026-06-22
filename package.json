@@ -48,6 +48,9 @@
     "frontend:dev": "npm --prefix examples/starbridge_frontend run dev",
     "frontend:build": "npm --prefix examples/starbridge_frontend run build",
     "test": "python -m unittest discover -s tests",
-    "test:pytest": "python -m pytest"
+    "test:pytest": "python -m pytest",
+    "lint": "ruff check .",
+    "format": "ruff format .",
+    "format-check": "ruff format --check ."
   }
 }

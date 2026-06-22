@@ -15,7 +15,6 @@ from starbridge_mcp.core.computer_use import (
 )
 from starbridge_mcp.core.computer_use_demos import run_demo
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -83,7 +82,9 @@ class ComputerUsePlanTests(unittest.TestCase):
         result = run_demo("illustrator", mode="gui", confirm_write=True)
         self.assertTrue(result["ok"])
         self.assertTrue((REPO_ROOT / "outputs/illustrator_demo/illustrator_gui_plan.json").exists())
-        self.assertTrue((REPO_ROOT / "outputs/illustrator_demo/starbridge_ai_gui_demo.svg").exists())
+        self.assertTrue(
+            (REPO_ROOT / "outputs/illustrator_demo/starbridge_ai_gui_demo.svg").exists()
+        )
 
     def test_capcut_gui_demo_can_generate_plan_file(self) -> None:
         result = run_demo("capcut", mode="gui", confirm_write=True)
@@ -109,7 +110,13 @@ class ComputerUsePlanTests(unittest.TestCase):
 
     def test_plan_cli_returns_zero(self) -> None:
         completed = subprocess.run(
-            [sys.executable, "-m", "starbridge_mcp.server", "plan", "examples/plans/photoshop_poster_gui.json"],
+            [
+                sys.executable,
+                "-m",
+                "starbridge_mcp.server",
+                "plan",
+                "examples/plans/photoshop_poster_gui.json",
+            ],
             cwd=REPO_ROOT,
             capture_output=True,
             text=True,
@@ -122,4 +129,3 @@ class ComputerUsePlanTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import re
 import os
+import re
 import shutil
 import subprocess
-import sys
 from pathlib import Path
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FORBIDDEN_EXTENSIONS = {
@@ -76,11 +74,7 @@ def walk_public_files(root: Path = REPO_ROOT) -> list[Path]:
     files: list[Path] = []
     for directory, dir_names, file_names in os.walk(root):
         dir_path = Path(directory)
-        dir_names[:] = [
-            name
-            for name in dir_names
-            if not should_skip_dir(dir_path / name, root)
-        ]
+        dir_names[:] = [name for name in dir_names if not should_skip_dir(dir_path / name, root)]
         for file_name in file_names:
             files.append(dir_path / file_name)
     return sorted(files)
@@ -129,6 +123,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    if sys.version_info < (3, 10):
-        raise SystemExit("建议使用 Python 3.10 或更新版本运行本脚本。")
     main()

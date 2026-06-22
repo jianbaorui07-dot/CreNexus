@@ -4,12 +4,10 @@ import argparse
 import json
 import os
 import re
-import sys
 import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any
-
 
 BRIDGE_ID = "comfyui"
 DEFAULT_BASE_URL = "http://127.0.0.1:8188"
@@ -66,7 +64,9 @@ def probe(base_url: str, timeout: int) -> dict[str, Any]:
     try:
         object_info = get_json(base_url, "/object_info", timeout)
         report["detected"]["object_info"] = True
-        report["detected"]["basic_nodes_checked"] = [node for node in BASIC_NODES if node in object_info]
+        report["detected"]["basic_nodes_checked"] = [
+            node for node in BASIC_NODES if node in object_info
+        ]
         missing_nodes = [node for node in BASIC_NODES if node not in object_info]
         if missing_nodes:
             report["warnings"].append(
@@ -88,7 +88,9 @@ def probe(base_url: str, timeout: int) -> dict[str, Any]:
 
 def write_report(report: dict[str, Any], report_path: Path) -> None:
     report_path.parent.mkdir(parents=True, exist_ok=True)
-    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    report_path.write_text(
+        json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
 
 
 def print_text(report: dict[str, Any]) -> None:
@@ -107,12 +109,26 @@ def print_text(report: dict[str, Any]) -> None:
 
 
 def main() -> None:
-    default_url = os.environ.get("STARBRIDGE_COMFYUI_URL") or os.environ.get("COMFY_BASE_URL") or DEFAULT_BASE_URL
-    parser = argparse.ArgumentParser(description="只读检测本机 ComfyUI 服务，输出安全 JSON report。")
-    parser.add_argument("--comfy-url", default=default_url, help="ComfyUI API 地址，默认读取 STARBRIDGE_COMFYUI_URL。")
+    default_url = (
+        os.environ.get("STARBRIDGE_COMFYUI_URL")
+        or os.environ.get("COMFY_BASE_URL")
+        or DEFAULT_BASE_URL
+    )
+    parser = argparse.ArgumentParser(
+        description="只读检测本机 ComfyUI 服务，输出安全 JSON report。"
+    )
+    parser.add_argument(
+        "--comfy-url",
+        default=default_url,
+        help="ComfyUI API 地址，默认读取 STARBRIDGE_COMFYUI_URL。",
+    )
     parser.add_argument("--timeout", type=int, default=8, help="HTTP 请求超时时间，单位秒。")
     parser.add_argument("--json", action="store_true", help="只向 stdout 输出 JSON。")
-    parser.add_argument("--soft-exit", action="store_true", help="ComfyUI 不在线时仍返回 0，供 CI / preflight 使用。")
+    parser.add_argument(
+        "--soft-exit",
+        action="store_true",
+        help="ComfyUI 不在线时仍返回 0，供 CI / preflight 使用。",
+    )
     parser.add_argument(
         "--report-path",
         default=str(Path(__file__).resolve().parent / "reports" / "comfyui_probe_report.json"),
@@ -132,6 +148,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    if sys.version_info < (3, 10):
-        raise SystemExit("建议使用 Python 3.10 或更新版本运行本 probe。")
     main()

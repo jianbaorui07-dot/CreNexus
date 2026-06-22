@@ -6,7 +6,6 @@ from pathlib import Path
 
 from starbridge_mcp.mcp_server import handle_request
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -50,8 +49,12 @@ class PhotoshopAdapterV1Tests(unittest.TestCase):
                     self.assertIn(key, schema)
 
     def test_mock_document_and_layers_are_available_without_photoshop(self) -> None:
-        info = request(2, "tools/call", {"name": "ps.document.info", "arguments": {"bridge_kind": "mock"}})
-        layers = request(3, "tools/call", {"name": "ps.layers.list", "arguments": {"bridge_kind": "mock"}})
+        info = request(
+            2, "tools/call", {"name": "ps.document.info", "arguments": {"bridge_kind": "mock"}}
+        )
+        layers = request(
+            3, "tools/call", {"name": "ps.layers.list", "arguments": {"bridge_kind": "mock"}}
+        )
 
         info_payload = info["result"]["structuredContent"]
         layers_payload = layers["result"]["structuredContent"]
@@ -61,7 +64,9 @@ class PhotoshopAdapterV1Tests(unittest.TestCase):
         self.assertGreater(layers_payload["details"]["layer_count"], 0)
 
     def test_preview_export_defaults_to_dry_run(self) -> None:
-        response = request(4, "tools/call", {"name": "ps.preview.export", "arguments": {"bridge_kind": "mock"}})
+        response = request(
+            4, "tools/call", {"name": "ps.preview.export", "arguments": {"bridge_kind": "mock"}}
+        )
         payload = response["result"]["structuredContent"]
 
         self.assertTrue(payload["ok"])
@@ -71,7 +76,9 @@ class PhotoshopAdapterV1Tests(unittest.TestCase):
         self.assertEqual([], payload["details"]["preview_files"])
 
     def test_selection_subject_mock_plan_is_available(self) -> None:
-        response = request(41, "tools/call", {"name": "ps.selection.subject", "arguments": {"bridge_kind": "mock"}})
+        response = request(
+            41, "tools/call", {"name": "ps.selection.subject", "arguments": {"bridge_kind": "mock"}}
+        )
         payload = response["result"]["structuredContent"]
 
         self.assertTrue(payload["ok"])
@@ -88,7 +95,10 @@ class PhotoshopAdapterV1Tests(unittest.TestCase):
                 response = request(
                     42,
                     "tools/call",
-                    {"name": tool_name, "arguments": {"bridge_kind": "mock", "dry_run": False, **arguments}},
+                    {
+                        "name": tool_name,
+                        "arguments": {"bridge_kind": "mock", "dry_run": False, **arguments},
+                    },
                 )
                 payload = response["result"]["structuredContent"]
                 self.assertFalse(payload["ok"])
@@ -156,7 +166,10 @@ class PhotoshopAdapterV1Tests(unittest.TestCase):
         response = request(
             7,
             "tools/call",
-            {"name": "ps.batchplay.validate", "arguments": {"bridge_kind": "mock", "descriptor": {"_obj": "make"}}},
+            {
+                "name": "ps.batchplay.validate",
+                "arguments": {"bridge_kind": "mock", "descriptor": {"_obj": "make"}},
+            },
         )
         payload = response["result"]["structuredContent"]
         manifest = payload["details"]["evidence_manifest"]
@@ -191,15 +204,26 @@ class PhotoshopAdapterV1Tests(unittest.TestCase):
             self.assertIn(key, manifest)
 
     def test_destructive_tools_are_disabled(self) -> None:
-        for tool_name in ("ps.history.undo", "ps.mask.refine", "ps.smartobject.place", "ps.adjustment.apply"):
+        for tool_name in (
+            "ps.history.undo",
+            "ps.mask.refine",
+            "ps.smartobject.place",
+            "ps.adjustment.apply",
+        ):
             with self.subTest(tool=tool_name):
-                response = request(8, "tools/call", {"name": tool_name, "arguments": {"bridge_kind": "mock"}})
+                response = request(
+                    8, "tools/call", {"name": tool_name, "arguments": {"bridge_kind": "mock"}}
+                )
                 payload = response["result"]["structuredContent"]
                 self.assertFalse(payload["ok"])
                 self.assertIn("disabled", payload["details"]["status"])
 
     def test_execute_confirmed_requires_confirmation(self) -> None:
-        response = request(80, "tools/call", {"name": "ps.batchplay.execute_confirmed", "arguments": {"bridge_kind": "mock"}})
+        response = request(
+            80,
+            "tools/call",
+            {"name": "ps.batchplay.execute_confirmed", "arguments": {"bridge_kind": "mock"}},
+        )
         payload = response["result"]["structuredContent"]
         self.assertFalse(payload["ok"])
         self.assertIn("requires_confirmation", payload["message"])

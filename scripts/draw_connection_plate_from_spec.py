@@ -5,7 +5,6 @@ import time
 import pythoncom
 import win32com.client
 
-
 WORKSPACE = pathlib.Path(__file__).resolve().parents[1]
 OUTPUT = WORKSPACE / "output" / "connection_plate_1to1.dwg"
 
@@ -13,7 +12,9 @@ OUTPUT = WORKSPACE / "output" / "connection_plate_1to1.dwg"
 def vt_point(point):
     x, y, *rest = point
     z = rest[0] if rest else 0.0
-    return win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, [float(x), float(y), float(z)])
+    return win32com.client.VARIANT(
+        pythoncom.VT_ARRAY | pythoncom.VT_R8, [float(x), float(y), float(z)]
+    )
 
 
 def vt_doubles(values):
@@ -171,8 +172,24 @@ def cn_label(model, tip, elbow, label_position, label):
 
 def center_cross(model, center, radius, extension=4.0):
     x, y = center
-    line(model, (x - radius - extension, y, 0), (x + radius + extension, y, 0), "CENTER_DASH", 8, 15, "CENTER")
-    line(model, (x, y - radius - extension, 0), (x, y + radius + extension, 0), "CENTER_DASH", 8, 15, "CENTER")
+    line(
+        model,
+        (x - radius - extension, y, 0),
+        (x + radius + extension, y, 0),
+        "CENTER_DASH",
+        8,
+        15,
+        "CENTER",
+    )
+    line(
+        model,
+        (x, y - radius - extension, 0),
+        (x, y + radius + extension, 0),
+        "CENTER_DASH",
+        8,
+        15,
+        "CENTER",
+    )
 
 
 def tangent_points_same_side(c1, r1, c2, r2):
@@ -217,7 +234,12 @@ def angle_dimension(model, vertex, radius, start_deg, end_deg, label):
     arrowhead(model, (points[0][0], points[0][1], 0), start_deg + 90)
     arrowhead(model, (points[-1][0], points[-1][1], 0), end_deg - 90)
     mid = math.radians((start_deg + end_deg) / 2.0)
-    text(model, (vertex[0] + (radius + 4) * math.cos(mid), vertex[1] + (radius + 4) * math.sin(mid), 0), label, 3.2)
+    text(
+        model,
+        (vertex[0] + (radius + 4) * math.cos(mid), vertex[1] + (radius + 4) * math.sin(mid), 0),
+        label,
+        3.2,
+    )
 
 
 def draw_plate():
@@ -307,18 +329,40 @@ def draw_plate():
     center_cross(model, right_lower, r_right_outer)
     line(model, (left_top[0] - 17, 0, 0), (big[0] + 49, 0, 0), "CENTER_DASH", 8, 15, "CENTER")
     line(model, (big[0], 30, 0), (big[0], -52, 0), "CENTER_DASH", 8, 15, "CENTER")
-    line(model, (big[0], big[1], 0), (right_lower[0], right_lower[1], 0), "CONSTRUCTION_DASH", 8, 15, "CENTER")
+    line(
+        model,
+        (big[0], big[1], 0),
+        (right_lower[0], right_lower[1], 0),
+        "CONSTRUCTION_DASH",
+        8,
+        15,
+        "CENTER",
+    )
 
     # Position dimensions.
-    dim_aligned(model, (left_top[0], 29, 0), (big[0], 29, 0), ((left_top[0] + big[0]) / 2, 35, 0), "41")
+    dim_aligned(
+        model, (left_top[0], 29, 0), (big[0], 29, 0), ((left_top[0] + big[0]) / 2, 35, 0), "41"
+    )
     line(model, (left_top[0], r_left_outer, 0), (left_top[0], 32, 0), "DIM_THIN", 7, 15)
     line(model, (big[0], r_big_outer, 0), (big[0], 32, 0), "DIM_THIN", 7, 15)
 
-    dim_aligned(model, (lower_left[0], -51, 0), (big[0], -51, 0), ((lower_left[0] + big[0]) / 2, -57, 0), "40")
+    dim_aligned(
+        model,
+        (lower_left[0], -51, 0),
+        (big[0], -51, 0),
+        ((lower_left[0] + big[0]) / 2, -57, 0),
+        "40",
+    )
     line(model, (lower_left[0], bottom_y, 0), (lower_left[0], -54, 0), "DIM_THIN", 7, 15)
     line(model, (big[0], bottom_y, 0), (big[0], -54, 0), "DIM_THIN", 7, 15)
 
-    dim_aligned(model, (-23, left_top[1], 0), (-23, lower_left[1], 0), (-29, (left_top[1] + lower_left[1]) / 2, 0), "26")
+    dim_aligned(
+        model,
+        (-23, left_top[1], 0),
+        (-23, lower_left[1], 0),
+        (-29, (left_top[1] + lower_left[1]) / 2, 0),
+        "26",
+    )
     line(model, (left_side_x, left_top[1], 0), (-25, left_top[1], 0), "DIM_THIN", 7, 15)
     line(model, (left_side_x, lower_left[1], 0), (-25, lower_left[1], 0), "DIM_THIN", 7, 15)
 
@@ -333,19 +377,58 @@ def draw_plate():
     leader(model, (big[0] - 5.0, big[1] + 10.9, 0), (24, 13.5, 0), (26, 15, 0), "%%c24")
     leader(model, (left_top[0] - 2.8, left_top[1] + 9.0, 0), (-6, 18, 0), (-14, 18, 0), "%%c19")
     leader(model, (left_top[0] - 3.5, left_top[1] + 4.2, 0), (-14, 9, 0), (-19, 9, 0), "%%c11")
-    leader(model, (lower_left[0] - 3.5, lower_left[1] - 5.5, 0), (-9, -40, 0), (-16, -40, 0), "%%c13")
-    leader(model, (lower_left[0] - 7.1, lower_left[1] - 7.1, 0), (-12, -33, 0), (-20, -33, 0), "R10")
+    leader(
+        model, (lower_left[0] - 3.5, lower_left[1] - 5.5, 0), (-9, -40, 0), (-16, -40, 0), "%%c13"
+    )
+    leader(
+        model, (lower_left[0] - 7.1, lower_left[1] - 7.1, 0), (-12, -33, 0), (-20, -33, 0), "R10"
+    )
     leader(model, (28, -21, 0), (22, -23, 0), (16, -23, 0), "R80")
-    leader(model, (right_lower[0] - 4.3, right_lower[1] - 4.2, 0), (50, -50, 0), (46, -50, 0), "%%c12")
-    leader(model, (right_lower[0] + 3.1, right_lower[1] + 2.5, 0), (63, -35, 0), (66, -35, 0), "%%c8")
+    leader(
+        model, (right_lower[0] - 4.3, right_lower[1] - 4.2, 0), (50, -50, 0), (46, -50, 0), "%%c12"
+    )
+    leader(
+        model, (right_lower[0] + 3.1, right_lower[1] + 2.5, 0), (63, -35, 0), (66, -35, 0), "%%c8"
+    )
 
     # Chinese area labels for readers who inspect the generated DWG.
     text(model, (-24, 44, 0), "连接板参数化示例（单位：mm）", 4.5, layer="CN_LABEL", color=3)
-    text(model, (-24, 39, 0), "公开演示图纸：只含虚构尺寸，不含客户数据", 3.2, layer="CN_LABEL", color=3)
-    cn_label(model, (big[0] + 9, big[1] + 7, 0), (72, 16, 0), (76, 16, 0), "主圆孔区：外圆 %%c44 / 内孔 %%c24")
-    cn_label(model, (left_top[0] - 4, left_top[1] + 4, 0), (-35, 17, 0), (-58, 17, 0), "左上安装孔区：%%c19 / %%c11")
-    cn_label(model, (lower_left[0] - 5, lower_left[1] - 5, 0), (-35, -46, 0), (-58, -46, 0), "左下定位孔区：%%c13，外角 R10")
-    cn_label(model, (right_lower[0] + 3, right_lower[1] + 3, 0), (78, -35, 0), (82, -35, 0), "右下小孔区：%%c12 / %%c8")
+    text(
+        model,
+        (-24, 39, 0),
+        "公开演示图纸：只含虚构尺寸，不含客户数据",
+        3.2,
+        layer="CN_LABEL",
+        color=3,
+    )
+    cn_label(
+        model,
+        (big[0] + 9, big[1] + 7, 0),
+        (72, 16, 0),
+        (76, 16, 0),
+        "主圆孔区：外圆 %%c44 / 内孔 %%c24",
+    )
+    cn_label(
+        model,
+        (left_top[0] - 4, left_top[1] + 4, 0),
+        (-35, 17, 0),
+        (-58, 17, 0),
+        "左上安装孔区：%%c19 / %%c11",
+    )
+    cn_label(
+        model,
+        (lower_left[0] - 5, lower_left[1] - 5, 0),
+        (-35, -46, 0),
+        (-58, -46, 0),
+        "左下定位孔区：%%c13，外角 R10",
+    )
+    cn_label(
+        model,
+        (right_lower[0] + 3, right_lower[1] + 3, 0),
+        (78, -35, 0),
+        (82, -35, 0),
+        "右下小孔区：%%c12 / %%c8",
+    )
     cn_label(model, (27, -21, 0), (10, -18, 0), (-18, -18, 0), "外轮廓连接区：R80 圆弧过渡")
     cn_label(model, (big[0], 0, 0), (68, 5, 0), (76, 5, 0), "中心线基准：孔距和角度从这里读取")
 

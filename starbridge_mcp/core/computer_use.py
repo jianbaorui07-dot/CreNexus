@@ -8,12 +8,22 @@ from typing import Any, Protocol
 
 from starbridge_mcp.core.security import sanitize
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SAFE_OUTPUT_ROOTS = ("outputs", "examples", "tmp")
 APPS = {"photoshop", "illustrator", "comfyui", "blender", "autocad", "capcut", "generic"}
 EXECUTION_MODES = {"computer_use", "structured_tool", "hybrid"}
-STRUCTURED_METHODS = {"jsx", "uxp", "python", "cli", "com", "api", "filesystem", "dxf", "svg", "none"}
+STRUCTURED_METHODS = {
+    "jsx",
+    "uxp",
+    "python",
+    "cli",
+    "com",
+    "api",
+    "filesystem",
+    "dxf",
+    "svg",
+    "none",
+}
 RISK_LEVELS = {"read", "write", "destructive"}
 
 
@@ -66,7 +76,7 @@ class GuiStep:
     evidence_required: bool = False
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "GuiStep":
+    def from_dict(cls, data: dict[str, Any]) -> GuiStep:
         return cls(
             step_id=str(data.get("step_id") or data.get("id") or ""),
             instruction=str(data.get("instruction") or ""),
@@ -101,8 +111,12 @@ class ActionPlan:
     requires_user_presence: bool = False
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ActionPlan":
-        gui_steps = [GuiStep.from_dict(item) for item in _as_list(data.get("gui_steps")) if isinstance(item, dict)]
+    def from_dict(cls, data: dict[str, Any]) -> ActionPlan:
+        gui_steps = [
+            GuiStep.from_dict(item)
+            for item in _as_list(data.get("gui_steps"))
+            if isinstance(item, dict)
+        ]
         plan = cls(
             id=str(data.get("id") or f"plan-{_now_id()}"),
             app=str(data.get("app") or "generic"),
@@ -125,7 +139,7 @@ class ActionPlan:
         return plan
 
     @classmethod
-    def load(cls, path: str | Path) -> "ActionPlan":
+    def load(cls, path: str | Path) -> ActionPlan:
         with Path(path).open("r", encoding="utf-8") as handle:
             return cls.from_dict(json.load(handle))
 
@@ -177,9 +191,13 @@ class ExecutionResult:
         return asdict(self)
 
 
-def evaluate_safety(plan: ActionPlan, *, confirm_write: bool | None = None, allow_computer_use: bool | None = None) -> SafetyDecision:
+def evaluate_safety(
+    plan: ActionPlan, *, confirm_write: bool | None = None, allow_computer_use: bool | None = None
+) -> SafetyDecision:
     effective_confirm_write = plan.confirm_write if confirm_write is None else confirm_write
-    effective_allow_computer_use = plan.allow_computer_use if allow_computer_use is None else allow_computer_use
+    effective_allow_computer_use = (
+        plan.allow_computer_use if allow_computer_use is None else allow_computer_use
+    )
     blocked: list[str] = []
     required_flags: list[str] = []
 
@@ -187,7 +205,11 @@ def evaluate_safety(plan: ActionPlan, *, confirm_write: bool | None = None, allo
         blocked.append("computer use requires explicit allow_computer_use")
         required_flags.append("--allow-computer-use")
 
-    if plan.risk_level in {"write", "destructive"} and not plan.dry_run and not effective_confirm_write:
+    if (
+        plan.risk_level in {"write", "destructive"}
+        and not plan.dry_run
+        and not effective_confirm_write
+    ):
         blocked.append("real write requires confirm_write")
         required_flags.append("--confirm-write")
 
@@ -219,11 +241,9 @@ def evaluate_safety(plan: ActionPlan, *, confirm_write: bool | None = None, allo
 
 
 class ComputerUseProtocol(Protocol):
-    def plan_to_human_readable_steps(self, plan: ActionPlan) -> list[str]:
-        ...
+    def plan_to_human_readable_steps(self, plan: ActionPlan) -> list[str]: ...
 
-    def generate_codex_gui_instructions(self, plan: ActionPlan) -> str:
-        ...
+    def generate_codex_gui_instructions(self, plan: ActionPlan) -> str: ...
 
     def record_gui_result(
         self,
@@ -233,11 +253,11 @@ class ComputerUseProtocol(Protocol):
         screenshot_paths: list[str] | None = None,
         created_files: list[str] | None = None,
         notes: str = "",
-    ) -> ExecutionResult:
-        ...
+    ) -> ExecutionResult: ...
 
-    def validate_screen_evidence(self, plan: ActionPlan, screenshot_paths: list[str]) -> SafetyDecision:
-        ...
+    def validate_screen_evidence(
+        self, plan: ActionPlan, screenshot_paths: list[str]
+    ) -> SafetyDecision: ...
 
 
 class CodexComputerUseAdapter:
@@ -257,7 +277,9 @@ class CodexComputerUseAdapter:
             f"Safety status: {'allowed' if safety.allowed else 'blocked'} - {safety.reason}",
         ]
         if safety.required_flags:
-            lines.append(f"Required flags before real GUI execution: {', '.join(safety.required_flags)}")
+            lines.append(
+                f"Required flags before real GUI execution: {', '.join(safety.required_flags)}"
+            )
         lines.extend(
             [
                 "Before starting, confirm the foreground window is the target app and no private file is open.",
@@ -277,7 +299,9 @@ class CodexComputerUseAdapter:
                 lines.append("   Confirmation: wait for user confirmation before continuing.")
             if step.fallback_if_failed:
                 lines.append(f"   Fallback: {step.fallback_if_failed}")
-        lines.append("When finished, record the result with starbridge gui-record and include screenshot paths.")
+        lines.append(
+            "When finished, record the result with starbridge gui-record and include screenshot paths."
+        )
         return "\n".join(lines)
 
     def record_gui_result(
@@ -301,10 +325,14 @@ class CodexComputerUseAdapter:
             evidence=[notes] if notes else [],
             screenshot_paths=screenshot_paths or [],
             message="GUI execution recorded" if ok else "GUI execution recorded as failed",
-            next_recommended_action="verify output files" if ok else "review screenshots and rerun the failed step",
+            next_recommended_action="verify output files"
+            if ok
+            else "review screenshots and rerun the failed step",
         )
 
-    def validate_screen_evidence(self, plan: ActionPlan, screenshot_paths: list[str]) -> SafetyDecision:
+    def validate_screen_evidence(
+        self, plan: ActionPlan, screenshot_paths: list[str]
+    ) -> SafetyDecision:
         if plan.needs_screenshot_evidence and not screenshot_paths:
             return SafetyDecision(
                 allowed=False,
@@ -322,7 +350,9 @@ class CodexComputerUseAdapter:
                 risk_level=plan.risk_level,
                 user_confirmation_required=False,
             )
-        return SafetyDecision(True, "screen evidence paths are acceptable", risk_level=plan.risk_level)
+        return SafetyDecision(
+            True, "screen evidence paths are acceptable", risk_level=plan.risk_level
+        )
 
 
 class MockComputerUseAdapter(CodexComputerUseAdapter):
@@ -354,12 +384,18 @@ class LocalScreenshotEvidenceStore:
     def save_result(self, plan_id: str, result: ExecutionResult) -> Path:
         safe_plan_id = "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in plan_id)
         path = self.root / f"{safe_plan_id}-{_now_id()}.json"
-        path.write_text(json.dumps(sanitize(result.to_dict()), ensure_ascii=False, indent=2), encoding="utf-8")
+        path.write_text(
+            json.dumps(sanitize(result.to_dict()), ensure_ascii=False, indent=2), encoding="utf-8"
+        )
         return path
 
 
-def render_plan_summary(plan: ActionPlan, *, confirm_write: bool = False, allow_computer_use: bool = False) -> dict[str, Any]:
-    decision = evaluate_safety(plan, confirm_write=confirm_write, allow_computer_use=allow_computer_use)
+def render_plan_summary(
+    plan: ActionPlan, *, confirm_write: bool = False, allow_computer_use: bool = False
+) -> dict[str, Any]:
+    decision = evaluate_safety(
+        plan, confirm_write=confirm_write, allow_computer_use=allow_computer_use
+    )
     return sanitize(
         {
             "ok": decision.allowed,
@@ -371,4 +407,3 @@ def render_plan_summary(plan: ActionPlan, *, confirm_write: bool = False, allow_
             "gui_step_summary": [f"{step.step_id}: {step.instruction}" for step in plan.gui_steps],
         }
     )
-

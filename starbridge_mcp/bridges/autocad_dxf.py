@@ -10,7 +10,6 @@ from starbridge_mcp.bridges.cad_schema import DEFAULT_LAYERS, normalize_plan
 from starbridge_mcp.core.result_schema import make_result, validate_result
 from starbridge_mcp.core.security import sanitize_result
 
-
 BRIDGE_ID = "autocad_dxf"
 REPO_ROOT = Path(__file__).resolve().parents[2]
 OUTPUT_ROOT = REPO_ROOT / "examples" / "cad" / "output"
@@ -48,8 +47,12 @@ def status() -> dict[str, Any]:
     warnings = []
     next_steps = []
     if not ezdxf_available:
-        warnings.append("ezdxf is not installed; dry-run validation still works, but DXF export is disabled.")
-        next_steps.append("Install ezdxf in a local environment if you want to write test DXF files.")
+        warnings.append(
+            "ezdxf is not installed; dry-run validation still works, but DXF export is disabled."
+        )
+        next_steps.append(
+            "Install ezdxf in a local environment if you want to write test DXF files."
+        )
     return _result(
         ok=True,
         action="status",
@@ -65,6 +68,7 @@ def status() -> dict[str, Any]:
         next_steps=next_steps,
     )
 
+
 def validate_cad_plan(plan: Any) -> dict[str, Any]:
     normalized, errors, warnings = normalize_plan(plan)
     return _result(
@@ -74,7 +78,9 @@ def validate_cad_plan(plan: Any) -> dict[str, Any]:
         details={
             "errors": errors,
             "normalized_plan": normalized if not errors else {},
-            "entity_count": len(normalized.get("entities", [])) if isinstance(normalized, dict) else 0,
+            "entity_count": len(normalized.get("entities", []))
+            if isinstance(normalized, dict)
+            else 0,
             "layer_count": len(normalized.get("layers", [])) if isinstance(normalized, dict) else 0,
         },
         warnings=warnings,
@@ -111,10 +117,23 @@ def create_dxf_plan(prompt_or_spec: Any) -> dict[str, Any]:
         "units": "mm",
         "layers": DEFAULT_LAYERS,
         "entities": [
-            {"type": "rectangle", "layer": "OUTLINE", "x": 0, "y": 0, "width": width, "height": height},
+            {
+                "type": "rectangle",
+                "layer": "OUTLINE",
+                "x": 0,
+                "y": 0,
+                "width": width,
+                "height": height,
+            },
             {"type": "line", "layer": "AUX", "start": [width / 2, 0], "end": [width / 2, height]},
             {"type": "line", "layer": "AUX", "start": [0, height / 2], "end": [width, height / 2]},
-            {"type": "text", "layer": "TEXT", "position": [200, height + 260], "height": 180, "value": "安全 DXF 计划示例"},
+            {
+                "type": "text",
+                "layer": "TEXT",
+                "position": [200, height + 260],
+                "height": 180,
+                "value": "安全 DXF 计划示例",
+            },
         ],
         "output": "example_generated.dxf",
     }
@@ -134,7 +153,9 @@ def summarize_plan(plan: Any) -> dict[str, Any]:
     return _result(
         ok=validation["ok"],
         action="summarize_plan",
-        message="CAD plan summary is ready." if validation["ok"] else "Cannot summarize invalid CAD plan.",
+        message="CAD plan summary is ready."
+        if validation["ok"]
+        else "Cannot summarize invalid CAD plan.",
         details=_summary_details(normalized) if validation["ok"] else _empty_summary(),
         warnings=validation["warnings"],
         next_steps=validation["next_steps"],
@@ -204,7 +225,9 @@ def _summary_details(normalized: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _manifest_for(normalized: dict[str, Any], output: Path, summary: dict[str, Any]) -> dict[str, Any]:
+def _manifest_for(
+    normalized: dict[str, Any], output: Path, summary: dict[str, Any]
+) -> dict[str, Any]:
     return {
         "bridge": BRIDGE_ID,
         "format": "dxf",
@@ -260,7 +283,9 @@ def write_dxf(
             message="Dry run completed; no DXF file was written.",
             details=details,
             warnings=warnings,
-            next_steps=["Run with dry_run=False and an output path under examples/cad/output to write a test DXF."],
+            next_steps=[
+                "Run with dry_run=False and an output path under examples/cad/output to write a test DXF."
+            ],
         )
 
     if not confirm_write:
@@ -270,7 +295,9 @@ def write_dxf(
             message="Refusing real DXF write without confirm_write=true.",
             details=details,
             warnings=["Real DXF writes must be explicitly confirmed."],
-            next_steps=["Run with dry_run=True first, then set confirm_write=True for a sandboxed output path."],
+            next_steps=[
+                "Run with dry_run=True first, then set confirm_write=True for a sandboxed output path."
+            ],
         )
 
     if not _output_is_allowed(output):
@@ -307,7 +334,11 @@ def write_dxf(
         if entity["type"] == "line":
             msp.add_line(entity["start"], entity["end"], dxfattribs={"layer": layer})
         elif entity["type"] == "polyline":
-            msp.add_lwpolyline(entity["points"], close=bool(entity.get("closed", False)), dxfattribs={"layer": layer})
+            msp.add_lwpolyline(
+                entity["points"],
+                close=bool(entity.get("closed", False)),
+                dxfattribs={"layer": layer},
+            )
         elif entity["type"] == "circle":
             msp.add_circle(entity["center"], entity["radius"], dxfattribs={"layer": layer})
         elif entity["type"] == "rectangle":
@@ -321,14 +352,18 @@ def write_dxf(
                 dxfattribs={"layer": layer},
             )
         elif entity["type"] == "text":
-            text = msp.add_text(entity["value"], height=entity["height"], dxfattribs={"layer": layer})
+            text = msp.add_text(
+                entity["value"], height=entity["height"], dxfattribs={"layer": layer}
+            )
             text.dxf.insert = entity["position"]
 
     output.parent.mkdir(parents=True, exist_ok=True)
     doc.saveas(output)
     manifest = _manifest_for(normalized, output, summary_details)
     manifest_path = output.with_suffix(".manifest.json")
-    manifest_path.write_text(json.dumps(sanitize_result(manifest), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    manifest_path.write_text(
+        json.dumps(sanitize_result(manifest), ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
     return _result(
         ok=True,
         action="write_dxf",

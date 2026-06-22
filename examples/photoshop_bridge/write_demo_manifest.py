@@ -4,7 +4,6 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 OUTPUT_DIR = REPO_ROOT / "examples" / "output" / "photoshop"
 
@@ -46,14 +45,18 @@ def main() -> None:
             "npm.cmd run photoshop:demo",
             "npm.cmd run photoshop:manifest",
         ],
-        "warnings": [] if psd_path.exists() else ["Sandbox Photoshop demo outputs were not all found."],
+        "warnings": []
+        if psd_path.exists()
+        else ["Sandbox Photoshop demo outputs were not all found."],
         "next_steps": [
             "Inspect local demo previews.",
             "Do not commit generated PSD, PNG, JPG, or manifest outputs.",
         ],
     }
     manifest_path = OUTPUT_DIR / "demo_manifest.json"
-    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    manifest_path.write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
     print(json.dumps(manifest, ensure_ascii=False, indent=2))
 
 

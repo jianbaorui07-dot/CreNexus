@@ -8,7 +8,9 @@ from examples.comfy_bridge.workflow_agent import workflow_build, workflow_repair
 
 class ComfyWorkflowRepairTests(unittest.TestCase):
     def test_missing_nodes_and_bad_values_are_repaired(self) -> None:
-        built = workflow_build({"goal": "国风 Q版 明代街市", "checkpoint": "placeholder.safetensors"})
+        built = workflow_build(
+            {"goal": "国风 Q版 明代街市", "checkpoint": "placeholder.safetensors"}
+        )
         broken = copy.deepcopy(built["workflow"])
 
         broken.pop("5")

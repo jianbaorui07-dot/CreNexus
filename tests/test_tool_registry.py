@@ -8,7 +8,6 @@ from pathlib import Path
 
 from starbridge_mcp.core.tool_registry import CAPABILITIES, capability_summary, list_capabilities
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BANNED_OUTPUT_FRAGMENTS = ("C:\\Users\\", "/Users/", "/home/", "Desktop", "Documents", "AppData")
 

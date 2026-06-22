@@ -13,7 +13,6 @@ import cv2
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_OUTPUT_DIR = REPO_ROOT / "examples" / "output" / "illustrator" / "trace-practice"
 MAX_WORK_DIMENSION = 1200
@@ -91,11 +90,25 @@ PRESETS: dict[str, TracePreset] = {
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Generate controllable local trace previews for Illustrator practice.")
-    parser.add_argument("--input", required=True, help="Source image path. This path is not written into the public report.")
-    parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR), help="Ignored local output directory.")
-    parser.add_argument("--presets", default="flat_8,flat_16,line_color_16,nianhua_24", help="Comma-separated preset names.")
-    parser.add_argument("--commit-preset", default="", help="Copy one preset to final.svg/final_preview.png.")
+    parser = argparse.ArgumentParser(
+        description="Generate controllable local trace previews for Illustrator practice."
+    )
+    parser.add_argument(
+        "--input",
+        required=True,
+        help="Source image path. This path is not written into the public report.",
+    )
+    parser.add_argument(
+        "--output-dir", default=str(DEFAULT_OUTPUT_DIR), help="Ignored local output directory."
+    )
+    parser.add_argument(
+        "--presets",
+        default="flat_8,flat_16,line_color_16,nianhua_24",
+        help="Comma-separated preset names.",
+    )
+    parser.add_argument(
+        "--commit-preset", default="", help="Copy one preset to final.svg/final_preview.png."
+    )
     parser.add_argument("--max-dimension", type=int, default=MAX_WORK_DIMENSION)
     return parser.parse_args()
 
@@ -121,7 +134,10 @@ def load_image(path: str, max_dimension: int) -> tuple[np.ndarray, dict[str, Any
         original_size = im.size
         scale = min(1.0, max_dimension / max(original_size))
         if scale < 1.0:
-            new_size = (max(1, round(original_size[0] * scale)), max(1, round(original_size[1] * scale)))
+            new_size = (
+                max(1, round(original_size[0] * scale)),
+                max(1, round(original_size[1] * scale)),
+            )
             im = im.resize(new_size, Image.Resampling.LANCZOS)
         rgb = np.array(im)
     digest = hashlib.sha256(source.read_bytes()).hexdigest()[:12]
@@ -162,7 +178,9 @@ def edge_overlay(rgb: np.ndarray, preset: TracePreset) -> tuple[np.ndarray, np.n
         return rgb, edges
     dark = np.zeros_like(rgb)
     edge_mask = (edges > 0)[:, :, None].astype(np.float32)
-    mixed = rgb.astype(np.float32) * (1.0 - edge_mask * preset.edge_weight) + dark * (edge_mask * preset.edge_weight)
+    mixed = rgb.astype(np.float32) * (1.0 - edge_mask * preset.edge_weight) + dark * (
+        edge_mask * preset.edge_weight
+    )
     return np.clip(mixed, 0, 255).astype(np.uint8), edges
 
 
@@ -186,10 +204,12 @@ def run_preset(rgb: np.ndarray, preset: TracePreset) -> dict[str, Any]:
 
 
 def rgb_hex(color: np.ndarray) -> str:
-    return "#{:02x}{:02x}{:02x}".format(int(color[0]), int(color[1]), int(color[2]))
+    return f"#{int(color[0]):02x}{int(color[1]):02x}{int(color[2]):02x}"
 
 
-def build_svg_paths(labels: np.ndarray, centers: np.ndarray, preset: TracePreset) -> tuple[list[str], int, int]:
+def build_svg_paths(
+    labels: np.ndarray, centers: np.ndarray, preset: TracePreset
+) -> tuple[list[str], int, int]:
     paths: list[str] = []
     contour_count = 0
     skipped_count = 0
@@ -310,11 +330,17 @@ def main() -> None:
             "svg": svg_path.relative_to(REPO_ROOT).as_posix(),
             "palette": result["palette"],
         }
-        metrics["control_score"] = round(score_metrics(metrics["path_count"], result["edge_density"], preset.colors), 1)
+        metrics["control_score"] = round(
+            score_metrics(metrics["path_count"], result["edge_density"], preset.colors), 1
+        )
         report["presets"].append(metrics)
         contact_inputs.append((name, preview_path, metrics))
 
-    best = max(report["presets"], key=lambda item: item["control_score"]) if report["presets"] else None
+    best = (
+        max(report["presets"], key=lambda item: item["control_score"])
+        if report["presets"]
+        else None
+    )
     report["recommended_preset"] = best["name"] if best else None
     contact_sheet = output_dir / "trace_contact_sheet.png"
     make_contact_sheet(contact_inputs, contact_sheet)
@@ -335,7 +361,18 @@ def main() -> None:
 
     report_path = output_dir / "trace_report.json"
     report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(json.dumps({"ok": True, "report": report_path.relative_to(REPO_ROOT).as_posix(), "recommended_preset": report["recommended_preset"], "final": report["final"]}, ensure_ascii=False, indent=2))
+    print(
+        json.dumps(
+            {
+                "ok": True,
+                "report": report_path.relative_to(REPO_ROOT).as_posix(),
+                "recommended_preset": report["recommended_preset"],
+                "final": report["final"],
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
 
 
 if __name__ == "__main__":

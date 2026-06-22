@@ -4,7 +4,6 @@ import unittest
 
 from starbridge_mcp.mcp_server import handle_request
 
-
 SIMPLE_PLAN = {
     "units": "mm",
     "entities": [{"type": "line", "start": [0, 0], "end": [10, 10]}],
@@ -13,7 +12,14 @@ SIMPLE_PLAN = {
 
 class SandboxOutputPathsTest(unittest.TestCase):
     def call_tool(self, name: str, arguments: dict) -> dict:
-        response = handle_request({"jsonrpc": "2.0", "id": 201, "method": "tools/call", "params": {"name": name, "arguments": arguments}})
+        response = handle_request(
+            {
+                "jsonrpc": "2.0",
+                "id": 201,
+                "method": "tools/call",
+                "params": {"name": name, "arguments": arguments},
+            }
+        )
         assert response is not None
         return response["result"]["structuredContent"]
 
@@ -32,13 +38,17 @@ class SandboxOutputPathsTest(unittest.TestCase):
         self.assertIn("examples/cad/output", result["message"])
 
     def test_photoshop_output_dir_cannot_escape_sandbox(self) -> None:
-        result = self.call_tool("photoshop.create_demo_document", {"output_dir": "examples/output/illustrator"})
+        result = self.call_tool(
+            "photoshop.create_demo_document", {"output_dir": "examples/output/illustrator"}
+        )
 
         self.assertFalse(result["ok"])
         self.assertIn("output_dir", result["error"])
 
     def test_illustrator_output_dir_cannot_escape_sandbox(self) -> None:
-        result = self.call_tool("illustrator.export_demo_assets", {"output_dir": "examples/output/photoshop"})
+        result = self.call_tool(
+            "illustrator.export_demo_assets", {"output_dir": "examples/output/photoshop"}
+        )
 
         self.assertFalse(result["ok"])
         self.assertIn("output_dir", result["error"])

@@ -5,7 +5,6 @@ import time
 import pythoncom
 import win32com.client
 
-
 WORKSPACE = pathlib.Path(__file__).resolve().parents[1]
 OUTPUT = WORKSPACE / "output" / "reference_mechanical_part.dwg"
 
@@ -13,7 +12,9 @@ OUTPUT = WORKSPACE / "output" / "reference_mechanical_part.dwg"
 def vt_point(point):
     x, y, *rest = point
     z = rest[0] if rest else 0.0
-    return win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, [float(x), float(y), float(z)])
+    return win32com.client.VARIANT(
+        pythoncom.VT_ARRAY | pythoncom.VT_R8, [float(x), float(y), float(z)]
+    )
 
 
 def vt_doubles(values):
@@ -105,7 +106,9 @@ def arc(model, center, radius, start_deg, end_deg, layer="PART_OUTLINE", color=7
     )
 
 
-def lwpoly(model, points, closed=False, layer="PART_OUTLINE", color=7, lineweight=25, linetype=None):
+def lwpoly(
+    model, points, closed=False, layer="PART_OUTLINE", color=7, lineweight=25, linetype=None
+):
     coords = []
     for x, y in points:
         coords.extend([x, y])
@@ -151,8 +154,24 @@ def cn_label(model, start, elbow, label_pos, label):
 
 def draw_center_cross(model, center, radius, extra=4):
     x, y = center
-    line(model, (x - radius - extra, y, 0), (x + radius + extra, y, 0), "PART_CENTER", 8, 15, "CENTER")
-    line(model, (x, y - radius - extra, 0), (x, y + radius + extra, 0), "PART_CENTER", 8, 15, "CENTER")
+    line(
+        model,
+        (x - radius - extra, y, 0),
+        (x + radius + extra, y, 0),
+        "PART_CENTER",
+        8,
+        15,
+        "CENTER",
+    )
+    line(
+        model,
+        (x, y - radius - extra, 0),
+        (x, y + radius + extra, 0),
+        "PART_CENTER",
+        8,
+        15,
+        "CENTER",
+    )
 
 
 def draw_angle_dimension(model, vertex, radius, start_deg, end_deg, label):
@@ -160,12 +179,26 @@ def draw_angle_dimension(model, vertex, radius, start_deg, end_deg, label):
     pts = []
     for i in range(25):
         t = start_deg + (end_deg - start_deg) * i / 24
-        pts.append((vertex[0] + radius * math.cos(math.radians(t)), vertex[1] + radius * math.sin(math.radians(t))))
+        pts.append(
+            (
+                vertex[0] + radius * math.cos(math.radians(t)),
+                vertex[1] + radius * math.sin(math.radians(t)),
+            )
+        )
     lwpoly(model, pts, False, "PART_DIM", 7, 15)
     arrowhead(model, pts[0] + (0,), start_deg + 90, 1.3, "PART_DIM")
     arrowhead(model, pts[-1] + (0,), end_deg - 90, 1.3, "PART_DIM")
     mid = (start_deg + end_deg) / 2
-    text(model, (vertex[0] + (radius + 3) * math.cos(math.radians(mid)), vertex[1] + (radius + 3) * math.sin(math.radians(mid)), 0), label, 3.4)
+    text(
+        model,
+        (
+            vertex[0] + (radius + 3) * math.cos(math.radians(mid)),
+            vertex[1] + (radius + 3) * math.sin(math.radians(mid)),
+            0,
+        ),
+        label,
+        3.4,
+    )
 
 
 def draw():
@@ -227,16 +260,36 @@ def draw():
         (right_lower, r_right_outer),
     ]:
         draw_center_cross(model, center, rad)
-    line(model, (upper_left[0] - 17, upper_left[1], 0), (large[0] + 32, large[1], 0), "PART_CENTER", 8, 15, "CENTER")
-    line(model, (large[0], large[1], 0), (right_lower[0], right_lower[1], 0), "PART_CONSTRUCTION", 8, 15, "CENTER")
+    line(
+        model,
+        (upper_left[0] - 17, upper_left[1], 0),
+        (large[0] + 32, large[1], 0),
+        "PART_CENTER",
+        8,
+        15,
+        "CENTER",
+    )
+    line(
+        model,
+        (large[0], large[1], 0),
+        (right_lower[0], right_lower[1], 0),
+        "PART_CONSTRUCTION",
+        8,
+        15,
+        "CENTER",
+    )
     line(model, (large[0], 29, 0), (large[0], -48, 0), "PART_CENTER", 8, 15, "CENTER")
 
     # Linear and aligned dimensions.
-    dim_aligned(model, (upper_left[0], 28, 0), (large[0], 28, 0), ((upper_left[0] + large[0]) / 2, 33, 0))
+    dim_aligned(
+        model, (upper_left[0], 28, 0), (large[0], 28, 0), ((upper_left[0] + large[0]) / 2, 33, 0)
+    )
     line(model, (upper_left[0], r_upper_outer, 0), (upper_left[0], 31, 0), "PART_DIM", 7, 15)
     line(model, (large[0], r_large_outer, 0), (large[0], 31, 0), "PART_DIM", 7, 15)
 
-    dim_aligned(model, (lower_left[0], -50, 0), (large[0], -50, 0), ((lower_left[0] + large[0]) / 2, -55, 0))
+    dim_aligned(
+        model, (lower_left[0], -50, 0), (large[0], -50, 0), ((lower_left[0] + large[0]) / 2, -55, 0)
+    )
     line(model, (lower_left[0], bottom_y, 0), (lower_left[0], -52, 0), "PART_DIM", 7, 15)
     line(model, (large[0], bottom_y, 0), (large[0], -52, 0), "PART_DIM", 7, 15)
 
@@ -255,19 +308,58 @@ def draw():
     leader(model, (large[0] - 5.0, large[1] + 10.9, 0), (24, 13, 0), (26, 14, 0), "%%c24")
     leader(model, (upper_left[0] - 3, upper_left[1] + 9.0, 0), (-6, 18, 0), (-14, 18, 0), "%%c19")
     leader(model, (upper_left[0] - 4, upper_left[1] + 4.0, 0), (-14, 8, 0), (-19, 8, 0), "%%c11")
-    leader(model, (lower_left[0] - 3.5, lower_left[1] - 5.4, 0), (-9, -39, 0), (-16, -39, 0), "%%c13")
-    leader(model, (lower_left[0] - 7.0, lower_left[1] - 7.0, 0), (-12, -32, 0), (-20, -32, 0), "R10")
+    leader(
+        model, (lower_left[0] - 3.5, lower_left[1] - 5.4, 0), (-9, -39, 0), (-16, -39, 0), "%%c13"
+    )
+    leader(
+        model, (lower_left[0] - 7.0, lower_left[1] - 7.0, 0), (-12, -32, 0), (-20, -32, 0), "R10"
+    )
     leader(model, (30, -22, 0), (23, -22, 0), (16, -22, 0), "R80")
-    leader(model, (right_lower[0] - 4.4, right_lower[1] - 4.1, 0), (50, -49, 0), (46, -49, 0), "%%c12")
-    leader(model, (right_lower[0] + 3.0, right_lower[1] + 2.6, 0), (62, -35, 0), (65, -35, 0), "%%c8")
+    leader(
+        model, (right_lower[0] - 4.4, right_lower[1] - 4.1, 0), (50, -49, 0), (46, -49, 0), "%%c12"
+    )
+    leader(
+        model, (right_lower[0] + 3.0, right_lower[1] + 2.6, 0), (62, -35, 0), (65, -35, 0), "%%c8"
+    )
 
     # Chinese labels make every functional area clear in the generated DWG.
     text(model, (-24, 44, 0), "参考机械零件示例（单位：mm）", 4.5, "PART_CN_LABEL", 3)
-    text(model, (-24, 39, 0), "区域标注：孔位、轮廓、中心线和尺寸均为公开演示", 3.2, "PART_CN_LABEL", 3)
-    cn_label(model, (large[0] + 9, large[1] + 7, 0), (72, 16, 0), (76, 16, 0), "大圆基准区：外圆 %%c44 / 内孔 %%c24")
-    cn_label(model, (upper_left[0] - 4, upper_left[1] + 4, 0), (-35, 17, 0), (-58, 17, 0), "左上安装孔区：%%c19 / %%c11")
-    cn_label(model, (lower_left[0] - 5, lower_left[1] - 5, 0), (-35, -45, 0), (-58, -45, 0), "左下圆角孔区：%%c13，圆角 R10")
-    cn_label(model, (right_lower[0] + 3, right_lower[1] + 3, 0), (77, -35, 0), (82, -35, 0), "右下小孔区：%%c12 / %%c8")
+    text(
+        model,
+        (-24, 39, 0),
+        "区域标注：孔位、轮廓、中心线和尺寸均为公开演示",
+        3.2,
+        "PART_CN_LABEL",
+        3,
+    )
+    cn_label(
+        model,
+        (large[0] + 9, large[1] + 7, 0),
+        (72, 16, 0),
+        (76, 16, 0),
+        "大圆基准区：外圆 %%c44 / 内孔 %%c24",
+    )
+    cn_label(
+        model,
+        (upper_left[0] - 4, upper_left[1] + 4, 0),
+        (-35, 17, 0),
+        (-58, 17, 0),
+        "左上安装孔区：%%c19 / %%c11",
+    )
+    cn_label(
+        model,
+        (lower_left[0] - 5, lower_left[1] - 5, 0),
+        (-35, -45, 0),
+        (-58, -45, 0),
+        "左下圆角孔区：%%c13，圆角 R10",
+    )
+    cn_label(
+        model,
+        (right_lower[0] + 3, right_lower[1] + 3, 0),
+        (77, -35, 0),
+        (82, -35, 0),
+        "右下小孔区：%%c12 / %%c8",
+    )
     cn_label(model, (30, -22, 0), (11, -18, 0), (-18, -18, 0), "下侧轮廓区：R80 过渡圆弧")
     cn_label(model, (large[0], 0, 0), (68, 5, 0), (76, 5, 0), "中心线基准区：孔距 41、角度 69%%d")
 

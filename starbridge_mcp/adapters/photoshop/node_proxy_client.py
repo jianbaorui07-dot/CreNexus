@@ -8,11 +8,12 @@ from typing import Any
 
 from starbridge_mcp.core.security import sanitize
 
-
 DEFAULT_PROXY_URL = os.environ.get("STARBRIDGE_PHOTOSHOP_NODE_PROXY_URL", "http://127.0.0.1:8971")
 
 
-def _request(method: str, path: str, payload: dict[str, Any] | None = None, *, timeout: int = 3) -> dict[str, Any]:
+def _request(
+    method: str, path: str, payload: dict[str, Any] | None = None, *, timeout: int = 3
+) -> dict[str, Any]:
     url = DEFAULT_PROXY_URL.rstrip("/") + path
     data = None
     headers = {"Accept": "application/json"}

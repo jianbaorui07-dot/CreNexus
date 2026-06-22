@@ -15,10 +15,11 @@ from examples.comfy_bridge.validate_workflow import (
     validate_workflow_payload,
 )
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BANNED_OUTPUT_FRAGMENTS = ("C:\\Users\\", "/Users/", "/home/", "Desktop", "Documents", "AppData")
-VISUAL_WORKFLOW = REPO_ROOT / "examples" / "comfy_bridge" / "workflows" / "txt2img_basic_visual.json"
+VISUAL_WORKFLOW = (
+    REPO_ROOT / "examples" / "comfy_bridge" / "workflows" / "txt2img_basic_visual.json"
+)
 
 
 class ComfyWorkflowValidateTests(unittest.TestCase):
@@ -79,12 +80,16 @@ class ComfyWorkflowValidateTests(unittest.TestCase):
 
         self.assertFalse(result["ok"])
         self.assertTrue(any("class_type" in error for error in result["details"]["errors"]))
-        self.assertTrue(any("class_type" in item for item in result["details"]["missing_or_suspicious_fields"]))
+        self.assertTrue(
+            any("class_type" in item for item in result["details"]["missing_or_suspicious_fields"])
+        )
 
     def test_local_paths_and_model_paths_are_redacted(self) -> None:
         workflow = json.loads(DEFAULT_WORKFLOW.read_text(encoding="utf-8"))
         private_root = "C:" + "\\Users" + "\\RealUser"
-        workflow["4"]["inputs"]["ckpt_name"] = private_root + "\\ComfyUI\\models\\checkpoints\\private-model." + "ckpt"
+        workflow["4"]["inputs"]["ckpt_name"] = (
+            private_root + "\\ComfyUI\\models\\checkpoints\\private-model." + "ckpt"
+        )
         workflow["10"] = {
             "class_type": "LoadImage",
             "inputs": {"image": private_root + "\\Pictures\\private-source.png"},
@@ -101,7 +106,11 @@ class ComfyWorkflowValidateTests(unittest.TestCase):
 
     def test_cli_output_is_json_and_safe(self) -> None:
         completed = subprocess.run(
-            [sys.executable, str(REPO_ROOT / "examples" / "comfy_bridge" / "validate_workflow.py"), "--json"],
+            [
+                sys.executable,
+                str(REPO_ROOT / "examples" / "comfy_bridge" / "validate_workflow.py"),
+                "--json",
+            ],
             cwd=REPO_ROOT,
             capture_output=True,
             text=True,

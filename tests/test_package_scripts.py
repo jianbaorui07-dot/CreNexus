@@ -6,7 +6,6 @@ import shlex
 import unittest
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -63,6 +62,11 @@ class PackageScriptsTest(unittest.TestCase):
                 "security:check",
                 "test",
                 "test:pytest",
+                "frontend:dev",
+                "frontend:build",
+                "lint",
+                "format",
+                "format-check",
             },
             set(self.scripts),
         )
@@ -79,7 +83,9 @@ class PackageScriptsTest(unittest.TestCase):
                 if normalized.lower() == "-file" and index + 1 < len(tokens):
                     paths.append(tokens[index + 1].strip('"'))
             for path in paths:
-                self.assertTrue((REPO_ROOT / path).exists(), f"missing script path in command: {command}")
+                self.assertTrue(
+                    (REPO_ROOT / path).exists(), f"missing script path in command: {command}"
+                )
 
     def test_photoshop_diagnose_uses_real_scripts_directory(self) -> None:
         self.assertIn(

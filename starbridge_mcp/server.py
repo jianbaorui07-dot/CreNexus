@@ -6,7 +6,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from starbridge_mcp.core.config import StarBridgeConfig, env_summary
 from starbridge_mcp.core.computer_use import (
     ActionPlan,
     CodexComputerUseAdapter,
@@ -15,8 +14,8 @@ from starbridge_mcp.core.computer_use import (
     render_plan_summary,
 )
 from starbridge_mcp.core.computer_use_demos import run_demo
+from starbridge_mcp.core.config import StarBridgeConfig, env_summary
 from starbridge_mcp.core.evidence import (
-    DEFAULT_MANIFEST_FILENAME,
     ExecutionResult,
     create_manifest,
     ensure_evidence_path,
@@ -35,7 +34,6 @@ from starbridge_mcp.core.tool_registry import (
     BRIDGE_PROFILES,
     capability_summary,
 )
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
@@ -98,7 +96,9 @@ def normalize_legacy_status(result: dict[str, Any]) -> dict[str, Any]:
     return sanitized
 
 
-def collect_status(*, comfy_url: str, timeout: int, probe_executables: bool) -> list[dict[str, Any]]:
+def collect_status(
+    *, comfy_url: str, timeout: int, probe_executables: bool
+) -> list[dict[str, Any]]:
     from examples import bridge_status as legacy
     from starbridge_mcp.bridges.autocad_dxf import status as autocad_dxf_status
 
@@ -165,12 +165,16 @@ def _manifest_summary(payload: dict[str, Any], manifest_path: Path) -> dict[str,
 
 
 def _handle_evidence_cli(argv: list[str]) -> None:
-    parser = argparse.ArgumentParser(description="Create or validate StarBridge evidence manifests.")
+    parser = argparse.ArgumentParser(
+        description="Create or validate StarBridge evidence manifests."
+    )
     parser.add_argument("--init", action="store_true")
     parser.add_argument("--validate", action="store_true")
     parser.add_argument("--add-file", dest="add_file", action="store_true")
     parser.add_argument("--add-screenshot", dest="add_screenshot", action="store_true")
-    parser.add_argument("--manifest-path", default=str(_default_manifest_path().relative_to(REPO_ROOT)))
+    parser.add_argument(
+        "--manifest-path", default=str(_default_manifest_path().relative_to(REPO_ROOT))
+    )
     parser.add_argument("--bridge", default="starbridge")
     parser.add_argument("--action-name", default="evidence_init")
     parser.add_argument("--status", default="queued")
@@ -185,7 +189,9 @@ def _handle_evidence_cli(argv: list[str]) -> None:
 
     modes = [args.init, args.validate, args.add_file, args.add_screenshot]
     if sum(bool(mode) for mode in modes) != 1:
-        raise SystemExit("choose exactly one of --init, --validate, --add-file, or --add-screenshot")
+        raise SystemExit(
+            "choose exactly one of --init, --validate, --add-file, or --add-screenshot"
+        )
 
     manifest_path = ensure_evidence_path(args.manifest_path)
     if args.init:
@@ -204,9 +210,16 @@ def _handle_evidence_cli(argv: list[str]) -> None:
             status=manifest.status,
             message="initialized evidence manifest",
             manifest_path=repo_relative(saved),
-            next_steps=["Run `python -m starbridge_mcp.server evidence --validate --json` to validate the manifest."],
+            next_steps=[
+                "Run `python -m starbridge_mcp.server evidence --validate --json` to validate the manifest."
+            ],
         )
-        payload = {"ok": True, "action": "evidence_init", "result": result.to_dict(), "manifest": manifest.to_dict()}
+        payload = {
+            "ok": True,
+            "action": "evidence_init",
+            "result": result.to_dict(),
+            "manifest": manifest.to_dict(),
+        }
         _print_json(payload)
         return
 
@@ -225,14 +238,20 @@ def _handle_evidence_cli(argv: list[str]) -> None:
         payload.setdefault("redacted_paths", []).append(repo_relative(evidence_path))
         payload["updated_at"] = payload.get("updated_at")
         target = ensure_evidence_path(args.manifest_path)
-        target.write_text(json.dumps(sanitize(payload), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        _print_json({"ok": True, "action": "evidence_add", "manifest": _manifest_summary(payload, target)})
+        target.write_text(
+            json.dumps(sanitize(payload), ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
+        _print_json(
+            {"ok": True, "action": "evidence_add", "manifest": _manifest_summary(payload, target)}
+        )
         return
 
     validation = manifest_validation_result(payload)
     payload.setdefault("validation", []).append(validation.to_dict())
     save_path = ensure_evidence_path(args.manifest_path)
-    save_path.write_text(json.dumps(sanitize(payload), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    save_path.write_text(
+        json.dumps(sanitize(payload), ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
     _print_json(
         {
             "ok": validation.ok,
@@ -245,7 +264,9 @@ def _handle_evidence_cli(argv: list[str]) -> None:
 
 def _handle_job_status_cli(argv: list[str]) -> None:
     parser = argparse.ArgumentParser(description="Return a unified StarBridge job status summary.")
-    parser.add_argument("--manifest-path", default=str(_default_manifest_path().relative_to(REPO_ROOT)))
+    parser.add_argument(
+        "--manifest-path", default=str(_default_manifest_path().relative_to(REPO_ROOT))
+    )
     parser.add_argument("--job-id")
     parser.add_argument("--message", default="evidence manifest available")
     parser.add_argument("--progress", type=int)
@@ -264,7 +285,9 @@ def _handle_job_status_cli(argv: list[str]) -> None:
         progress=progress,
         message=args.message,
         evidence_manifest=_manifest_summary(payload, ensure_evidence_path(args.manifest_path)),
-        next_steps=["Review validation results before connecting the manifest to a real bridge execution loop."],
+        next_steps=[
+            "Review validation results before connecting the manifest to a real bridge execution loop."
+        ],
     )
     _print_json({"ok": True, "action": "job_status", "job_status": job.to_dict()})
 
@@ -274,22 +297,37 @@ def _load_action_plan(path: str) -> ActionPlan:
 
 
 def _handle_plan_cli(argv: list[str]) -> None:
-    parser = argparse.ArgumentParser(description="Normalize a StarBridge action plan and evaluate safety.")
+    parser = argparse.ArgumentParser(
+        description="Normalize a StarBridge action plan and evaluate safety."
+    )
     parser.add_argument("plan_path")
     parser.add_argument("--confirm-write", action="store_true")
     parser.add_argument("--allow-computer-use", action="store_true")
     args = parser.parse_args(argv)
     plan = _load_action_plan(args.plan_path)
-    _print_json(render_plan_summary(plan, confirm_write=args.confirm_write, allow_computer_use=args.allow_computer_use))
+    _print_json(
+        render_plan_summary(
+            plan, confirm_write=args.confirm_write, allow_computer_use=args.allow_computer_use
+        )
+    )
 
 
 def _handle_gui_instructions_cli(argv: list[str]) -> None:
-    parser = argparse.ArgumentParser(description="Generate Codex Windows Computer Use instructions for an action plan.")
+    parser = argparse.ArgumentParser(
+        description="Generate Codex Windows Computer Use instructions for an action plan."
+    )
     parser.add_argument("plan_path")
     args = parser.parse_args(argv)
     plan = _load_action_plan(args.plan_path)
     adapter = CodexComputerUseAdapter()
-    _print_json({"ok": True, "plan_id": plan.id, "app": plan.app, "gui_instructions": adapter.generate_codex_gui_instructions(plan)})
+    _print_json(
+        {
+            "ok": True,
+            "plan_id": plan.id,
+            "app": plan.app,
+            "gui_instructions": adapter.generate_codex_gui_instructions(plan),
+        }
+    )
 
 
 def _handle_gui_record_cli(argv: list[str]) -> None:
@@ -301,7 +339,13 @@ def _handle_gui_record_cli(argv: list[str]) -> None:
     parser.add_argument("--created-file", action="append", default=[])
     parser.add_argument("--notes", default="")
     args = parser.parse_args(argv)
-    plan = _load_action_plan(args.plan_path) if args.plan_path else ActionPlan(id=args.plan_id, app="generic", action="gui_record", goal="Record GUI result")
+    plan = (
+        _load_action_plan(args.plan_path)
+        if args.plan_path
+        else ActionPlan(
+            id=args.plan_id, app="generic", action="gui_record", goal="Record GUI result"
+        )
+    )
     ok = str(args.ok).lower() in {"1", "true", "yes", "y"}
     result = CodexComputerUseAdapter().record_gui_result(
         plan,
@@ -311,7 +355,13 @@ def _handle_gui_record_cli(argv: list[str]) -> None:
         notes=args.notes,
     )
     saved = LocalScreenshotEvidenceStore().save_result(args.plan_id, result)
-    _print_json({"ok": True, "result": result.to_dict(), "saved_log": saved.relative_to(REPO_ROOT).as_posix()})
+    _print_json(
+        {
+            "ok": True,
+            "result": result.to_dict(),
+            "saved_log": saved.relative_to(REPO_ROOT).as_posix(),
+        }
+    )
 
 
 def _write_structured_fallback(plan: ActionPlan, *, confirm_write: bool) -> list[str]:
@@ -324,11 +374,11 @@ def _write_structured_fallback(plan: ActionPlan, *, confirm_write: bool) -> list
         target = REPO_ROOT / output_path
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(
-            "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"800\" height=\"450\" viewBox=\"0 0 800 450\">\n"
-            "  <rect width=\"800\" height=\"450\" fill=\"#f8fafc\"/>\n"
-            "  <text x=\"60\" y=\"120\" font-family=\"Arial\" font-size=\"42\" fill=\"#111827\">StarBridge structured fallback</text>\n"
-            "  <circle cx=\"180\" cy=\"270\" r=\"70\" fill=\"#2563eb\"/>\n"
-            "  <rect x=\"330\" y=\"210\" width=\"160\" height=\"120\" fill=\"#10b981\"/>\n"
+            '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450">\n'
+            '  <rect width="800" height="450" fill="#f8fafc"/>\n'
+            '  <text x="60" y="120" font-family="Arial" font-size="42" fill="#111827">StarBridge structured fallback</text>\n'
+            '  <circle cx="180" cy="270" r="70" fill="#2563eb"/>\n'
+            '  <rect x="330" y="210" width="160" height="120" fill="#10b981"/>\n'
             "</svg>\n",
             encoding="utf-8",
         )
@@ -342,10 +392,14 @@ def _handle_run_cli(argv: list[str]) -> None:
     parser.add_argument("--confirm-write", action="store_true")
     args = parser.parse_args(argv)
     plan = _load_action_plan(args.plan_path)
-    decision = evaluate_safety(plan, confirm_write=args.confirm_write, allow_computer_use=plan.allow_computer_use)
+    decision = evaluate_safety(
+        plan, confirm_write=args.confirm_write, allow_computer_use=plan.allow_computer_use
+    )
     created = []
     if decision.allowed and plan.execution_mode == "structured_tool":
-        created = _write_structured_fallback(plan, confirm_write=args.confirm_write and not plan.dry_run)
+        created = _write_structured_fallback(
+            plan, confirm_write=args.confirm_write and not plan.dry_run
+        )
     _print_json(
         {
             "ok": decision.allowed,
@@ -367,11 +421,26 @@ def _handle_demo_cli(argv: list[str]) -> None:
     parser.add_argument("--allow-computer-use", action="store_true")
     parser.add_argument("--confirm-write", action="store_true")
     args = parser.parse_args(argv)
-    _print_json(run_demo(args.app, mode=args.mode, allow_computer_use=args.allow_computer_use, confirm_write=args.confirm_write))
+    _print_json(
+        run_demo(
+            args.app,
+            mode=args.mode,
+            allow_computer_use=args.allow_computer_use,
+            confirm_write=args.confirm_write,
+        )
+    )
 
 
 def main() -> None:
-    if len(sys.argv) > 1 and sys.argv[1] in {"plan", "run", "gui-instructions", "gui-record", "demo", "evidence", "job-status"}:
+    if len(sys.argv) > 1 and sys.argv[1] in {
+        "plan",
+        "run",
+        "gui-instructions",
+        "gui-record",
+        "demo",
+        "evidence",
+        "job-status",
+    }:
         command = sys.argv[1]
         argv = sys.argv[2:]
         if command == "plan":
@@ -390,8 +459,16 @@ def main() -> None:
             _handle_job_status_cli(argv)
         return
 
-    parser = argparse.ArgumentParser(description="StarBridge 本地创意软件 MCP 桥接框架最小状态入口。")
-    parser.add_argument("action", nargs="?", default="status", choices=["status", "tools", "roots"], help="当前实现 status、tools 和 roots。")
+    parser = argparse.ArgumentParser(
+        description="StarBridge 本地创意软件 MCP 桥接框架最小状态入口。"
+    )
+    parser.add_argument(
+        "action",
+        nargs="?",
+        default="status",
+        choices=["status", "tools", "roots"],
+        help="当前实现 status、tools 和 roots。",
+    )
     parser.add_argument(
         "--bridge",
         default="all",
@@ -412,18 +489,22 @@ def main() -> None:
     parser.add_argument("--comfy-url", default=None)
     parser.add_argument("--timeout", type=int, default=8)
     parser.add_argument("--probe-executables", action="store_true")
-    parser.add_argument("--safe-only", action="store_true", help="tools 动作只列出 safe_default 能力。")
+    parser.add_argument(
+        "--safe-only", action="store_true", help="tools 动作只列出 safe_default 能力。"
+    )
     parser.add_argument("--json", action="store_true", help="保留给兼容；当前始终输出 JSON。")
     parser.add_argument("--strict", action="store_true", help="任一 bridge 未通过时返回退出码 1。")
     args = parser.parse_args()
 
     response = build_response(args)
     print(json.dumps(response, ensure_ascii=False, indent=2))
-    if args.strict and args.action == "status" and any(not item["ok"] for item in response["results"]):
+    if (
+        args.strict
+        and args.action == "status"
+        and any(not item["ok"] for item in response["results"])
+    ):
         raise SystemExit(1)
 
 
 if __name__ == "__main__":
-    if sys.version_info < (3, 10):
-        raise SystemExit("建议使用 Python 3.10 或更新版本运行 StarBridge。")
     main()
