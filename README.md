@@ -36,6 +36,12 @@ npm.cmd run starbridge:tools:safe
 
 See [docs/windows-install.md](docs/windows-install.md) for full local setup.
 
+### Adobe AI / Illustrator vector rebuild research
+
+- [Codex + Adobe AI integration map](docs/adobe-ai-agent-integration-map.md) collects Illustrator MCP, Photoshop MCP, Firefly API, n8n, and Adobe App Builder references.
+- [Illustrator vector line rebuild pipeline](docs/illustrator-vector-line-rebuild-pipeline.md) documents the local-first `.ai` line extraction, rebuild SVG, internal-line reduction, and closed-contour workflow.
+- [Vector rebuild example scripts](examples/illustrator_bridge/vector_rebuild/README.md) provide local prototype scripts for extracting vector lines and generating closed contours.
+
 StarBridge 是一个 Windows-first、local-first 的 MCP stdio server + tool registry + safety verification layer，用来让 Codex / Cursor / Claude Code 以可验证方式接入本机创意软件。它不替代 ComfyUI、Photoshop、Illustrator、AutoCAD、Blender、剪映 / CapCut 或 GUI Computer Use；它只把已经能测试的本地能力收敛成结构化工具，并把 stable、experimental、planned 和 not implemented 明确分开。
 
 当前仓库状态是 **v0.1-alpha 工程原型**。公开仓库只保存说明、协议、示例脚本、workflow、MCP stdio server、状态 manifest、测试和安全检查；模型、素材、生成图、客户文件、账号、密钥、本机安装路径和真实输出都只留在用户本机。

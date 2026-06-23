@@ -1,5 +1,11 @@
 # 5. Codex 接入 Illustrator / AI 矢量文件
 
+## Related research package
+
+- [Codex + Adobe AI integration map](adobe-ai-agent-integration-map.md)
+- [Illustrator vector line rebuild pipeline](illustrator-vector-line-rebuild-pipeline.md)
+- [Vector rebuild example scripts](../examples/illustrator_bridge/vector_rebuild/README.md)
+
 这份文档说明 Adobe Illustrator 和 `.ai` 矢量文件桥的真实状态。这里的 **AI 文件** 指 Adobe Illustrator 的 `.ai` 矢量工程文件，不是“大模型 AI”。当前仓库有接入说明、`bridge.json` manifest、环境探测和 sandbox demo，状态是 `experimental demo available`。已补齐当前文档信息读取、测试画板创建，以及 SVG/PDF/PNG demo 导出；Image Trace 仍是下一阶段能力。
 
 公开仓库只描述接入方式、参数化脚本方向和安全边界，不上传客户图稿、源图路径、导出结果或私有 `.ai` 工程。
