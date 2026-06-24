@@ -26,10 +26,6 @@ jobs:
           files: |
             dist/*.whl
             dist/*.tar.gz
-      - name: Publish to PyPI (manual token)
-        # Run manually with PYPI_TOKEN secret after review
+      - name: Publish package manually after review
         if: false
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
-        run: twine upload dist/*
+        run: python -m twine upload dist/*

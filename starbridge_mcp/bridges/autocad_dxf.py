@@ -174,8 +174,8 @@ class AutocadDxfBridge(BaseBridge):
             resolved = output_path.resolve()
             root = self.OUTPUT_ROOT.resolve()
             rel_path = resolved.relative_to(root)
-            rel_str = str(rel_path).replace('\\', '/').lower()
-            if rel_str.startswith('examples/output'):
+            rel_str = str(rel_path).replace("\\", "/").lower()
+            if rel_str.startswith("examples/output"):
                 return False
             return True
         except (ValueError, OSError):
@@ -250,16 +250,6 @@ class AutocadDxfBridge(BaseBridge):
         if not validation["ok"]:
             return validation
 
-        if not _ezdxf_available():
-            return self._result(
-                ok=False,
-                action="write_dxf",
-                message="ezdxf not available; cannot write DXF.",
-                details={"ezdxf_available": False, "status": "unavailable"},
-                warnings=["Install ezdxf to enable DXF export."],
-                next_steps=["pip install ezdxf"],
-            )
-
         if not dry_run and not confirm_write:
             return self._result(
                 ok=False,
@@ -276,6 +266,16 @@ class AutocadDxfBridge(BaseBridge):
         if output is None:
             output = "example.dxf"
         out_path = (self.OUTPUT_ROOT / output).resolve()
+
+        if not dry_run and not self._output_is_allowed(out_path):
+            return self._result(
+                ok=False,
+                action="write_dxf",
+                message="Output path is outside the allowed sandbox (examples/cad/output).",
+                details={"output_path": str(out_path)},
+                warnings=["Only outputs under examples/cad/output are allowed for real writes."],
+                next_steps=["Use a path inside the sandbox or dry_run=True."],
+            )
 
         if dry_run:
             manifest = self._manifest_for(normalized, out_path, summary)
@@ -294,14 +294,14 @@ class AutocadDxfBridge(BaseBridge):
                 next_steps=["Set dry_run=False with explicit confirmation to write."],
             )
 
-        if not self._output_is_allowed(out_path):
+        if not _ezdxf_available():
             return self._result(
                 ok=False,
                 action="write_dxf",
-                message=f"Output path is outside the allowed sandbox (examples/cad/output).",
-                details={"output_path": str(out_path)},
-                warnings=["Only outputs under examples/cad/output are allowed for real writes."],
-                next_steps=["Use a path inside the sandbox or dry_run=True."],
+                message="ezdxf not available; cannot write DXF.",
+                details={"ezdxf_available": False, "status": "unavailable"},
+                warnings=["Install ezdxf to enable DXF export."],
+                next_steps=["pip install ezdxf"],
             )
 
         # real write would go here
