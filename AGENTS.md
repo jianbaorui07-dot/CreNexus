@@ -1,6 +1,6 @@
 # Agent Instructions
 
-这个仓库只做一件事：公开协作 **Codex 接入本地软件**。内容要精简、中文清楚、示例可运行；历史 demo、报告脚本、素材图片、临时输出和私有资产不要发到 GitHub。
+这个仓库只做一件事：公开协作 **Codex Skill + StarBridge MCP + Adobe UXP / 本地代理接入本地创意软件**。内容要精简、中文清楚、示例可运行；历史 demo、报告脚本、素材图片、临时输出和私有资产不要发到 GitHub。
 
 ## 一图看懂
 
@@ -20,9 +20,12 @@ flowchart TD
 
 | 目录或文件 | 只保留什么 |
 | --- | --- |
+| `.codex/skills/starbridge-*` | 服务 Codex 的 skill 入口、路由、验证命令和安全边界 |
 | `docs/` | 接入协议、路线图、中文用途索引 |
 | `examples/` | 公开安全的桥接状态检查和 ComfyUI API 示例 |
 | `examples/photoshop_bridge/` | 通用、参数化 Photoshop 本地桥示例 |
+| `uxp/` | Adobe UXP 插件原型；只保留公开、可审计、无账号和无私有素材的代码 |
+| `node_proxy/` | 本地 UXP / MCP 代理示例；不保存 token、账号状态或素材路径 |
 | `cad-mcp-autocad/` | AutoCAD MCP 子项目；修改前先读 README 和 `requirements.txt` |
 | `scripts/` | 与 AutoCAD/CAD 自动化直接相关的脚本 |
 | `AUTOCAD_MCP_SETUP.md` | AutoCAD MCP 本地配置记录 |
@@ -57,7 +60,7 @@ flowchart LR
 - 优先做小而清晰的变更，不做无关重构。
 - 说明文字以中文为主；命令、路径、API、MCP、workflow、prompt 等必要术语可保留英文。
 - 新增下载源码或安装包时，先放到本机下载收件箱；用 `STARBRIDGE_DOWNLOAD_INBOX` 做本地配置，不把真实路径写进仓库。
-- Photoshop / Illustrator 示例必须通过参数传入输入和输出路径，不写个人路径、源图路径、桌面路径、导出目录或私有工程默认值。
+- Photoshop / Illustrator / UXP 示例必须通过参数或本地运行态传入输入和输出路径，不写个人路径、源图路径、桌面路径、导出目录、账号状态或私有工程默认值。
 - 修改 `cad-mcp-autocad/` 时，尽量把改动限制在该子项目内。
 - 不删除本机文件；清理 GitHub 发布范围时优先用 `git rm --cached`。
 - 需要登录、订阅、验证码、OAuth、GitHub 授权或账号审批时，停下来让用户手动处理。

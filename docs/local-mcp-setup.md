@@ -2,6 +2,16 @@
 
 StarBridge 当前已经提供真正 MCP stdio server：Codex、Cursor、Claude Code 或其他 MCP 客户端可以通过同一套 tools 查看各软件桥状态，并调用首批安全只读/受保护 DXF 工具。
 
+## 0. Skill / MCP / UXP 分工
+
+| 层级 | 作用 |
+| --- | --- |
+| Codex skill | 先选择正确软件桥、读取对应说明、执行安全验证，并提醒哪些能力不能碰私有资产。 |
+| StarBridge MCP | 通过 stdio 暴露 `tools/list` 和 `tools/call`，把 status、probe、dry-run、evidence 和 confirmed sandbox 写入做成结构化工具。 |
+| Adobe UXP / Node Proxy | 只在 Adobe 桌面插件链路需要时进入，用 typed handler 连接 Photoshop 等本地软件，不作为任意脚本执行器。 |
+
+优先顺序是：先用 skill 确认路线，再用 MCP 做结构化调用；只有 Adobe 桌面插件链路需要时才进入 UXP / Node Proxy，并且保持 experimental 标记。
+
 ## 1. 本机准备
 
 必须由用户手动完成：

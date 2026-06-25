@@ -12,6 +12,8 @@ Codex / MCP client
 
 The v2 path is still experimental. It is designed to make Photoshop control observable and guarded, not to run arbitrary scripts against private PSD files.
 
+At the repository level, this UXP path serves the StarBridge skill and MCP layers: Codex should enter it through `starbridge-photoshop-mcp`, discover guarded tools through StarBridge MCP, and use the Node Proxy only as the local transport to typed Photoshop UXP handlers.
+
 ## What v2 Adds
 
 | Area | Capability |
