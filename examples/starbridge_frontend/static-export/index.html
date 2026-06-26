@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:#070a0e;overflow:hidden}
+  ::-webkit-scrollbar{width:9px;height:9px}
+  ::-webkit-scrollbar-thumb{background:#1f2a36;border-radius:6px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::selection{background:rgba(77,159,255,.3)}
+  @keyframes sb-blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+  @keyframes sb-pulse{0%,100%{box-shadow:0 0 0 0 rgba(52,211,153,.5)}50%{box-shadow:0 0 0 5px rgba(52,211,153,0)}}
+  @keyframes sb-scan{0%{transform:translateY(-100%)}100%{transform:translateY(400%)}}
+  @keyframes sb-fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+</style>
+</helmet>
+
+<div style="--bg:#070a0e;--deep:#05080b;--panel:#0c1118;--panel2:#11171f;--line:#1b2430;--line2:#293544;--text:#cbd6e4;--dim:#7c8a9c;--faint:#4b5664;--blue:#4d9fff;--blued:#2563eb;--green:#34d399;--amber:#f5b942;--purple:#a78bfa;--teal:#2dd4bf;--red:#f4767b;--mono:'JetBrains Mono',ui-monospace,monospace;--sans:'Noto Sans SC',-apple-system,'PingFang SC','Microsoft YaHei',sans-serif; display:flex; height:100vh; width:100%; background:var(--bg); color:var(--text); font-family:var(--sans); font-size:14px; -webkit-font-smoothing:antialiased;">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside style="width:236px; flex:none; background:var(--deep); border-right:1px solid var(--line); display:flex; flex-direction:column;">
+    <div style="padding:20px 18px 18px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:11px;">
+      <div style="width:34px; height:34px; flex:none; border-radius:8px; background:linear-gradient(140deg,#2563eb,#7c3aed); display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-weight:700; font-size:17px; color:#fff; box-shadow:0 0 18px rgba(77,159,255,.35);">星</div>
+      <div style="line-height:1.25;">
+        <div style="font-family:var(--mono); font-weight:600; font-size:15px; letter-spacing:.3px; color:#eaf1fb;">StarBridge</div>
+        <div style="font-family:var(--mono); font-size:10.5px; color:var(--dim); letter-spacing:.5px;">MCP CONSOLE</div>
+      </div>
+    </div>
+
+    <nav style="padding:14px 12px; display:flex; flex-direction:column; gap:3px;">
+      <div style="font-family:var(--mono); font-size:10px; letter-spacing:1.2px; color:var(--faint); padding:6px 10px 8px;">导航 / NAVIGATE</div>
+      <sc-for list="{{ nav }}" as="n" hint-placeholder-count="4">
+        <button onClick="{{ n.onSelect }}" style="{{ n.style }}">
+          <span style="{{ n.glyphStyle }}">{{ n.glyph }}</span>
+          <span style="display:flex; flex-direction:column; align-items:flex-start; line-height:1.3;">
+            <span style="font-weight:500;">{{ n.label }}</span>
+            <span style="font-family:var(--mono); font-size:10px; color:var(--faint); letter-spacing:.3px;">{{ n.sub }}</span>
+          </span>
+          <span style="{{ n.countStyle }}">{{ n.count }}</span>
+        </button>
+      </sc-for>
+    </nav>
+
+    <div style="margin-top:auto; padding:14px; border-top:1px solid var(--line);">
+      <div style="background:var(--panel); border:1px solid var(--line); border-radius:9px; padding:12px 13px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:9px;">
+          <span style="width:8px;height:8px;border-radius:50%;background:var(--green);animation:sb-pulse 2.4s infinite;"></span>
+          <span style="font-family:var(--mono); font-size:11.5px; color:var(--green); font-weight:600;">server running</span>
+        </div>
+        <div style="font-family:var(--mono); font-size:10.5px; color:var(--dim); line-height:1.7;">
+          <div style="display:flex;justify-content:space-between;"><span>stdio</span><span style="color:var(--text);">connected</span></div>
+          <div style="display:flex;justify-content:space-between;"><span>version</span><span style="color:var(--text);">v0.1-alpha</span></div>
+          <div style="display:flex;justify-content:space-between;"><span>platform</span><span style="color:var(--text);">windows</span></div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <div style="flex:1; min-width:0; display:flex; flex-direction:column;">
+
+    <!-- TOP BAR -->
+    <header style="height:56px; flex:none; border-bottom:1px solid var(--line); background:var(--deep); display:flex; align-items:center; padding:0 22px; gap:16px;">
+      <div style="display:flex; align-items:baseline; gap:9px; font-family:var(--mono); font-size:13px;">
+        <span style="color:var(--blue);">starbridge</span><span style="color:var(--faint);">://</span><span style="color:var(--text); font-weight:600;">{{ viewKey }}</span>
+        <span style="width:8px;display:inline-block;color:var(--blue);animation:sb-blink 1.1s step-end infinite;">▋</span>
+      </div>
+      <div style="margin-left:auto; display:flex; align-items:center; gap:14px;">
+        <button onClick="{{ toggleSafe }}" style="{{ safeBtnStyle }}">
+          <span style="{{ safeDotStyle }}"></span>
+          <span style="font-family:var(--mono); font-size:11.5px; font-weight:600;">safe-only</span>
+          <span style="font-family:var(--mono); font-size:11px; opacity:.7;">{{ safeLabel }}</span>
+        </button>
+        <div style="font-family:var(--mono); font-size:11px; color:var(--dim); border:1px solid var(--line2); border-radius:20px; padding:5px 12px;">{{ toolCountLabel }}</div>
+      </div>
+    </header>
+
+    <!-- CONTENT -->
+    <main style="flex:1; min-height:0; overflow-y:auto; position:relative;">
+
+      <!-- ========== OVERVIEW ========== -->
+      <sc-if value="{{ isOverview }}" hint-placeholder-val="{{ true }}">
+      <div style="padding:30px 34px 50px; max-width:1180px;">
+        <div style="margin-bottom:26px;">
+          <h1 style="font-size:25px; font-weight:700; letter-spacing:-.3px; color:#eef3fa; margin-bottom:7px;">控制台概览</h1>
+          <p style="color:var(--dim); font-size:13.5px; max-width:680px; line-height:1.6;">把 AI 编程代理安全接入创意桌面软件。<span style="color:var(--text);">Skill 管路线，MCP 管工具，UXP / Node Proxy 管 Adobe 本地通道</span>，安全层管脱敏与发布边界。</p>
+        </div>
+
+        <!-- STAT CARDS -->
+        <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:30px;">
+          <div style="background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:17px 18px; position:relative; overflow:hidden;">
+            <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--green),transparent);"></div>
+            <div style="font-family:var(--mono); font-size:11px; color:var(--dim); letter-spacing:.5px; margin-bottom:11px;">MCP SERVER</div>
+            <div style="display:flex;align-items:baseline;gap:8px;"><span style="font-family:var(--mono);font-size:26px;font-weight:700;color:var(--green);">running</span></div>
+            <div style="font-family:var(--mono); font-size:10.5px; color:var(--faint); margin-top:7px;">stdio · offline-safe</div>
+          </div>
+          <div style="background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:17px 18px; position:relative; overflow:hidden;">
+            <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--blue),transparent);"></div>
+            <div style="font-family:var(--mono); font-size:11px; color:var(--dim); letter-spacing:.5px; margin-bottom:11px;">SAFE TOOLS</div>
+            <div style="display:flex;align-items:baseline;gap:8px;"><span style="font-family:var(--mono);font-size:30px;font-weight:700;color:#eef3fa;">24</span><span style="font-family:var(--mono);font-size:13px;color:var(--dim);">/ registry</span></div>
+            <div style="font-family:var(--mono); font-size:10.5px; color:var(--faint); margin-top:7px;">read · dry-run · guarded</div>
+          </div>
+          <div style="background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:17px 18px; position:relative; overflow:hidden;">
+            <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--purple),transparent);"></div>
+            <div style="font-family:var(--mono); font-size:11px; color:var(--dim); letter-spacing:.5px; margin-bottom:11px;">软件桥 BRIDGES</div>
+            <div style="display:flex;align-items:baseline;gap:8px;"><span style="font-family:var(--mono);font-size:30px;font-weight:700;color:#eef3fa;">6</span><span style="font-family:var(--mono);font-size:13px;color:var(--dim);">connected</span></div>
+            <div style="font-family:var(--mono); font-size:10.5px; color:var(--faint); margin-top:7px;">PS · Ai · Bl · CAD · CF · CC</div>
+          </div>
+          <div style="background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:17px 18px; position:relative; overflow:hidden;">
+            <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--teal),transparent);"></div>
+            <div style="font-family:var(--mono); font-size:11px; color:var(--dim); letter-spacing:.5px; margin-bottom:11px;">SAFETY MODE</div>
+            <div style="display:flex;align-items:baseline;gap:8px;"><span style="font-family:var(--mono);font-size:26px;font-weight:700;color:var(--teal);">local-first</span></div>
+            <div style="font-family:var(--mono); font-size:10.5px; color:var(--faint); margin-top:7px;">redacted · confirm-write</div>
+          </div>
+        </div>
+
+        <!-- ARCHITECTURE -->
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px;">
+          <span style="font-family:var(--mono); font-size:11px; letter-spacing:1.2px; color:var(--blue);">三层架构</span>
+          <span style="font-family:var(--mono); font-size:11px; letter-spacing:1px; color:var(--faint);">SKILL · MCP · UXP</span>
+          <span style="flex:1; height:1px; background:var(--line);"></span>
+        </div>
+
+        <div style="background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:24px; margin-bottom:30px;">
+          <div style="display:grid; grid-template-columns:1fr 34px 1fr 34px 1fr; align-items:stretch; gap:0;">
+            <!-- skill -->
+            <div style="border:1px solid rgba(167,139,250,.32); background:rgba(167,139,250,.06); border-radius:12px; padding:18px;">
+              <div style="display:flex;align-items:center;gap:9px;margin-bottom:12px;"><span style="width:26px;height:26px;border-radius:7px;background:rgba(167,139,250,.16);color:var(--purple);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:13px;">S</span><span style="font-weight:700;color:#eef3fa;">Skill</span><span style="margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--purple);background:rgba(167,139,250,.13);padding:3px 7px;border-radius:5px;">Codex</span></div>
+              <div style="font-family:var(--mono);font-size:11px;color:var(--purple);margin-bottom:8px;">管路线 · ROUTE</div>
+              <p style="font-size:12.5px;color:var(--dim);line-height:1.65;">把软件接入流程拆成可复用 skill，只写方法、路由和安全规则，不保存私有素材。</p>
+              <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:11px;">
+                <span style="font-family:var(--mono);font-size:10px;color:var(--text);background:var(--panel2);border:1px solid var(--line);padding:3px 7px;border-radius:5px;">photoshop</span>
+                <span style="font-family:var(--mono);font-size:10px;color:var(--text);background:var(--panel2);border:1px solid var(--line);padding:3px 7px;border-radius:5px;">illustrator</span>
+                <span style="font-family:var(--mono);font-size:10px;color:var(--text);background:var(--panel2);border:1px solid var(--line);padding:3px 7px;border-radius:5px;">cad</span>
+                <span style="font-family:var(--mono);font-size:10px;color:var(--text);background:var(--panel2);border:1px solid var(--line);padding:3px 7px;border-radius:5px;">blender</span>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:center;font-family:var(--mono);color:var(--faint);font-size:18px;">→</div>
+            <!-- mcp -->
+            <div style="border:1px solid rgba(77,159,255,.34); background:rgba(77,159,255,.07); border-radius:12px; padding:18px;">
+              <div style="display:flex;align-items:center;gap:9px;margin-bottom:12px;"><span style="width:26px;height:26px;border-radius:7px;background:rgba(77,159,255,.16);color:var(--blue);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:13px;">M</span><span style="font-weight:700;color:#eef3fa;">MCP</span><span style="margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--blue);background:rgba(77,159,255,.13);padding:3px 7px;border-radius:5px;">stdio</span></div>
+              <div style="font-family:var(--mono);font-size:11px;color:var(--blue);margin-bottom:8px;">管工具 · TOOLS</div>
+              <p style="font-size:12.5px;color:var(--dim);line-height:1.65;">暴露 tools/list、tools/call、safe-only registry、status / probe、dry-run 和 evidence。</p>
+              <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:11px;">
+                <span style="font-family:var(--mono);font-size:10px;color:var(--text);background:var(--panel2);border:1px solid var(--line);padding:3px 7px;border-radius:5px;">tools/list</span>
+                <span style="font-family:var(--mono);font-size:10px;color:var(--text);background:var(--panel2);border:1px solid var(--line);padding:3px 7px;border-radius:5px;">tools/call</span>
+                <span style="font-family:var(--mono);font-size:10px;color:var(--text);background:var(--panel2);border:1px solid var(--line);padding:3px 7px;border-radius:5px;">evidence</span>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:center;font-family:var(--mono);color:var(--faint);font-size:18px;">→</div>
+            <!-- uxp -->
+            <div style="border:1px solid rgba(45,212,191,.32); background:rgba(45,212,191,.06); border-radius:12px; padding:18px;">
+              <div style="display:flex;align-items:center;gap:9px;margin-bottom:12px;"><span style="width:26px;height:26px;border-radius:7px;background:rgba(45,212,191,.16);color:var(--teal);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:13px;">U</span><span style="font-weight:700;color:#eef3fa;">UXP</span><span style="margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--teal);background:rgba(45,212,191,.13);padding:3px 7px;border-radius:5px;">experimental</span></div>
+              <div style="font-family:var(--mono);font-size:11px;color:var(--teal);margin-bottom:8px;">管通道 · BRIDGE</div>
+              <p style="font-size:12.5px;color:var(--dim);line-height:1.65;">Adobe 桌面插件 / 本地代理：Node Proxy、typed BatchPlay、DOM 读写实验。</p>
+              <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:11px;">
+                <span style="font-family:var(--mono);font-size:10px;color:var(--text);background:var(--panel2);border:1px solid var(--line);padding:3px 7px;border-radius:5px;">uxp v2</span>
+                <span style="font-family:var(--mono);font-size:10px;color:var(--text);background:var(--panel2);border:1px solid var(--line);padding:3px 7px;border-radius:5px;">node-proxy</span>
+                <span style="font-family:var(--mono);font-size:10px;color:var(--text);background:var(--panel2);border:1px solid var(--line);padding:3px 7px;border-radius:5px;">batchplay</span>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:18px; padding-top:16px; border-top:1px dashed var(--line2); display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <span style="font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.5px;margin-right:4px;">PRODUCTION ↓</span>
+            <span style="font-family:var(--mono);font-size:11px;color:var(--dim);background:var(--deep);border:1px solid var(--line);padding:6px 11px;border-radius:7px;">Photoshop</span>
+            <span style="font-family:var(--mono);font-size:11px;color:var(--dim);background:var(--deep);border:1px solid var(--line);padding:6px 11px;border-radius:7px;">Illustrator</span>
+            <span style="font-family:var(--mono);font-size:11px;color:var(--dim);background:var(--deep);border:1px solid var(--line);padding:6px 11px;border-radius:7px;">Blender</span>
+            <span style="font-family:var(--mono);font-size:11px;color:var(--dim);background:var(--deep);border:1px solid var(--line);padding:6px 11px;border-radius:7px;">AutoCAD / DXF</span>
+            <span style="font-family:var(--mono);font-size:11px;color:var(--dim);background:var(--deep);border:1px solid var(--line);padding:6px 11px;border-radius:7px;">ComfyUI</span>
+            <span style="font-family:var(--mono);font-size:11px;color:var(--dim);background:var(--deep);border:1px solid var(--line);padding:6px 11px;border-radius:7px;">CapCut / 剪映</span>
+          </div>
+        </div>
+
+        <!-- BRIDGE GRID -->
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px;">
+          <span style="font-family:var(--mono); font-size:11px; letter-spacing:1.2px; color:var(--blue);">软件桥状态</span>
+          <span style="font-family:var(--mono); font-size:11px; letter-spacing:1px; color:var(--faint);">BRIDGE HEALTH</span>
+          <span style="flex:1; height:1px; background:var(--line);"></span>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px;">
+          <sc-for list="{{ bridges }}" as="b" hint-placeholder-count="6">
+            <button onClick="{{ b.onOpen }}" style="text-align:left; cursor:pointer; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px 17px; transition:border-color .15s, background .15s;" style-hover="border-color:var(--line2); background:var(--panel2);">
+              <div style="display:flex; align-items:center; gap:11px; margin-bottom:13px;">
+                <span style="{{ b.iconStyle }}">{{ b.icon }}</span>
+                <div style="line-height:1.25;">
+                  <div style="font-weight:600; color:#eef3fa; font-size:13.5px;">{{ b.name }}</div>
+                  <div style="font-family:var(--mono); font-size:10px; color:var(--faint);">{{ b.id }}</div>
+                </div>
+                <span style="{{ b.dotStyle }}"></span>
+              </div>
+              <p style="font-size:11.5px; color:var(--dim); line-height:1.55; min-height:34px;">{{ b.note }}</p>
+              <div style="display:flex; align-items:center; gap:7px; margin-top:12px; padding-top:11px; border-top:1px solid var(--line);">
+                <span style="{{ b.tagStyle }}">{{ b.maturity }}</span>
+                <span style="font-family:var(--mono); font-size:10px; color:var(--faint); margin-left:auto;">{{ b.tools }} tools</span>
+              </div>
+            </button>
+          </sc-for>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ========== TOOLS ========== -->
+      <sc-if value="{{ isTools }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex; height:100%;">
+        <!-- list -->
+        <div style="width:340px; flex:none; border-right:1px solid var(--line); overflow-y:auto; padding:18px 14px;">
+          <div style="display:flex; align-items:center; gap:8px; padding:0 6px 14px;">
+            <span style="font-family:var(--mono); font-size:11px; letter-spacing:.8px; color:var(--dim);">TOOL REGISTRY</span>
+            <span style="font-family:var(--mono); font-size:10px; color:var(--faint); margin-left:auto;">tools/list</span>
+          </div>
+          <sc-for list="{{ toolGroups }}" as="g" hint-placeholder-count="5">
+            <div style="margin-bottom:16px;">
+              <div style="display:flex; align-items:center; gap:8px; padding:0 8px 8px;">
+                <span style="{{ g.dotStyle }}"></span>
+                <span style="font-family:var(--mono); font-size:11px; font-weight:600; color:var(--text); letter-spacing:.3px;">{{ g.label }}</span>
+                <span style="font-family:var(--mono); font-size:10px; color:var(--faint); margin-left:auto;">{{ g.count }}</span>
+              </div>
+              <sc-for list="{{ g.items }}" as="t" hint-placeholder-count="3">
+                <button onClick="{{ t.onSelect }}" style="{{ t.style }}">
+                  <span style="{{ t.kindStyle }}">{{ t.kindShort }}</span>
+                  <span style="font-family:var(--mono); font-size:12px; flex:1; text-align:left;">{{ t.name }}</span>
+                  <span style="{{ t.statusDot }}"></span>
+                </button>
+              </sc-for>
+            </div>
+          </sc-for>
+        </div>
+        <!-- detail -->
+        <div style="flex:1; min-width:0; overflow-y:auto; padding:28px 32px;">
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
+            <span style="{{ sel.kindBadge }}">{{ sel.kind }}</span>
+            <span style="{{ sel.statusBadge }}">{{ sel.status }}</span>
+            <sc-if value="{{ sel.guarded }}" hint-placeholder-val="{{ false }}"><span style="font-family:var(--mono);font-size:10px;color:var(--amber);background:rgba(245,185,66,.12);border:1px solid rgba(245,185,66,.3);padding:3px 8px;border-radius:5px;">guarded write</span></sc-if>
+          </div>
+          <h2 style="font-family:var(--mono); font-size:21px; font-weight:600; color:#eef3fa; margin:8px 0 10px; letter-spacing:-.2px;">{{ sel.name }}</h2>
+          <p style="font-size:13.5px; color:var(--dim); line-height:1.65; max-width:640px; margin-bottom:24px;">{{ sel.desc }}</p>
+
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:9px;"><span style="font-family:var(--mono);font-size:11px;color:var(--blue);letter-spacing:.5px;">REQUEST</span><span style="font-family:var(--mono);font-size:10px;color:var(--faint);">tools/call</span></div>
+          <pre style="background:var(--deep); border:1px solid var(--line); border-left:3px solid var(--blue); border-radius:8px; padding:16px 18px; font-family:var(--mono); font-size:12px; line-height:1.7; color:#9fb2c8; overflow-x:auto; margin-bottom:22px; white-space:pre;">{{ sel.req }}</pre>
+
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:9px;"><span style="font-family:var(--mono);font-size:11px;color:var(--green);letter-spacing:.5px;">RESPONSE</span><span style="font-family:var(--mono);font-size:10px;color:var(--faint);">redacted · offline-safe</span></div>
+          <pre style="background:var(--deep); border:1px solid var(--line); border-left:3px solid var(--green); border-radius:8px; padding:16px 18px; font-family:var(--mono); font-size:12px; line-height:1.7; color:#9fb2c8; overflow-x:auto; margin-bottom:24px; white-space:pre;">{{ sel.res }}</pre>
+
+          <div style="display:flex; gap:10px;">
+            <span style="font-family:var(--mono); font-size:11px; color:var(--dim); background:var(--panel); border:1px solid var(--line); border-radius:7px; padding:8px 12px;">group · {{ sel.group }}</span>
+            <span style="font-family:var(--mono); font-size:11px; color:var(--dim); background:var(--panel); border:1px solid var(--line); border-radius:7px; padding:8px 12px;">safe · {{ sel.safeText }}</span>
+            <span style="font-family:var(--mono); font-size:11px; color:var(--dim); background:var(--panel); border:1px solid var(--line); border-radius:7px; padding:8px 12px;">effect · {{ sel.kind }}</span>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ========== BRIDGES MATRIX ========== -->
+      <sc-if value="{{ isBridges }}" hint-placeholder-val="{{ true }}">
+      <div style="padding:30px 34px 50px; max-width:1180px;">
+        <h1 style="font-size:25px; font-weight:700; letter-spacing:-.3px; color:#eef3fa; margin-bottom:7px;">软件桥 · 能力矩阵</h1>
+        <p style="color:var(--dim); font-size:13.5px; margin-bottom:24px; max-width:680px; line-height:1.6;">每条桥按成熟度分层。<span style="color:var(--green);">stable</span> 可直接使用，<span style="color:var(--blue);">dry-run</span> 只规划不执行，<span style="color:var(--amber);">experimental</span> 依赖本机授权，<span style="color:var(--faint);">planned</span> 尚未实现。</p>
+
+        <div style="background:var(--panel); border:1px solid var(--line); border-radius:12px; overflow:hidden;">
+          <div style="display:grid; grid-template-columns:200px 1fr 1fr 1fr 1fr; background:var(--deep); border-bottom:1px solid var(--line);">
+            <div style="padding:13px 18px; font-family:var(--mono); font-size:11px; color:var(--dim); letter-spacing:.5px;">BRIDGE</div>
+            <div style="padding:13px 14px; font-family:var(--mono); font-size:11px; color:var(--green); letter-spacing:.5px;">● stable</div>
+            <div style="padding:13px 14px; font-family:var(--mono); font-size:11px; color:var(--blue); letter-spacing:.5px;">● dry-run</div>
+            <div style="padding:13px 14px; font-family:var(--mono); font-size:11px; color:var(--amber); letter-spacing:.5px;">● experimental</div>
+            <div style="padding:13px 14px; font-family:var(--mono); font-size:11px; color:var(--faint); letter-spacing:.5px;">● planned</div>
+          </div>
+          <sc-for list="{{ matrix }}" as="row" hint-placeholder-count="6">
+            <div style="{{ row.rowStyle }}">
+              <div style="padding:16px 18px; display:flex; align-items:center; gap:11px;">
+                <span style="{{ row.iconStyle }}">{{ row.icon }}</span>
+                <div style="line-height:1.3;"><div style="font-weight:600; color:#eef3fa; font-size:13px;">{{ row.name }}</div><div style="font-family:var(--mono); font-size:10px; color:var(--faint);">{{ row.id }}</div></div>
+              </div>
+              <div style="padding:16px 14px; font-size:11.5px; color:var(--text); line-height:1.55; border-left:1px solid var(--line);">{{ row.stable }}</div>
+              <div style="padding:16px 14px; font-size:11.5px; color:var(--dim); line-height:1.55; border-left:1px solid var(--line);">{{ row.dryrun }}</div>
+              <div style="padding:16px 14px; font-size:11.5px; color:var(--dim); line-height:1.55; border-left:1px solid var(--line);">{{ row.experimental }}</div>
+              <div style="padding:16px 14px; font-size:11.5px; color:var(--faint); line-height:1.55; border-left:1px solid var(--line);">{{ row.planned }}</div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="display:flex; gap:13px; margin-top:18px;">
+          <div style="flex:1; background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--green); border-radius:9px; padding:15px 17px;">
+            <div style="font-family:var(--mono); font-size:11px; color:var(--green); margin-bottom:7px; letter-spacing:.5px;">SAFE BY DEFAULT</div>
+            <p style="font-size:12px; color:var(--dim); line-height:1.6;">默认只读或 dry-run；写入必须显式确认并限制到 sandbox 输出目录。</p>
+          </div>
+          <div style="flex:1; background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--blue); border-radius:9px; padding:15px 17px;">
+            <div style="font-family:var(--mono); font-size:11px; color:var(--blue); margin-bottom:7px; letter-spacing:.5px;">REDACTED OUTPUT</div>
+            <p style="font-size:12px; color:var(--dim); line-height:1.6;">本机路径脱敏，账号、密钥、私有工程不进入响应与 GitHub。</p>
+          </div>
+          <div style="flex:1; background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--purple); border-radius:9px; padding:15px 17px;">
+            <div style="font-family:var(--mono); font-size:11px; color:var(--purple); margin-bottom:7px; letter-spacing:.5px;">EVIDENCE</div>
+            <p style="font-size:12px; color:var(--dim); line-height:1.6;">关键动作可初始化并校验 evidence，支撑可审计 E2E release。</p>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ========== PROBE TERMINAL ========== -->
+      <sc-if value="{{ isProbe }}" hint-placeholder-val="{{ true }}">
+      <div style="padding:26px 30px 30px; height:100%; display:flex; flex-direction:column;">
+        <div style="display:flex; align-items:flex-end; gap:16px; margin-bottom:18px;">
+          <div>
+            <h1 style="font-size:23px; font-weight:700; letter-spacing:-.3px; color:#eef3fa; margin-bottom:5px;">状态探针</h1>
+            <p style="color:var(--dim); font-size:13px;">探测本机环境可用性 · 全部 offline-safe · 输出已脱敏</p>
+          </div>
+          <button onClick="{{ clearLog }}" style="margin-left:auto; font-family:var(--mono); font-size:11px; color:var(--dim); background:var(--panel); border:1px solid var(--line); border-radius:7px; padding:8px 13px; cursor:pointer;" style-hover="border-color:var(--line2); color:var(--text);">clear</button>
+        </div>
+
+        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px;">
+          <sc-for list="{{ probes }}" as="p" hint-placeholder-count="5">
+            <button onClick="{{ p.onRun }}" style="display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:11.5px; color:var(--text); background:var(--panel); border:1px solid var(--line2); border-radius:8px; padding:8px 13px; cursor:pointer;" style-hover="border-color:var(--blue); background:var(--panel2);">
+              <span style="color:var(--blue);">▸</span>{{ p.cmd }}
+            </button>
+          </sc-for>
+        </div>
+
+        <div style="flex:1; min-height:0; background:var(--deep); border:1px solid var(--line); border-radius:12px; display:flex; flex-direction:column; overflow:hidden;">
+          <div style="height:38px; flex:none; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:8px; padding:0 15px;">
+            <span style="width:11px;height:11px;border-radius:50%;background:#f4767b;"></span>
+            <span style="width:11px;height:11px;border-radius:50%;background:#f5b942;"></span>
+            <span style="width:11px;height:11px;border-radius:50%;background:#34d399;"></span>
+            <span style="font-family:var(--mono); font-size:11px; color:var(--faint); margin-left:8px;">starbridge — python -m starbridge_mcp.server probe</span>
+          </div>
+          <div style="flex:1; overflow-y:auto; padding:16px 18px; font-family:var(--mono); font-size:12px; line-height:1.7;">
+            <sc-for list="{{ log }}" as="e" hint-placeholder-count="2">
+              <div style="margin-bottom:14px; animation:sb-fade .2s ease;">
+                <div style="color:var(--text);"><span style="color:var(--green);">starbridge</span><span style="color:var(--faint);"> $ </span><span style="color:var(--blue);">{{ e.cmd }}</span></div>
+                <pre style="color:{{ e.color }}; white-space:pre-wrap; margin-top:5px;">{{ e.out }}</pre>
+              </div>
+            </sc-for>
+            <div style="color:var(--text);"><span style="color:var(--green);">starbridge</span><span style="color:var(--faint);"> $ </span><span style="color:var(--blue);animation:sb-blink 1.1s step-end infinite;">▋</span></div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { view:'overview', safeOnly:true, selected:'starbridge.status', log:[] };
+
+  componentDidMount(){
+    this.setState({ log:[{ id:1, cmd:'starbridge.status', color:'#9fb2c8', out:
+'{\n  "server": "running",\n  "transport": "stdio",\n  "version": "v0.1-alpha",\n  "safe_only": true,\n  "bridges": 6\n}' }] });
+  }
+
+  allTools(){
+    return [
+      // starbridge core
+      {name:'starbridge.status', group:'starbridge', kind:'read', status:'stable', safe:true, desc:'返回 MCP 服务器与各软件桥的统一状态形状，offline 也安全。'},
+      {name:'starbridge.probe', group:'starbridge', kind:'read', status:'stable', safe:true, desc:'探测本机环境可用性，路径脱敏后返回各桥是否可达。'},
+      {name:'starbridge.tools', group:'starbridge', kind:'read', status:'stable', safe:true, desc:'列出已注册的安全工具（safe-only registry），等价于 tools/list。'},
+      {name:'starbridge.evidence_init', group:'starbridge', kind:'dry-run', status:'stable', safe:true, desc:'初始化可审计 evidence 记录，为关键动作建立留痕入口。'},
+      {name:'starbridge.evidence_validate', group:'starbridge', kind:'read', status:'stable', safe:true, desc:'校验 evidence 记录完整性，支撑可审计 E2E release。'},
+      {name:'starbridge.job_status', group:'starbridge', kind:'read', status:'stable', safe:true, desc:'查询异步任务（如 ComfyUI job）的生命周期状态。'},
+      // comfyui
+      {name:'comfyui.workflow_validate', group:'comfyui', kind:'read', status:'stable', safe:true, desc:'校验 ComfyUI workflow JSON 的结构与节点连接合法性。'},
+      {name:'comfyui.system_probe', group:'comfyui', kind:'read', status:'experimental', safe:true, desc:'探测本地 ComfyUI HTTP 服务，依赖运行中的实例。'},
+      // blender
+      {name:'blender.environment_probe', group:'blender', kind:'read', status:'stable', safe:true, desc:'探测 Blender 可执行文件与环境是否就绪。'},
+      {name:'blender.scene_plan', group:'blender', kind:'dry-run', status:'stable', safe:true, desc:'用固定模板生成 3D 场景计划，dry-run 不启动 Blender。'},
+      // cad
+      {name:'cad_autocad.environment_probe', group:'cad', kind:'read', status:'stable', safe:true, desc:'探测 AutoCAD 桌面环境与 COM 可用性。'},
+      {name:'autocad_dxf.status', group:'cad', kind:'read', status:'stable', safe:true, desc:'返回 AutoCAD / DXF 桥的安全状态形状。'},
+      {name:'autocad_dxf.validate_cad_plan', group:'cad', kind:'read', status:'stable', safe:true, desc:'校验 CAD plan 的实体与图层结构是否合法。'},
+      {name:'autocad_dxf.create_dxf_plan', group:'cad', kind:'dry-run', status:'stable', safe:true, desc:'根据参数生成 DXF 制图计划，默认 dry-run。'},
+      {name:'autocad_dxf.summarize_plan', group:'cad', kind:'read', status:'stable', safe:true, desc:'汇总 CAD plan 的实体计数与边界框摘要。'},
+      {name:'autocad_dxf.write_dxf', group:'cad', kind:'write', status:'stable', safe:true, guarded:true, desc:'confirm_write=true 后写入 sandbox 输出目录的 .dxf 文件。'},
+      // photoshop
+      {name:'photoshop.session_info', group:'photoshop', kind:'read', status:'stable', safe:true, desc:'返回 Photoshop 会话与桥接元数据，不读取私有 PSD。'},
+      {name:'ps.probe', group:'photoshop', kind:'read', status:'stable', safe:true, desc:'探测 Node Proxy + UXP v2 链路是否连通。'},
+      {name:'ps.batchplay.validate', group:'photoshop', kind:'read', status:'stable', safe:true, desc:'对 typed BatchPlay 描述符做静态校验，不执行。'},
+      {name:'ps.document.info', group:'photoshop', kind:'read', status:'experimental', safe:true, desc:'读取当前文档信息，依赖已授权 Photoshop 与本地插件。'},
+      {name:'ps.layers.list', group:'photoshop', kind:'read', status:'experimental', safe:true, desc:'列出图层树，依赖运行中的 UXP 插件。'},
+      // illustrator
+      {name:'illustrator.preflight', group:'illustrator', kind:'read', status:'stable', safe:true, desc:'对 .ai 文件做 preflight 检查并返回脱敏摘要。'},
+      {name:'illustrator.document_info', group:'illustrator', kind:'read', status:'experimental', safe:true, desc:'读取 Illustrator 文档 / 画板信息，依赖已授权实例。'},
+      // capcut
+      {name:'jianying_capcut.draft_probe', group:'capcut', kind:'read', status:'stable', safe:true, desc:'探测剪映 / CapCut 草稿目录的可用性。'},
+      {name:'jianying_capcut.draft_structure', group:'capcut', kind:'read', status:'stable', safe:true, desc:'返回脱敏的顶层 draft_structure 摘要，不读私有草稿内容。'},
+      // unsafe (hidden when safe-only)
+      {name:'ps.batchplay.execute', group:'photoshop', kind:'write', status:'experimental', safe:false, desc:'执行 BatchPlay 写入。非安全工具，safe-only 模式下隐藏。'},
+      {name:'blender.render.execute', group:'blender', kind:'write', status:'planned', safe:false, desc:'触发本机 render 写入。尚未实现，safe-only 隐藏。'},
+      {name:'illustrator.export.write', group:'illustrator', kind:'write', status:'experimental', safe:false, desc:'写入 / 导出矢量文件。非安全工具，safe-only 隐藏。'},
+    ];
+  }
+
+  groupMeta(){
+    return {
+      starbridge:{label:'StarBridge 核心', color:'#4d9fff'},
+      comfyui:{label:'ComfyUI', color:'#a78bfa'},
+      blender:{label:'Blender', color:'#f5b942'},
+      cad:{label:'AutoCAD / DXF', color:'#2dd4bf'},
+      photoshop:{label:'Photoshop', color:'#4d9fff'},
+      illustrator:{label:'Illustrator', color:'#f5b942'},
+      capcut:{label:'CapCut / 剪映', color:'#34d399'},
+    };
+  }
+
+  bridgeData(){
+    return [
+      {id:'photoshop', name:'Photoshop', icon:'Ps', color:'#4d9fff', maturity:'experimental', tools:5, note:'Node Proxy + UXP v2 探针、文档信息、图层列表、typed BatchPlay 校验。'},
+      {id:'illustrator', name:'Illustrator', icon:'Ai', color:'#f5b942', maturity:'experimental', tools:2, note:'.ai 矢量文件 preflight 脱敏摘要；文档 / 画板信息读取。'},
+      {id:'blender', name:'Blender', icon:'Bl', color:'#f5b942', maturity:'stable', tools:2, note:'环境探针；固定模板 scene_plan dry-run，不启动 Blender。'},
+      {id:'cad', name:'AutoCAD / DXF', icon:'Ac', color:'#2dd4bf', maturity:'stable', tools:6, note:'CAD plan 校验、摘要、create_dxf_plan dry-run、guarded write_dxf。'},
+      {id:'comfyui', name:'ComfyUI', icon:'Cf', color:'#a78bfa', maturity:'stable', tools:2, note:'Workflow JSON 校验；本地 HTTP system probe（依赖运行实例）。'},
+      {id:'capcut', name:'CapCut / 剪映', icon:'Cc', color:'#34d399', maturity:'stable', tools:2, note:'草稿目录探针；脱敏顶层 draft_structure 摘要。'},
+    ];
+  }
+
+  matrixData(){
+    return [
+      {id:'comfyui', name:'ComfyUI', icon:'Cf', color:'#a78bfa', stable:'Workflow JSON 校验；offline-safe status', dryrun:'—', experimental:'HTTP probe · txt2img submit', planned:'完整 job lifecycle · img2img · upscale'},
+      {id:'blender', name:'Blender', icon:'Bl', color:'#f5b942', stable:'环境探针；scene_plan dry-run', dryrun:'Scene plan，不启动 Blender', experimental:'公开版不承诺 render/write loop', planned:'confirmed local render manifest'},
+      {id:'cad', name:'AutoCAD / DXF', icon:'Ac', color:'#2dd4bf', stable:'plan 校验 · 摘要 · guarded write', dryrun:'DXF export 默认 dry-run', experimental:'confirm_write 后写 sandbox', planned:'更完整 entity schema · 桌面证据'},
+      {id:'photoshop', name:'Photoshop', icon:'Ps', color:'#4d9fff', stable:'status · probe · BatchPlay validate', dryrun:'sandbox demo · preview 需确认', experimental:'COM / UXP 依赖已授权实例', planned:'更完整 UXP preview export 证据'},
+      {id:'illustrator', name:'Illustrator', icon:'Ai', color:'#f5b942', stable:'status · preflight 脱敏摘要', dryrun:'artboard / export plan dry-run', experimental:'COM document info · sandbox export', planned:'Image Trace workflows'},
+      {id:'capcut', name:'CapCut / 剪映', icon:'Cc', color:'#34d399', stable:'draft probe · draft_structure 摘要', dryrun:'—', experimental:'本地可执行文件 availability', planned:'安全 draft skeleton · 模板替换研究'},
+    ];
+  }
+
+  probeDefs(){
+    return [
+      {cmd:'starbridge.status', out:'{\n  "server": "running",\n  "transport": "stdio",\n  "version": "v0.1-alpha",\n  "safe_only": true,\n  "bridges": 6\n}', color:'#9fb2c8'},
+      {cmd:'starbridge.probe', out:'{\n  "photoshop": "ready",\n  "illustrator": "ready",\n  "blender": "ready",\n  "autocad": "not-found",\n  "comfyui": "offline",\n  "paths": "<redacted>"\n}', color:'#9fb2c8'},
+      {cmd:'comfyui.system_probe', out:'! comfyui offline\n  STARBRIDGE_COMFYUI_URL not reachable\n  hint: launch ComfyUI then retry', color:'#f5b942'},
+      {cmd:'blender.environment_probe', out:'{\n  "blender_exe": "found",\n  "version": "4.x",\n  "scene_plan": "available",\n  "render": "dry-run-only"\n}', color:'#9fb2c8'},
+      {cmd:'ps.probe', out:'{\n  "node_proxy": "connected",\n  "uxp_plugin": "registered",\n  "host": "photoshop",\n  "write": "confirm-required"\n}', color:'#9fb2c8'},
+      {cmd:'autocad_dxf.status', out:'{\n  "bridge": "autocad_dxf",\n  "plan_validate": "ok",\n  "write_dxf": "guarded",\n  "sandbox": "examples/cad/output"\n}', color:'#9fb2c8'},
+    ];
+  }
+
+  navStyle(active){
+    return {display:'flex', alignItems:'center', gap:'11px', width:'100%', padding:'9px 10px', borderRadius:'9px', cursor:'pointer', textAlign:'left', border:'1px solid '+(active?'rgba(77,159,255,.3)':'transparent'), background:active?'rgba(77,159,255,.09)':'transparent', color:active?'#eef3fa':'var(--dim)', transition:'background .14s, color .14s'};
+  }
+
+  renderVals(){
+    const v = this.state.view;
+    const meta = this.groupMeta();
+    const counts = {
+      overview:'', tools:String(this.allTools().filter(t=>this.state.safeOnly?t.safe:true).length),
+      bridges:'6', probe:''
+    };
+    const navDefs = [
+      {key:'overview', label:'概览', sub:'overview', glyph:'◈', count:''},
+      {key:'tools', label:'工具注册表', sub:'tool registry', glyph:'⌘', count:counts.tools},
+      {key:'bridges', label:'软件桥', sub:'bridges', glyph:'⇌', count:'6'},
+      {key:'probe', label:'状态探针', sub:'status / probe', glyph:'⊹', count:''},
+    ];
+    const nav = navDefs.map(n=>{
+      const active = n.key===v;
+      return {...n, style:this.navStyle(active),
+        glyphStyle:{width:'30px',height:'30px',flex:'none',borderRadius:'8px',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'var(--mono)',fontSize:'14px',background:active?'rgba(77,159,255,.14)':'var(--panel)',color:active?'var(--blue)':'var(--dim)',border:'1px solid '+(active?'rgba(77,159,255,.25)':'var(--line)')},
+        countStyle:{marginLeft:'auto',fontFamily:'var(--mono)',fontSize:'10.5px',color:active?'var(--blue)':'var(--faint)',display:n.count?'block':'none'},
+        onSelect:()=>this.setState({view:n.key})};
+    });
+
+    // bridges grid
+    const matVal = {stable:'#34d399', experimental:'#f5b942', planned:'#4b5664', 'dry-run':'#4d9fff'};
+    const bridges = this.bridgeData().map(b=>({
+      ...b,
+      iconStyle:{width:'38px',height:'38px',flex:'none',borderRadius:'9px',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'var(--mono)',fontWeight:700,fontSize:'13px',color:b.color,background:b.color+'1f',border:'1px solid '+b.color+'3a'},
+      dotStyle:{width:'8px',height:'8px',borderRadius:'50%',marginLeft:'auto',background:matVal[b.maturity],boxShadow:'0 0 8px '+matVal[b.maturity]+'88'},
+      tagStyle:{fontFamily:'var(--mono)',fontSize:'10px',color:matVal[b.maturity],background:matVal[b.maturity]+'1a',border:'1px solid '+matVal[b.maturity]+'40',padding:'3px 8px',borderRadius:'5px'},
+      onOpen:()=>this.setState({view:'bridges'}),
+    }));
+
+    // tool groups
+    const order = ['starbridge','comfyui','blender','cad','photoshop','illustrator','capcut'];
+    const visible = this.allTools().filter(t=>this.state.safeOnly?t.safe:true);
+    const kindColor = {read:'#4d9fff','dry-run':'#a78bfa', write:'#f5b942'};
+    const kindShortMap = {read:'GET','dry-run':'DRY', write:'PUT'};
+    const statusColor = {stable:'#34d399', experimental:'#f5b942', planned:'#4b5664'};
+    const toolGroups = order.map(g=>{
+      const items = visible.filter(t=>t.group===g).map(t=>{
+        const active = t.name===this.state.selected;
+        return {...t,
+          style:{display:'flex',alignItems:'center',gap:'9px',width:'100%',padding:'8px 9px',borderRadius:'8px',cursor:'pointer',border:'1px solid '+(active?'rgba(77,159,255,.3)':'transparent'),background:active?'rgba(77,159,255,.08)':'transparent',color:active?'#eef3fa':'var(--dim)',marginBottom:'2px'},
+          kindShort:kindShortMap[t.kind],
+          kindStyle:{fontFamily:'var(--mono)',fontSize:'9px',fontWeight:600,color:kindColor[t.kind],background:kindColor[t.kind]+'18',border:'1px solid '+kindColor[t.kind]+'33',padding:'2px 5px',borderRadius:'4px',flex:'none',width:'30px',textAlign:'center'},
+          statusDot:{width:'6px',height:'6px',borderRadius:'50%',flex:'none',background:statusColor[t.status]},
+          onSelect:()=>this.setState({selected:t.name})};
+      });
+      return {key:g, label:meta[g].label, count:String(items.length), items,
+        dotStyle:{width:'8px',height:'8px',borderRadius:'2px',background:meta[g].color}};
+    }).filter(g=>g.items.length);
+
+    // selected tool
+    const sd = this.allTools().find(t=>t.name===this.state.selected) || this.allTools()[0];
+    const argMap = {
+      'starbridge.tools':'{ "safe_only": true }',
+      'comfyui.workflow_validate':'{ "workflow": "<path>.json" }',
+      'blender.scene_plan':'{ "template": "studio_basic" }',
+      'autocad_dxf.create_dxf_plan':'{ "entities": [...], "confirm_write": false }',
+      'autocad_dxf.write_dxf':'{ "plan_id": "p_8f3a", "confirm_write": true }',
+      'ps.batchplay.validate':'{ "descriptor": {...} }',
+    };
+    const args = argMap[sd.name] || '{}';
+    const reqStr = '{\n  "method": "tools/call",\n  "params": {\n    "name": "'+sd.name+'",\n    "arguments": '+args+'\n  }\n}';
+    const resMap = {
+      read:'{\n  "ok": true,\n  "status": "'+sd.status+'",\n  "data": { ... },\n  "paths": "<redacted>"\n}',
+      'dry-run':'{\n  "ok": true,\n  "mode": "dry-run",\n  "plan_id": "p_8f3a",\n  "applied": false\n}',
+      write:'{\n  "ok": true,\n  "mode": "guarded-write",\n  "confirm_write": true,\n  "output": "examples/cad/output/*.dxf"\n}',
+    };
+    const sel = {...sd,
+      kind:sd.kind,
+      kindBadge:{fontFamily:'var(--mono)',fontSize:'10px',fontWeight:600,color:kindColor[sd.kind],background:kindColor[sd.kind]+'18',border:'1px solid '+kindColor[sd.kind]+'40',padding:'4px 9px',borderRadius:'6px'},
+      statusBadge:{fontFamily:'var(--mono)',fontSize:'10px',color:statusColor[sd.status],background:statusColor[sd.status]+'15',border:'1px solid '+statusColor[sd.status]+'38',padding:'4px 9px',borderRadius:'6px'},
+      guarded:!!sd.guarded,
+      req:reqStr, res:resMap[sd.kind],
+      safeText:sd.safe?'true':'false',
+    };
+
+    // matrix rows
+    const matrix = this.matrixData().map((r,i)=>({
+      ...r,
+      rowStyle:{display:'grid', gridTemplateColumns:'200px 1fr 1fr 1fr 1fr', borderTop:i===0?'none':'1px solid var(--line)'},
+      iconStyle:{width:'30px',height:'30px',flex:'none',borderRadius:'7px',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'var(--mono)',fontWeight:700,fontSize:'11px',color:r.color,background:r.color+'1f',border:'1px solid '+r.color+'38'},
+    }));
+
+    // probes
+    const probes = this.probeDefs().map(p=>({cmd:p.cmd, onRun:()=>this.runProbe(p)}));
+
+    return {
+      nav, viewKey:v,
+      isOverview:v==='overview', isTools:v==='tools', isBridges:v==='bridges', isProbe:v==='probe',
+      toggleSafe:()=>this.setState(s=>({safeOnly:!s.safeOnly})),
+      safeLabel:this.state.safeOnly?'ON':'OFF',
+      safeBtnStyle:{display:'flex',alignItems:'center',gap:'8px',cursor:'pointer',padding:'6px 12px',borderRadius:'20px',border:'1px solid '+(this.state.safeOnly?'rgba(52,211,153,.4)':'var(--line2)'),background:this.state.safeOnly?'rgba(52,211,153,.1)':'var(--panel)',color:this.state.safeOnly?'var(--green)':'var(--dim)'},
+      safeDotStyle:{width:'7px',height:'7px',borderRadius:'50%',background:this.state.safeOnly?'var(--green)':'var(--faint)',boxShadow:this.state.safeOnly?'0 0 7px rgba(52,211,153,.7)':'none'},
+      toolCountLabel:visible.length+' tools registered',
+      bridges, toolGroups, sel, matrix, probes,
+      log:this.state.log,
+      clearLog:()=>this.setState({log:[]}),
+    };
+  }
+
+  runProbe(p){
+    this.setState(s=>({ log:[...s.log, {id:Date.now()+Math.random(), cmd:p.cmd, out:p.out, color:p.color}] }));
+  }
+}
+</script>
+</body>
+</html>
