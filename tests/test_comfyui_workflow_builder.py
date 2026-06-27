@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -548,6 +550,39 @@ class ComfyWorkflowBuilderTests(unittest.TestCase):
         self.assertTrue(result["ok"], result["validation_report"])
         self.assertEqual("safe_read_only", result["mode"])
         self.assertIn("No private filesystem paths", " ".join(result["safety_notes"]))
+
+    def test_workflow_template_cli_shortcuts_return_json(self) -> None:
+        commands = (
+            [sys.executable, "examples/comfy_bridge/workflow_templates.py", "list", "--json"],
+            [
+                sys.executable,
+                "examples/comfy_bridge/workflow_templates.py",
+                "get",
+                "--template-id",
+                "txt2img_basic_v1",
+                "--json",
+            ],
+            [
+                sys.executable,
+                "examples/comfy_bridge/workflow_templates.py",
+                "from-template",
+                "--template-id",
+                "txt2img_basic_v1",
+                "--json",
+            ],
+        )
+        for command in commands:
+            with self.subTest(command=" ".join(command)):
+                completed = subprocess.run(
+                    command,
+                    cwd=REPO_ROOT,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+                payload = json.loads(completed.stdout)
+                self.assertTrue(payload["ok"], payload)
+                self.assertEqual("comfyui", payload["bridge"])
 
 
 if __name__ == "__main__":

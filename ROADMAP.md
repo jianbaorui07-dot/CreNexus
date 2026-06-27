@@ -37,7 +37,7 @@
 | 完成 | ComfyUI workflow draft builder | 已新增 `comfy.workflow_draft`，可生成 `txt2img`、`img2img`、`inpaint`、`upscale` 的 API-like workflow 草案 | 草案包含 metadata，使用 placeholder model/assets，通过 `workflow_validate`，不读文件系统、不联网、不 submit |
 | 完成 | ComfyUI workflow graph composer | 已新增 `comfy.workflow_compose`，可把 checkpoint、prompt、latent/image、sampler、decode/save、upscale、inpaint mask 等安全模块组合成 workflow graph | composed workflow 通过 `workflow_validate`，节点 id 不重复，metadata 含 `draft=true` 或 `safe_placeholder=true`，不读文件系统、不联网、不 submit |
 | 完成 | ComfyUI workflow template registry | 已新增 `workflow_template_registry`，注册 `txt2img`、`img2img`、`inpaint`、`upscale` 和 `complex_creative_poster` 公开模板 | 模板 lint 检查唯一 id、version、composer modules、required inputs、forbidden pattern 和 validation status；MCP tools 全部 safe read-only，不读私有文件、不联网、不 submit |
-| 计划 | CLI / npm shortcuts | 为 template list/get/from-template 增加更短的本地验证入口 | 命令只调用本地 JSON 生成和校验，不 submit queue |
+| 完成 | CLI / npm shortcuts | 已为 template list/get/from-template 增加 `comfy:templates:*` 本地验证入口 | 命令只调用本地 JSON 生成和校验，不 submit queue |
 | 计划 | job / asset lifecycle summary | 为已审查 workflow 增加脱敏 job / asset 生命周期摘要 | 不提交模型、LoRA、VAE、ControlNet 或生成图；真实队列调用必须显式确认 |
 | 计划 | workflow lint / repair | 扩展 workflow lint 和可审查 repair 报告 | 只处理传入 JSON 或公开示例，不扫描私有目录 |
 | 计划 | local ComfyUI probe gate | 为需要本机服务的流程增加明确 probe gate | ComfyUI 缺失时 soft-exit，不阻塞 CI |

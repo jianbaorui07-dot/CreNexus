@@ -10,6 +10,7 @@
 | 总状态探测 | `examples/bridge_status.py` | 作为所有软件桥的一部分检查 ComfyUI |
 | txt2img 示例 | `examples/comfy_bridge/run_txt2img.py` | 提交基础文生图 workflow，成功和失败都输出标准 JSON |
 | workflow 示例 | `examples/comfy_bridge/workflows/txt2img_basic_api.json` | API 格式 workflow |
+| workflow template 快捷入口 | `examples/comfy_bridge/workflow_templates.py` | 只读列出、读取和组合公开模板，不提交队列 |
 
 `run_txt2img.py` 已做离线 workflow 节点存在性检查、节点 `class_type` 检查、checkpoint 检查和 CLI 参数化。脚本不会默认选择第一个 checkpoint；必须传 `--ckpt`，或显式加 `--allow-first-checkpoint`。
 
@@ -34,6 +35,9 @@ $env:COMFY_OUTPUT_DIR="<path-to-ComfyUI-output>"
 ```powershell
 npm.cmd run comfy:probe
 npm.cmd run status:probe:json
+npm.cmd run comfy:templates:list
+npm.cmd run comfy:templates:get
+npm.cmd run comfy:templates:from
 ```
 
 直接运行：
@@ -42,6 +46,9 @@ npm.cmd run status:probe:json
 python examples\comfy_bridge\comfy_probe.py
 python examples\comfy_bridge\comfy_probe.py --json
 python examples\bridge_status.py --json
+python examples\comfy_bridge\workflow_templates.py list --json
+python examples\comfy_bridge\workflow_templates.py get --template-id txt2img_basic_v1 --json
+python examples\comfy_bridge\workflow_templates.py from-template --template-id txt2img_basic_v1 --json
 ```
 
 提交一个基础文生图任务：
@@ -90,13 +97,12 @@ python examples\comfy_bridge\run_txt2img.py `
 
 - 不能提交模型、checkpoint、LoRA、VAE、ControlNet 或生成图片。
 - 不能把本机 ComfyUI 根目录、输出目录或模型路径写进仓库。
-- 当前没有公开 `img2img`、inpaint、upscale 示例。
-- 当前 workflow 校验只覆盖 bundled txt2img 节点映射，不是通用 ComfyUI 图校验器。
+- 当前模板入口只生成 placeholder workflow，不会提交 ComfyUI 队列。
+- 当前 workflow 校验覆盖 bundled public workflow 和模板组合结果，不是通用 ComfyUI 图校验器。
 
 ## 下一步
 
-1. 增加 `img2img`、inpaint、upscale 的公开安全 workflow。
-2. 扩展 workflow 校验，覆盖输入引用、节点类型和常见错误。
-3. 把 ComfyUI 队列错误和历史记录错误转成统一 JSON。
-4. 增加输出结果索引 JSON，但只保存本机路径，不提交图片。
-5. 评估轻量 MCP 封装，先从稳定的 txt2img 开始。
+1. 扩展 workflow 校验，覆盖更多输入引用、节点类型和常见错误。
+2. 把 ComfyUI 队列错误和历史记录错误转成统一 JSON。
+3. 增加输出结果索引 JSON，但只保存本机路径，不提交图片。
+4. 保持真实 submit 走显式确认，本地 manifest 继续脱敏。

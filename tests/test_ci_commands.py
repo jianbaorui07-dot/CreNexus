@@ -47,6 +47,9 @@ class CiCommandsTest(unittest.TestCase):
             "starbridge:evidence:validate": "python -m starbridge_mcp.server evidence --validate --json",
             "starbridge:job-status": "python -m starbridge_mcp.server job-status --json",
             "comfy:workflow:validate": "python examples/comfy_bridge/validate_workflow.py --json",
+            "comfy:templates:list": "python examples/comfy_bridge/workflow_templates.py list --json",
+            "comfy:templates:get": "python examples/comfy_bridge/workflow_templates.py get --template-id txt2img_basic_v1 --json",
+            "comfy:templates:from": "python examples/comfy_bridge/workflow_templates.py from-template --template-id txt2img_basic_v1 --json",
             "cad:dxf:dry-run": "python examples/cad/generate_dxf_plan.py",
         }
         for name, command in expected.items():
@@ -68,6 +71,15 @@ class CiCommandsTest(unittest.TestCase):
             [sys.executable, "-m", "starbridge_mcp.server", "evidence", "--init", "--json"],
             [sys.executable, "-m", "starbridge_mcp.server", "evidence", "--validate", "--json"],
             [sys.executable, "-m", "starbridge_mcp.server", "job-status", "--json"],
+            [sys.executable, "examples/comfy_bridge/workflow_templates.py", "list", "--json"],
+            [
+                sys.executable,
+                "examples/comfy_bridge/workflow_templates.py",
+                "from-template",
+                "--template-id",
+                "txt2img_basic_v1",
+                "--json",
+            ],
         ]
         for command in commands:
             with self.subTest(command=" ".join(command)):
