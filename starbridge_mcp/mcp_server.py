@@ -436,6 +436,30 @@ TOOL_DEFINITIONS: list[JsonObject] = [
         ),
     ),
     _standard_tool(
+        name="comfy.workflow_lifecycle_summary",
+        title="Comfy Workflow Lifecycle Summary",
+        description="Return a redacted job and asset lifecycle summary for a reviewed workflow without exposing asset names or submitting the queue.",
+        input_schema=_object_schema(
+            {
+                "template_id": {
+                    "type": "string",
+                    "description": "Optional bundled public template id to compose before summarizing.",
+                },
+                "workflow": {
+                    "type": "object",
+                    "description": "Optional API-format workflow object supplied directly by the caller.",
+                },
+                "arguments": {"type": "object", "default": {}},
+                "task_type": {
+                    "type": "string",
+                    "enum": ["txt2img", "img2img", "inpaint", "upscale"],
+                    "default": "txt2img",
+                },
+                "confirm_run": {"type": "boolean", "default": False},
+            }
+        ),
+    ),
+    _standard_tool(
         name="blender.environment_probe",
         title="Probe Blender",
         description="检查 Blender 可执行文件和可选环境配置。不打开 .blend，不运行脚本。",
@@ -1016,6 +1040,12 @@ def _handle_comfy_workflow_from_template(arguments: JsonObject) -> JsonObject:
     nested_arguments = arguments.get("arguments")
     payload = nested_arguments if isinstance(nested_arguments, dict) else {}
     return compose_from_template(str(arguments.get("template_id") or ""), payload)
+
+
+def _handle_comfy_workflow_lifecycle_summary(arguments: JsonObject) -> JsonObject:
+    from examples.comfy_bridge.workflow_agent import workflow_lifecycle_summary
+
+    return workflow_lifecycle_summary(arguments)
 
 
 def _handle_write_dxf(arguments: JsonObject) -> JsonObject:
@@ -1760,6 +1790,7 @@ TOOL_HANDLERS: dict[str, ToolHandler] = {
     "comfy.workflow_template_list": _handle_comfy_workflow_template_list,
     "comfy.workflow_template_get": _handle_comfy_workflow_template_get,
     "comfy.workflow_from_template": _handle_comfy_workflow_from_template,
+    "comfy.workflow_lifecycle_summary": _handle_comfy_workflow_lifecycle_summary,
     "blender.environment_probe": lambda _arguments: _handle_python_probe(
         bridge="blender",
         action="environment_probe",

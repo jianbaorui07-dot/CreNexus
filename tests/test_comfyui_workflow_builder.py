@@ -16,6 +16,7 @@ from examples.comfy_bridge.workflow_agent import (
     workflow_build_plan,
     workflow_compose,
     workflow_draft,
+    workflow_lifecycle_summary,
 )
 from examples.comfy_bridge.workflow_template_registry import (
     RECOGNIZED_COMPOSER_MODULES,
@@ -551,6 +552,99 @@ class ComfyWorkflowBuilderTests(unittest.TestCase):
         self.assertEqual("safe_read_only", result["mode"])
         self.assertIn("No private filesystem paths", " ".join(result["safety_notes"]))
 
+    def test_workflow_lifecycle_summary_from_template_is_redacted(self) -> None:
+        result = workflow_lifecycle_summary({"template_id": "txt2img_basic_v1"})
+        encoded = json.dumps(result, ensure_ascii=False)
+
+        self.assertTrue(result["ok"], result)
+        self.assertEqual("workflow_lifecycle_summary", result["action"])
+        self.assertEqual("safe_read_only", result["mode"])
+        self.assertEqual("needs_user", result["job_status"]["status"])
+        self.assertFalse(result["will_submit"])
+        self.assertFalse(result["will_read_outputs"])
+        self.assertNotIn("workflow", result)
+        self.assertNotIn("public placeholder prompt", encoded)
+        self.assertTrue(result["asset_summary"]["model_assets"])
+        checkpoint = next(
+            item
+            for item in result["asset_summary"]["model_assets"]
+            if item["role"] == "checkpoint"
+        )
+        self.assertEqual("placeholder_only", checkpoint["reference_policy"])
+        output = result["asset_summary"]["output_assets"][0]
+        self.assertEqual("basename_only_after_confirmed_run", output["reference_policy"])
+
+    def test_workflow_lifecycle_summary_redacts_private_asset_values(self) -> None:
+        private_root = "C:" + "\\Users" + "\\PrivateUser"
+        workflow = {
+            "1": {
+                "class_type": "CheckpointLoaderSimple",
+                "inputs": {
+                    "ckpt_name": private_root
+                    + "\\ComfyUI\\models\\checkpoints\\private-model."
+                    + "safetensors"
+                },
+            },
+            "2": {
+                "class_type": "LoadImage",
+                "inputs": {"image": private_root + "\\Pictures\\secret-source.png"},
+            },
+            "3": {
+                "class_type": "CLIPTextEncode",
+                "inputs": {"text": "private prompt should stay out", "clip": ["1", 1]},
+            },
+            "4": {
+                "class_type": "SaveImage",
+                "inputs": {"filename_prefix": private_root + "\\Documents\\private-output"},
+            },
+        }
+
+        result = workflow_lifecycle_summary({"workflow": workflow})
+        encoded = json.dumps(result, ensure_ascii=False)
+
+        self.assertFalse(result["ok"])
+        self.assertFalse(result["will_submit"])
+        self.assertNotIn("PrivateUser", encoded)
+        self.assertNotIn("private-model", encoded)
+        self.assertNotIn("safetensors", encoded.lower())
+        self.assertNotIn("secret-source", encoded)
+        self.assertNotIn("private prompt should stay out", encoded)
+        self.assertNotIn("workflow", result)
+        checkpoint = next(
+            item
+            for item in result["asset_summary"]["model_assets"]
+            if item["role"] == "checkpoint"
+        )
+        self.assertEqual("redacted_reference_requires_review", checkpoint["reference_policy"])
+
+    def test_mcp_workflow_lifecycle_summary_tool_schema_and_call(self) -> None:
+        listed = handle_request({"jsonrpc": "2.0", "id": 31, "method": "tools/list", "params": {}})
+        assert listed is not None
+        tools = {tool["name"]: tool for tool in listed["result"]["tools"]}
+
+        self.assertIn("comfy.workflow_lifecycle_summary", tools)
+        self.assertEqual(
+            "safe_read_only",
+            tools["comfy.workflow_lifecycle_summary"]["annotations"]["riskLevel"],
+        )
+
+        response = handle_request(
+            {
+                "jsonrpc": "2.0",
+                "id": 32,
+                "method": "tools/call",
+                "params": {
+                    "name": "comfy.workflow_lifecycle_summary",
+                    "arguments": {"template_id": "txt2img_basic_v1"},
+                },
+            }
+        )
+        assert response is not None
+        payload = response["result"]["structuredContent"]
+        self.assertTrue(payload["ok"], payload)
+        self.assertFalse(payload["submit_gate"]["tool_can_submit"])
+        self.assertIn("asset_summary", payload)
+
     def test_workflow_template_cli_shortcuts_return_json(self) -> None:
         commands = (
             [sys.executable, "examples/comfy_bridge/workflow_templates.py", "list", "--json"],
@@ -566,6 +660,13 @@ class ComfyWorkflowBuilderTests(unittest.TestCase):
                 sys.executable,
                 "examples/comfy_bridge/workflow_templates.py",
                 "from-template",
+                "--template-id",
+                "txt2img_basic_v1",
+                "--json",
+            ],
+            [
+                sys.executable,
+                "examples/comfy_bridge/workflow_lifecycle.py",
                 "--template-id",
                 "txt2img_basic_v1",
                 "--json",

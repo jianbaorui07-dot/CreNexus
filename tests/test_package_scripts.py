@@ -55,6 +55,7 @@ class PackageScriptsTest(unittest.TestCase):
                 "comfy:templates:list",
                 "comfy:templates:get",
                 "comfy:templates:from",
+                "comfy:lifecycle:template",
                 "comfy:txt2img",
                 "photoshop:probe",
                 "photoshop:node-proxy",
@@ -130,6 +131,10 @@ class PackageScriptsTest(unittest.TestCase):
         self.assertEqual(
             "python examples/comfy_bridge/workflow_templates.py from-template --template-id txt2img_basic_v1 --json",
             self.scripts["comfy:templates:from"],
+        )
+        self.assertEqual(
+            "python examples/comfy_bridge/workflow_lifecycle.py --template-id txt2img_basic_v1 --json",
+            self.scripts["comfy:lifecycle:template"],
         )
 
     def test_pyproject_declares_expected_extras(self) -> None:

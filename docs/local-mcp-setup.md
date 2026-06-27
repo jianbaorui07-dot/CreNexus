@@ -91,6 +91,7 @@ Claude Code 可直接使用仓库根目录的 `.mcp.json`。Codex 使用 `.codex
 - `starbridge.tools`：能力注册表，可用 `safe_only=true` 过滤。
 - `comfyui.system_probe`：读取 `/system_stats` 和 `/object_info`，不提交生成任务。
 - `comfyui.workflow_validate`：只读校验 ComfyUI API workflow。
+- `comfy.workflow_lifecycle_summary`：生成脱敏 job / asset 生命周期摘要，不提交队列。
 - `blender.environment_probe`：检查 Blender 可执行文件和环境线索。
 - `cad_autocad.environment_probe`：检查 AutoCAD 可执行文件、COM 注册和 pywin32 线索。
 - `photoshop.session_info`：检查 Photoshop COM/session 线索，不打开 PSD、不导出。
@@ -124,7 +125,7 @@ Claude Code 可直接使用仓库根目录的 `.mcp.json`。Codex 使用 `.codex
 
 1. `starbridge.status`：返回所有桥统一状态。
 2. `starbridge.probe(bridge)`：返回单桥探针结果。
-3. `comfyui.system_probe` / `comfyui.workflow_validate` 已实现；下一步再做 job/asset 摘要，不直接公开生成图路径。
+3. `comfyui.system_probe` / `comfyui.workflow_validate` / `comfy.workflow_lifecycle_summary` 已实现；下一步做 lint/repair、probe gate 和 queue payload dry-run。
 4. `photoshop.session_info` / `illustrator.document_info` 已挂入 MCP；下一步把只读当前文档摘要做细。
 5. `cad_autocad.environment_probe` / `autocad_dxf.*` 已挂入 MCP；真实 AutoCAD COM 仍作为可选。
 6. `jianying_capcut.draft_probe` 已挂入 MCP；下一步只读草稿目录结构摘要，不输出素材路径。

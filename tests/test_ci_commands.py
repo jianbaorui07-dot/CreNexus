@@ -50,6 +50,7 @@ class CiCommandsTest(unittest.TestCase):
             "comfy:templates:list": "python examples/comfy_bridge/workflow_templates.py list --json",
             "comfy:templates:get": "python examples/comfy_bridge/workflow_templates.py get --template-id txt2img_basic_v1 --json",
             "comfy:templates:from": "python examples/comfy_bridge/workflow_templates.py from-template --template-id txt2img_basic_v1 --json",
+            "comfy:lifecycle:template": "python examples/comfy_bridge/workflow_lifecycle.py --template-id txt2img_basic_v1 --json",
             "cad:dxf:dry-run": "python examples/cad/generate_dxf_plan.py",
         }
         for name, command in expected.items():
@@ -76,6 +77,13 @@ class CiCommandsTest(unittest.TestCase):
                 sys.executable,
                 "examples/comfy_bridge/workflow_templates.py",
                 "from-template",
+                "--template-id",
+                "txt2img_basic_v1",
+                "--json",
+            ],
+            [
+                sys.executable,
+                "examples/comfy_bridge/workflow_lifecycle.py",
                 "--template-id",
                 "txt2img_basic_v1",
                 "--json",

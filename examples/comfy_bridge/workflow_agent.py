@@ -11,6 +11,7 @@ import urllib.request
 from typing import Any
 
 from examples.comfy_bridge.validate_workflow import validate_workflow_payload
+from starbridge_mcp.core.job_status import JobStatus
 from starbridge_mcp.core.security import sanitize
 
 BRIDGE_ID = "comfyui"
@@ -38,6 +39,21 @@ RECOGNIZED_COMPOSER_MODULES = {
     "upscale_placeholder",
     "inpaint_mask_placeholder",
 }
+ASSET_NODE_ROLES = {
+    "CheckpointLoaderSimple": ("model_assets", "checkpoint"),
+    "LoraLoader": ("model_assets", "lora"),
+    "LoraLoaderModelOnly": ("model_assets", "lora"),
+    "VAELoader": ("model_assets", "vae"),
+    "ControlNetLoader": ("model_assets", "controlnet"),
+    "ControlNetLoaderAdvanced": ("model_assets", "controlnet"),
+    "UpscaleModelLoader": ("model_assets", "upscale_model"),
+    "LoadImage": ("input_assets", "source_image"),
+    "LoadImageMask": ("input_assets", "mask_image"),
+    "SaveImage": ("output_assets", "generated_image"),
+}
+MODEL_ASSET_ROLES = ("checkpoint", "lora", "vae", "controlnet", "upscale_model")
+INPUT_ASSET_ROLES = ("source_image", "mask_image")
+OUTPUT_ASSET_ROLES = ("generated_image",)
 TXT2IMG_REQUIRED_NODES = [
     "CheckpointLoaderSimple",
     "CLIPTextEncode_positive",
@@ -271,6 +287,320 @@ def workflow_summary(workflow: dict[str, Any]) -> dict[str, Any]:
             if isinstance(node, dict) and node.get("class_type") == "SaveImage"
         ],
     }
+
+
+def _node_sort_key(node_id: str) -> tuple[int, int | str]:
+    try:
+        return (0, int(node_id))
+    except ValueError:
+        return (1, node_id)
+
+
+def _walk_string_values(value: Any) -> list[str]:
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, dict):
+        strings: list[str] = []
+        for item in value.values():
+            strings.extend(_walk_string_values(item))
+        return strings
+    if isinstance(value, list):
+        strings = []
+        for item in value:
+            strings.extend(_walk_string_values(item))
+        return strings
+    return []
+
+
+def _is_placeholder_reference(value: str) -> bool:
+    lowered = value.strip().lower()
+    return not lowered or "placeholder" in lowered or lowered.startswith("__")
+
+
+def _asset_policy(
+    *, role: str, node_ids: list[str], string_inputs: list[str], category: str
+) -> str:
+    if not node_ids:
+        if role == "vae":
+            return "not_declared_or_checkpoint_link"
+        return "not_declared"
+    if category == "output_assets":
+        return "basename_only_after_confirmed_run"
+    if string_inputs and all(_is_placeholder_reference(value) for value in string_inputs):
+        return "placeholder_only"
+    return "redacted_reference_requires_review"
+
+
+def _asset_entry(
+    *, role: str, category: str, node_ids: list[str], string_inputs: list[str]
+) -> dict[str, Any]:
+    return {
+        "role": role,
+        "count": len(node_ids),
+        "node_ids": sorted(node_ids, key=_node_sort_key),
+        "reference_policy": _asset_policy(
+            role=role, node_ids=node_ids, string_inputs=string_inputs, category=category
+        ),
+        "values_exposed": False,
+    }
+
+
+def workflow_asset_summary(workflow: dict[str, Any]) -> dict[str, Any]:
+    grouped: dict[str, dict[str, dict[str, Any]]] = {
+        "model_assets": {
+            role: {"node_ids": [], "string_inputs": []} for role in MODEL_ASSET_ROLES
+        },
+        "input_assets": {
+            role: {"node_ids": [], "string_inputs": []} for role in INPUT_ASSET_ROLES
+        },
+        "output_assets": {
+            role: {"node_ids": [], "string_inputs": []} for role in OUTPUT_ASSET_ROLES
+        },
+    }
+    for node_id, node in workflow.items():
+        if not isinstance(node, dict):
+            continue
+        role_info = ASSET_NODE_ROLES.get(str(node.get("class_type") or ""))
+        if role_info is None:
+            continue
+        category, role = role_info
+        bucket = grouped[category][role]
+        bucket["node_ids"].append(str(node_id))
+        bucket["string_inputs"].extend(_walk_string_values(node.get("inputs", {})))
+
+    model_assets = [
+        _asset_entry(
+            role=role,
+            category="model_assets",
+            node_ids=grouped["model_assets"][role]["node_ids"],
+            string_inputs=grouped["model_assets"][role]["string_inputs"],
+        )
+        for role in MODEL_ASSET_ROLES
+    ]
+    input_assets = [
+        _asset_entry(
+            role=role,
+            category="input_assets",
+            node_ids=grouped["input_assets"][role]["node_ids"],
+            string_inputs=grouped["input_assets"][role]["string_inputs"],
+        )
+        for role in INPUT_ASSET_ROLES
+    ]
+    output_assets = [
+        _asset_entry(
+            role=role,
+            category="output_assets",
+            node_ids=grouped["output_assets"][role]["node_ids"],
+            string_inputs=grouped["output_assets"][role]["string_inputs"],
+        )
+        for role in OUTPUT_ASSET_ROLES
+    ]
+    review_required = any(
+        item["reference_policy"] == "redacted_reference_requires_review"
+        for item in [*model_assets, *input_assets, *output_assets]
+    )
+    return sanitize(
+        {
+            "model_assets": model_assets,
+            "input_assets": input_assets,
+            "output_assets": output_assets,
+            "review_required": review_required,
+            "privacy_policy": {
+                "model_names_exposed": False,
+                "input_paths_exposed": False,
+                "output_filenames_exposed": False,
+                "generated_images_included": False,
+            },
+        }
+    )
+
+
+def _lifecycle_stage(name: str, state: str, note: str) -> dict[str, str]:
+    return {"name": name, "state": state, "note": note}
+
+
+def _validation_details(validation: dict[str, Any]) -> dict[str, Any]:
+    details = validation.get("details")
+    return details if isinstance(details, dict) else {}
+
+
+def workflow_lifecycle_summary(arguments: dict[str, Any]) -> dict[str, Any]:
+    source = "composed_placeholder"
+    template_id = str(arguments.get("template_id") or "").strip() or None
+    workflow = arguments.get("workflow")
+    task_type = _draft_task_type(arguments)
+    validation: dict[str, Any] | None = None
+
+    if isinstance(workflow, dict):
+        source = "provided_workflow"
+        workflow = copy.deepcopy(workflow)
+        validation = validate_workflow_payload(workflow, workflow_name="provided_lifecycle_workflow")
+    elif template_id:
+        from examples.comfy_bridge.workflow_template_registry import compose_from_template
+
+        source = "template"
+        nested_arguments = arguments.get("arguments")
+        template_arguments = nested_arguments if isinstance(nested_arguments, dict) else {}
+        template_result = compose_from_template(template_id, template_arguments)
+        workflow = template_result.get("workflow")
+        task_type = str(template_result.get("task_type") or task_type)
+        validation = (
+            template_result.get("validation_report")
+            if isinstance(template_result.get("validation_report"), dict)
+            else None
+        )
+        if not isinstance(workflow, dict):
+            return sanitize(
+                {
+                    "ok": False,
+                    "bridge": BRIDGE_ID,
+                    "action": "workflow_lifecycle_summary",
+                    "mode": "safe_read_only",
+                    "source": source,
+                    "template_id": template_id,
+                    "will_submit": False,
+                    "error": template_result.get("error") or "template_workflow_unavailable",
+                    "warnings": list(template_result.get("warnings") or []),
+                }
+            )
+    else:
+        composed = workflow_compose(arguments)
+        workflow = composed.get("workflow")
+        validation = (
+            composed.get("validation_report")
+            if isinstance(composed.get("validation_report"), dict)
+            else None
+        )
+        if not isinstance(workflow, dict):
+            return sanitize(
+                {
+                    "ok": False,
+                    "bridge": BRIDGE_ID,
+                    "action": "workflow_lifecycle_summary",
+                    "mode": "safe_read_only",
+                    "source": source,
+                    "will_submit": False,
+                    "error": "workflow_unavailable",
+                }
+            )
+
+    if validation is None:
+        validation = validate_workflow_payload(workflow, workflow_name="lifecycle_workflow")
+
+    valid = bool(validation.get("ok"))
+    confirm_run = bool(arguments.get("confirm_run", False))
+    workflow_digest = workflow_hash(workflow)
+    node_summary = workflow_summary(workflow)
+    asset_summary = workflow_asset_summary(workflow)
+    validation_details = _validation_details(validation)
+
+    submit_status = "ready_for_separate_confirmed_submit" if confirm_run and valid else (
+        "blocked_until_workflow_valid"
+        if not valid
+        else "blocked_until_explicit_confirmation"
+    )
+    job_status = JobStatus(
+        job_id=f"comfy_lifecycle_{workflow_digest[:12]}",
+        bridge=BRIDGE_ID,
+        action="workflow_lifecycle_summary",
+        status="queued" if confirm_run and valid else "needs_user",
+        progress=5 if confirm_run and valid else 0,
+        message=(
+            "Workflow is valid and ready for a separate confirmed submit gate."
+            if confirm_run and valid
+            else "Workflow lifecycle summary is dry-run only; explicit confirmation is required before submit."
+        ),
+        evidence_manifest={
+            "manifest_path": "examples/output/evidence/manifest.latest.json",
+            "dry_run": True,
+            "write_performed": False,
+            "output_policy": "record counts and basenames only after a separate confirmed local run",
+        },
+        next_steps=[
+            "Review validation and asset summary.",
+            "Keep placeholders until a separate local run is explicitly confirmed.",
+            "Use comfyui.agent_run only after review; this lifecycle summary never submits.",
+        ],
+    ).to_dict()
+
+    warnings = list(validation.get("warnings") or [])
+    if asset_summary["review_required"]:
+        warnings.append("One or more asset references were redacted and require review.")
+    if not confirm_run:
+        warnings.append("Queue submission is blocked until confirm_run=true in a separate run flow.")
+    if not valid:
+        warnings.append("Workflow validation failed; queue submission remains blocked.")
+
+    lifecycle = [
+        _lifecycle_stage(
+            "workflow_received",
+            "completed",
+            f"Source is {source}; raw workflow JSON is intentionally omitted from this summary.",
+        ),
+        _lifecycle_stage(
+            "workflow_validated",
+            "completed" if valid else "failed",
+            "Validation result is summarized without exposing prompts, model names, or paths.",
+        ),
+        _lifecycle_stage(
+            "assets_reviewed",
+            "needs_user" if asset_summary["review_required"] else "completed",
+            "Model, input, and output assets are counted by role; values stay hidden.",
+        ),
+        _lifecycle_stage(
+            "queue_submit_gate",
+            "queued" if confirm_run and valid else "needs_user",
+            "This tool does not call /prompt; real submission must happen through a confirmed local run.",
+        ),
+        _lifecycle_stage(
+            "history_poll",
+            "queued" if confirm_run and valid else "needs_user",
+            "History and outputs are not read by this summary.",
+        ),
+        _lifecycle_stage(
+            "evidence_manifest",
+            "queued",
+            "Future confirmed runs should record only job status, counts, hashes, and output basenames.",
+        ),
+    ]
+
+    return sanitize(
+        {
+            "ok": valid,
+            "bridge": BRIDGE_ID,
+            "action": "workflow_lifecycle_summary",
+            "mode": "safe_read_only",
+            "source": source,
+            "template_id": template_id,
+            "task_type": task_type,
+            "workflow_hash": workflow_digest,
+            "node_summary": node_summary,
+            "asset_summary": asset_summary,
+            "validation_summary": {
+                "ok": valid,
+                "warning_count": len(validation.get("warnings") or []),
+                "error_count": len(validation_details.get("errors") or []),
+            },
+            "job_status": job_status,
+            "lifecycle": lifecycle,
+            "submit_gate": {
+                "required": True,
+                "confirmed": confirm_run,
+                "status": submit_status,
+                "tool_can_submit": False,
+                "separate_submit_tool": "comfyui.agent_run",
+            },
+            "will_submit": False,
+            "will_read_history": False,
+            "will_read_outputs": False,
+            "warnings": warnings,
+            "safety_notes": [
+                "No model, LoRA, VAE, ControlNet, input image, or generated image values are returned.",
+                "No filesystem scan, model discovery, output inspection, network request, or queue submission is performed.",
+                "A real ComfyUI queue run remains behind explicit user confirmation and local evidence review.",
+            ],
+        }
+    )
 
 
 def workflow_build_plan(arguments: dict[str, Any]) -> dict[str, Any]:

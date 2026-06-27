@@ -11,6 +11,7 @@
 | txt2img 示例 | `examples/comfy_bridge/run_txt2img.py` | 提交基础文生图 workflow，成功和失败都输出标准 JSON |
 | workflow 示例 | `examples/comfy_bridge/workflows/txt2img_basic_api.json` | API 格式 workflow |
 | workflow template 快捷入口 | `examples/comfy_bridge/workflow_templates.py` | 只读列出、读取和组合公开模板，不提交队列 |
+| workflow lifecycle 摘要 | `examples/comfy_bridge/workflow_lifecycle.py` | 生成脱敏 job / asset 生命周期摘要，不暴露模型名、素材路径或输出文件 |
 
 `run_txt2img.py` 已做离线 workflow 节点存在性检查、节点 `class_type` 检查、checkpoint 检查和 CLI 参数化。脚本不会默认选择第一个 checkpoint；必须传 `--ckpt`，或显式加 `--allow-first-checkpoint`。
 
@@ -38,6 +39,7 @@ npm.cmd run status:probe:json
 npm.cmd run comfy:templates:list
 npm.cmd run comfy:templates:get
 npm.cmd run comfy:templates:from
+npm.cmd run comfy:lifecycle:template
 ```
 
 直接运行：
@@ -49,6 +51,7 @@ python examples\bridge_status.py --json
 python examples\comfy_bridge\workflow_templates.py list --json
 python examples\comfy_bridge\workflow_templates.py get --template-id txt2img_basic_v1 --json
 python examples\comfy_bridge\workflow_templates.py from-template --template-id txt2img_basic_v1 --json
+python examples\comfy_bridge\workflow_lifecycle.py --template-id txt2img_basic_v1 --json
 ```
 
 提交一个基础文生图任务：
@@ -98,11 +101,12 @@ python examples\comfy_bridge\run_txt2img.py `
 - 不能提交模型、checkpoint、LoRA、VAE、ControlNet 或生成图片。
 - 不能把本机 ComfyUI 根目录、输出目录或模型路径写进仓库。
 - 当前模板入口只生成 placeholder workflow，不会提交 ComfyUI 队列。
+- 当前 lifecycle 摘要只返回节点统计、资产角色、workflow hash、确认门和 evidence 预览；不返回原始 workflow、prompt 文本、模型名或输出文件名。
 - 当前 workflow 校验覆盖 bundled public workflow 和模板组合结果，不是通用 ComfyUI 图校验器。
 
 ## 下一步
 
 1. 扩展 workflow 校验，覆盖更多输入引用、节点类型和常见错误。
-2. 把 ComfyUI 队列错误和历史记录错误转成统一 JSON。
-3. 增加输出结果索引 JSON，但只保存本机路径，不提交图片。
+2. 增加本机 ComfyUI probe gate，缺服务时 soft-exit。
+3. 增加 queue payload dry-run，默认不请求 `/prompt`。
 4. 保持真实 submit 走显式确认，本地 manifest 继续脱敏。

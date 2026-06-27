@@ -40,6 +40,7 @@
     "comfy:templates:list": "python examples/comfy_bridge/workflow_templates.py list --json",
     "comfy:templates:get": "python examples/comfy_bridge/workflow_templates.py get --template-id txt2img_basic_v1 --json",
     "comfy:templates:from": "python examples/comfy_bridge/workflow_templates.py from-template --template-id txt2img_basic_v1 --json",
+    "comfy:lifecycle:template": "python examples/comfy_bridge/workflow_lifecycle.py --template-id txt2img_basic_v1 --json",
     "comfy:txt2img": "python examples/comfy_bridge/run_txt2img.py",
     "photoshop:probe": "powershell -ExecutionPolicy Bypass -File examples/photoshop_bridge/probe.ps1",
     "photoshop:node-proxy": "node node_proxy/photoshop-bridge/server.js",

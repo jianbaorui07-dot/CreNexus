@@ -12,8 +12,9 @@ flowchart TD
     E -->|invalid| F["comfyui.workflow_repair"]
     F --> G["workflow_validate again"]
     G --> H
-    H -->|confirm_run missing| I["Refuse real run, return dry-run JSON"]
-    H -->|confirm_run=true| J["Submit /prompt to local ComfyUI"]
+    H --> N["comfy.workflow_lifecycle_summary"]
+    N -->|confirm_run missing| I["Refuse real run, return dry-run JSON"]
+    N -->|confirm_run=true| J["Submit /prompt to local ComfyUI"]
     J --> K["Return prompt_id"]
     K --> L["Poll /history/{prompt_id}"]
     L --> M["Return job_status and output_manifest"]
@@ -26,6 +27,7 @@ flowchart TD
 | `comfyui.workflow_build_plan` | dry-run | Converts a goal into a workflow construction plan. | None |
 | `comfyui.workflow_build` | dry-run | Builds API-format workflow JSON and returns a workflow hash. | None |
 | `comfyui.workflow_repair` | dry-run | Repairs missing nodes, bad numeric parameters, invalid dimensions, and core links. | None |
+| `comfy.workflow_lifecycle_summary` | safe read-only | Returns redacted job / asset lifecycle, submit gate, and evidence preview for a reviewed workflow. | None |
 | `comfyui.agent_run` | dry-run by default; confirmed run with `confirm_run=true` | Runs build, validate, repair, submit, status, manifest. | Contacts local ComfyUI and may cause ComfyUI to write images to its own output folder |
 
 ## Build Plan Contract
@@ -88,6 +90,8 @@ Output highlights:
 - Broken links between checkpoint, CLIP encoders, sampler, latent image, VAE decode, and save image.
 
 ## Run Contract
+
+`comfy.workflow_lifecycle_summary` must not return raw workflow JSON, prompt text, model names, input paths, or generated image filenames. It may return node counts, workflow hash, asset roles, confirmation state, and an evidence manifest preview.
 
 `comfyui.agent_run` must refuse real submission unless:
 
