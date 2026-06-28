@@ -1,0 +1,88 @@
+{
+  "generated_at": "2026-06-28T21:11:41+08:00",
+  "workspace_root": "C:\\Users\\84391\\OneDrive\\閺傚洦銆俓\New project\\cad_exact_trace",
+  "jobs_root": "C:\\cad_jobs",
+  "repo_root": "C:\\codex-cad-bridge-git",
+  "latest_job": "C:\\cad_jobs\\final-production-smoke",
+  "workspace_files": {
+    "CODEX_CAD_WORKFLOW.md": {
+      "exists": false,
+      "path": "C:\\Users\\84391\\OneDrive\\閺傚洦銆俓\New project\\cad_exact_trace\\CODEX_CAD_WORKFLOW.md"
+    },
+    "create_trace_job_from_images.py": {
+      "exists": false,
+      "path": "C:\\Users\\84391\\OneDrive\\閺傚洦銆俓\New project\\cad_exact_trace\\create_trace_job_from_images.py"
+    },
+    "run_image_to_cad_job.ps1": {
+      "exists": false,
+      "path": "C:\\Users\\84391\\OneDrive\\閺傚洦銆俓\New project\\cad_exact_trace\\run_image_to_cad_job.ps1"
+    },
+    "autocad_finalize_delivery.py": {
+      "exists": false,
+      "path": "C:\\Users\\84391\\OneDrive\\閺傚洦銆俓\New project\\cad_exact_trace\\autocad_finalize_delivery.py"
+    },
+    "final_production_export.py": {
+      "exists": false,
+      "path": "C:\\Users\\84391\\OneDrive\\閺傚洦銆俓\New project\\cad_exact_trace\\final_production_export.py"
+    },
+    "final_polish_export.py": {
+      "exists": false,
+      "path": "C:\\Users\\84391\\OneDrive\\閺傚洦銆俓\New project\\cad_exact_trace\\final_polish_export.py"
+    }
+  },
+  "latest_job_files": {
+    "job_manifest.json": {
+      "exists": false,
+      "path": "C:\\cad_jobs\\final-production-smoke\\job_manifest.json"
+    },
+    "README.md": {
+      "exists": true,
+      "path": "C:\\cad_jobs\\final-production-smoke\\README.md",
+      "size_bytes": 1740,
+      "modified_at": "2026-06-28T20:59:55+08:00",
+      "sha256": "e17d92d579dba24625eb620b91a75eae86da0a09ac5ec2fa442ccda8cdba1f0a"
+    },
+    "final_production\\final_production_draft.json": {
+      "exists": true,
+      "path": "C:\\cad_jobs\\final-production-smoke\\final_production\\final_production_draft.json",
+      "size_bytes": 365,
+      "modified_at": "2026-06-28T20:59:55+08:00",
+      "sha256": "82dc8b392cc7d64ba3f9b9243b7a6a3ec51fee1c289547c401a91cec4f0524ae"
+    },
+    "final_production\\final_production_draft.dxf": {
+      "exists": true,
+      "path": "C:\\cad_jobs\\final-production-smoke\\final_production\\final_production_draft.dxf",
+      "size_bytes": 24636,
+      "modified_at": "2026-06-28T20:59:55+08:00",
+      "sha256": "1ccb159ec551517b6f4197f8599448af5b5f5b12bddf1ab46f0bba06aef9690e"
+    },
+    "final_production\\final_production_autocad_polished.dxf": {
+      "exists": true,
+      "path": "C:\\cad_jobs\\final-production-smoke\\final_production\\final_production_autocad_polished.dxf",
+      "size_bytes": 83429,
+      "modified_at": "2026-06-28T21:02:39+08:00",
+      "sha256": "54c5bd8f7c48fe566b87cf9ff70dea6a5e9ebfc8dba54f24fc3c3020060b0dc4"
+    },
+    "delivery_draft\\delivery_draft.dxf": {
+      "exists": true,
+      "path": "C:\\cad_jobs\\final-production-smoke\\delivery_draft\\delivery_draft.dxf",
+      "size_bytes": 24636,
+      "modified_at": "2026-06-28T20:59:55+08:00",
+      "sha256": "7f748a2a2f6ca454f26e6a70e214f26a750093d0fc8c2d93ac9edda4d3960fbe"
+    },
+    "final_polish\\final_polish_draft.dxf": {
+      "exists": true,
+      "path": "C:\\cad_jobs\\final-production-smoke\\final_polish\\final_polish_draft.dxf",
+      "size_bytes": 24636,
+      "modified_at": "2026-06-28T20:59:55+08:00",
+      "sha256": "49c3a71ef8030674ebefa6a65da44c1a7967011864a450dcf4d58345e03015df"
+    },
+    "final_review\\combined_final_review.dxf": {
+      "exists": true,
+      "path": "C:\\cad_jobs\\final-production-smoke\\final_review\\combined_final_review.dxf",
+      "size_bytes": 29043,
+      "modified_at": "2026-06-28T20:59:55+08:00",
+      "sha256": "ea2fffc293868ca1b91b146d2051a7ee0268d0ac48b59461ce945b2775c2ea97"
+    }
+  }
+}
