@@ -1,23 +1,23 @@
 {
-  "generated_at": "2026-06-28T21:21:19+08:00",
+  "generated_at": "2026-06-29T23:21:48+08:00",
   "workspace_root": "C:\\Users\\84391\\OneDrive\\鏂囨。\\New project\\cad_exact_trace",
   "jobs_root": "C:\\cad_jobs",
   "repo_root": "C:\\codex-cad-bridge-git",
-  "latest_job": "C:\\cad_jobs\\fidelity-smoke-2",
+  "latest_job": "C:\\cad_jobs\\fidelity-smoke-3",
   "workspace_files": {
     "CODEX_CAD_WORKFLOW.md": {
       "exists": true,
       "path": "C:\\Users\\84391\\OneDrive\\鏂囨。\\New project\\cad_exact_trace\\CODEX_CAD_WORKFLOW.md",
-      "size_bytes": 13381,
-      "modified_at": "2026-06-28T21:21:10+08:00",
-      "sha256": "88b3383be4d677b17ec55f89888b62ff42c362aa8515c599aeb561820c291e22"
+      "size_bytes": 13568,
+      "modified_at": "2026-06-29T23:21:41+08:00",
+      "sha256": "436cdc3d9308dc9250811696685a332c1077e08ca7e05ce1e8f41e8462cbae0b"
     },
     "create_trace_job_from_images.py": {
       "exists": true,
       "path": "C:\\Users\\84391\\OneDrive\\鏂囨。\\New project\\cad_exact_trace\\create_trace_job_from_images.py",
-      "size_bytes": 13640,
-      "modified_at": "2026-06-28T21:19:06+08:00",
-      "sha256": "31d90cb54d91d58aefcd2218dbefc0a83e13a0be24b603af3917ac42222b1e91"
+      "size_bytes": 13684,
+      "modified_at": "2026-06-29T23:19:25+08:00",
+      "sha256": "37dedd89100887c81ef1047b66772fb436aa9fd6d304ddc9572b326575c3238f"
     },
     "run_image_to_cad_job.ps1": {
       "exists": true,
@@ -51,70 +51,70 @@
   "latest_job_files": {
     "reference_manifest.json": {
       "exists": true,
-      "path": "C:\\cad_jobs\\fidelity-smoke-2\\reference_manifest.json",
+      "path": "C:\\cad_jobs\\fidelity-smoke-3\\reference_manifest.json",
       "size_bytes": 4748,
-      "modified_at": "2026-06-28T21:20:24+08:00",
-      "sha256": "99cb2fb008f3bc0172e68be49c5284ddc4e5db866a3513027601a807f5774fc3"
+      "modified_at": "2026-06-29T23:19:56+08:00",
+      "sha256": "8e07bd9f87d411b1b198c573c33b743d42e54033058391d19f9df6778927a23f"
     },
     "README.md": {
       "exists": true,
-      "path": "C:\\cad_jobs\\fidelity-smoke-2\\README.md",
+      "path": "C:\\cad_jobs\\fidelity-smoke-3\\README.md",
       "size_bytes": 1849,
-      "modified_at": "2026-06-28T21:20:24+08:00",
-      "sha256": "2d68ee3f14c9e5c758803cf69b533061464d9cfeb37bf98e24c77682f91af571"
+      "modified_at": "2026-06-29T23:19:56+08:00",
+      "sha256": "eb19b07fa0593465e0fcb36f67de719f6eed4f722c64a42e6cda7cc455862bc9"
     },
     "final_production\\final_production_draft.json": {
       "exists": true,
-      "path": "C:\\cad_jobs\\fidelity-smoke-2\\final_production\\final_production_draft.json",
+      "path": "C:\\cad_jobs\\fidelity-smoke-3\\final_production\\final_production_draft.json",
       "size_bytes": 347,
-      "modified_at": "2026-06-28T21:20:23+08:00",
-      "sha256": "e3df7dc1b94cc975759ce814f5b2e314dedbfc533a8b126aab77f3e95cda658b"
+      "modified_at": "2026-06-29T23:19:55+08:00",
+      "sha256": "4f998606c041bb9492c3c393430e2d561e093df7c1acc97bcf88f80781ab5877"
     },
     "final_production\\final_production_draft.dxf": {
       "exists": true,
-      "path": "C:\\cad_jobs\\fidelity-smoke-2\\final_production\\final_production_draft.dxf",
-      "size_bytes": 24624,
-      "modified_at": "2026-06-28T21:20:23+08:00",
-      "sha256": "d0043eec4c4a5d94fccc6179e4e6dc446154326ffc22e3c0e3b01bfdef8c891d"
+      "path": "C:\\cad_jobs\\fidelity-smoke-3\\final_production\\final_production_draft.dxf",
+      "size_bytes": 24622,
+      "modified_at": "2026-06-29T23:19:55+08:00",
+      "sha256": "771ff4f7891fcbf2fbdc90c26b00acf2bfb5856d56d07a84caebf104e41368dd"
     },
     "final_production\\final_production_autocad_polished.dxf": {
       "exists": false,
-      "path": "C:\\cad_jobs\\fidelity-smoke-2\\final_production\\final_production_autocad_polished.dxf"
+      "path": "C:\\cad_jobs\\fidelity-smoke-3\\final_production\\final_production_autocad_polished.dxf"
     },
     "comparison\\trace_fidelity_report.json": {
       "exists": true,
-      "path": "C:\\cad_jobs\\fidelity-smoke-2\\comparison\\trace_fidelity_report.json",
-      "size_bytes": 1222,
-      "modified_at": "2026-06-28T21:20:36+08:00",
-      "sha256": "135541958dfa346fd3f008296afd4f6ac53922003c561ac2f7bcac0a82eaf5bb"
+      "path": "C:\\cad_jobs\\fidelity-smoke-3\\comparison\\trace_fidelity_report.json",
+      "size_bytes": 3021,
+      "modified_at": "2026-06-29T23:20:21+08:00",
+      "sha256": "36f0b60626d0fa4ef8be0d82804a2b5a1d6c04ed71c3e844a5ebd927c214a62f"
     },
     "comparison\\trace_fidelity_report.md": {
       "exists": true,
-      "path": "C:\\cad_jobs\\fidelity-smoke-2\\comparison\\trace_fidelity_report.md",
-      "size_bytes": 398,
-      "modified_at": "2026-06-28T21:20:36+08:00",
-      "sha256": "37fa6b5d16605608ec4d816495f169e53296dba174e2d0ae051361b4d4d2288a"
+      "path": "C:\\cad_jobs\\fidelity-smoke-3\\comparison\\trace_fidelity_report.md",
+      "size_bytes": 1144,
+      "modified_at": "2026-06-29T23:20:21+08:00",
+      "sha256": "5c0e3e02f93c4943afe318ed055bae62e3ef6c252c3a10ce5777b2f111566db3"
     },
     "delivery_draft\\delivery_draft.dxf": {
       "exists": true,
-      "path": "C:\\cad_jobs\\fidelity-smoke-2\\delivery_draft\\delivery_draft.dxf",
-      "size_bytes": 24624,
-      "modified_at": "2026-06-28T21:20:23+08:00",
-      "sha256": "2568056ed8f88cd10d2f1a914687fbc0c1b9eceb7f2067de3b21fa9a0b553f4c"
+      "path": "C:\\cad_jobs\\fidelity-smoke-3\\delivery_draft\\delivery_draft.dxf",
+      "size_bytes": 24622,
+      "modified_at": "2026-06-29T23:19:55+08:00",
+      "sha256": "f9eb7109e3fcd51392c53b6a74bd16a7c0049cf78b65804478b88c6cef0b8100"
     },
     "final_polish\\final_polish_draft.dxf": {
       "exists": true,
-      "path": "C:\\cad_jobs\\fidelity-smoke-2\\final_polish\\final_polish_draft.dxf",
-      "size_bytes": 24624,
-      "modified_at": "2026-06-28T21:20:23+08:00",
-      "sha256": "76e9a51d4a94b2ea4264120b4d1bb4c356d611139535265d16f1686914ab0bca"
+      "path": "C:\\cad_jobs\\fidelity-smoke-3\\final_polish\\final_polish_draft.dxf",
+      "size_bytes": 24622,
+      "modified_at": "2026-06-29T23:19:55+08:00",
+      "sha256": "b89afe82889a021d8ba92ab1cef7a23b7675c20fccc13e33e35cde30b2cb3706"
     },
     "final_review\\combined_final_review.dxf": {
       "exists": true,
-      "path": "C:\\cad_jobs\\fidelity-smoke-2\\final_review\\combined_final_review.dxf",
-      "size_bytes": 29031,
-      "modified_at": "2026-06-28T21:20:23+08:00",
-      "sha256": "fa26713593a0575a7309c9506e8ceb36dfe4a78b75be3dcd3b1b40b680ef8a1c"
+      "path": "C:\\cad_jobs\\fidelity-smoke-3\\final_review\\combined_final_review.dxf",
+      "size_bytes": 29029,
+      "modified_at": "2026-06-29T23:19:55+08:00",
+      "sha256": "d42b79e91ad40bddbea940ce5776a53d3813cfb2be5f864de093b98f5f0f9bd5"
     }
   }
 }
