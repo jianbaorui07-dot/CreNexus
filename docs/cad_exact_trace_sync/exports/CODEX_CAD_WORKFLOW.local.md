@@ -182,6 +182,19 @@ This is the best current machine-generated file for the last round of human CAD 
 - the current finalize pass proves that Codex can attach to the active AutoCAD session, open the draft, run a simple viewport command, and save a polished DXF back out
 - this is the current bridge point between generated DXF structure and direct in-AutoCAD finishing logic
 
+## AutoCAD redraw pass
+
+- `autocad_redraw_from_dxf.py` replays supported DXF entities into AutoCAD through COM and saves a new CAD-native redraw result
+- the redraw currently supports `LINE`, `LWPOLYLINE`, `TEXT`, `MTEXT`, `CIRCLE`, and `ARC`
+- this is stronger than the earlier finalize proof because AutoCAD is not only opening the draft, it is actively re-creating geometry and text inside the running CAD session
+- `run_image_to_cad_job.ps1 -RedrawFinalProduction` now lets a fresh image-to-CAD job trigger that redraw automatically after the machine draft is generated
+
+## AutoCAD action execution
+
+- `autocad_execute_actions.py` accepts a JSON action plan and executes direct CAD operations through COM
+- the current action runner supports layer setup, active-layer switching, line drawing, lightweight polyline drawing, text placement, circle drawing, arc drawing, zoom extents, and save-as
+- this is the current lowest-friction path for Codex to drive AutoCAD with structured commands instead of only exchanging DXF files
+
 ## Fidelity comparison
 
 - `comparison\trace_fidelity_report.json` records how much of the final production draft overlaps the cleaned source image

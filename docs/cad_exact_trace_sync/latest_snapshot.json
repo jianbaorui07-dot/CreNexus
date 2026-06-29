@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-29T23:39:52+08:00",
+  "generated_at": "2026-06-29T23:46:25+08:00",
   "workspace_root": "C:\\Users\\84391\\OneDrive\\文档\\New project\\cad_exact_trace",
   "jobs_root": "C:\\cad_jobs",
   "repo_root": "C:\\codex-cad-bridge-sync",
@@ -8,23 +8,23 @@
     "CODEX_CAD_WORKFLOW.md": {
       "exists": true,
       "path": "C:\\Users\\84391\\OneDrive\\文档\\New project\\cad_exact_trace\\CODEX_CAD_WORKFLOW.md",
-      "size_bytes": 13994,
-      "modified_at": "2026-06-29T23:29:33+08:00",
-      "sha256": "d0e4a18c09126b72b5b3873da2896d3db7e3dea99a7fa450dbf92e866949f70d"
+      "size_bytes": 15025,
+      "modified_at": "2026-06-29T23:46:20+08:00",
+      "sha256": "029679a8ce7256b6fae73dc2d4ebd0ced8f76d5818ce484136618d5821327ccc"
     },
     "create_trace_job_from_images.py": {
       "exists": true,
       "path": "C:\\Users\\84391\\OneDrive\\文档\\New project\\cad_exact_trace\\create_trace_job_from_images.py",
-      "size_bytes": 14534,
-      "modified_at": "2026-06-29T23:37:13+08:00",
-      "sha256": "bd024db5aebc668dd649e6f7a4a912b77dad98b9d1afdeb99afdd58d501b5a6d"
+      "size_bytes": 14614,
+      "modified_at": "2026-06-29T23:41:32+08:00",
+      "sha256": "f11ac9ac732e1c65a5eae3df1829da5a8fca9c1db820bee050d80db5285bcc8a"
     },
     "run_image_to_cad_job.ps1": {
       "exists": true,
       "path": "C:\\Users\\84391\\OneDrive\\文档\\New project\\cad_exact_trace\\run_image_to_cad_job.ps1",
-      "size_bytes": 1647,
-      "modified_at": "2026-06-29T23:37:05+08:00",
-      "sha256": "19617602341d9c4064a24a8ba4ad65ac2b7a923f4a869a98d448b64923c75638"
+      "size_bytes": 2902,
+      "modified_at": "2026-06-29T23:44:46+08:00",
+      "sha256": "bfab89a5a824e7d6b7a5fa040e1287efb7f23c833f302b939b7a15f2175fc908"
     },
     "autocad_finalize_delivery.py": {
       "exists": true,
