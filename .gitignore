@@ -19,6 +19,7 @@ venv/
 output/
 outputs/
 reports/
+canvas/
 !examples/cad/output/
 !examples/cad/output/.gitkeep
 **/outputs/
@@ -62,6 +63,13 @@ examples/output/**/*.jsx
 src/
 !examples/starbridge_frontend/src/
 !examples/starbridge_frontend/src/**
+!examples/starbridge_canvas/
+!examples/starbridge_canvas/mcp/
+!examples/starbridge_canvas/mcp/**
+!examples/starbridge_canvas/public/
+!examples/starbridge_canvas/public/**
+!examples/starbridge_canvas/src/
+!examples/starbridge_canvas/src/**
 virtual-pet/
 overtime-analysis-deck/
 /index.html

@@ -17,7 +17,7 @@ Make the local Codex + AutoCAD chain reusable, so a new reference image can be t
 Run:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File "C:\Users\84391\OneDrive\鏂囨。\New project\cad_exact_trace\verify_codex_cad_integration.ps1"
+powershell -ExecutionPolicy Bypass -File "C:\Users\<USER_HOME>\OneDrive\鏂囨。\New project\cad_exact_trace\verify_codex_cad_integration.ps1"
 ```
 
 Outputs:
@@ -32,8 +32,8 @@ Outputs:
 Direct Python invocation:
 
 ```powershell
-& 'C:\Users\84391\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' `
-  'C:\Users\84391\OneDrive\鏂囨。\New project\cad_exact_trace\create_trace_job_from_images.py' `
+& 'C:\Users\<USER_HOME>\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' `
+  'C:\Users\<USER_HOME>\OneDrive\鏂囨。\New project\cad_exact_trace\create_trace_job_from_images.py' `
   --job-name sample-job `
   'C:\path\to\image.png'
 ```
@@ -41,7 +41,7 @@ Direct Python invocation:
 One-step launcher:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File "C:\Users\84391\OneDrive\鏂囨。\New project\cad_exact_trace\run_image_to_cad_job.ps1" `
+powershell -ExecutionPolicy Bypass -File "C:\Users\<USER_HOME>\OneDrive\鏂囨。\New project\cad_exact_trace\run_image_to_cad_job.ps1" `
   -JobName sample-job `
   "C:\path\to\image.png"
 ```
@@ -186,8 +186,8 @@ This is the best current machine-generated file for the last round of human CAD 
 Run:
 
 ```powershell
-& 'C:\Users\84391\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' `
-  'C:\Users\84391\OneDrive\鏂囨。\New project\cad_exact_trace\direct_autocad_smoke.py'
+& 'C:\Users\<USER_HOME>\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' `
+  'C:\Users\<USER_HOME>\OneDrive\鏂囨。\New project\cad_exact_trace\direct_autocad_smoke.py'
 ```
 
 Expected result:

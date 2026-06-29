@@ -34,6 +34,7 @@ Use a narrower skill when the task focuses on one software bridge:
 | Illustrator, AI vector files, `.ai`, artboards, Image Trace, SVG/PDF/PNG export | `.codex/skills/starbridge-illustrator-mcp/SKILL.md` |
 | CAD, AutoCAD, DXF, DWG, CAD JSON plan, engineering drawings | `.codex/skills/starbridge-cad-mcp/SKILL.md` |
 | Blender, `.blend`, scene plan, 3D objects, render, viewport | `.codex/skills/starbridge-blender-mcp/SKILL.md` |
+| Canvas, tldraw, realtime visual board, selected shapes, inserting generated images | `.codex/skills/starbridge-canvas-mcp/SKILL.md` |
 
 ## Quick Commands
 

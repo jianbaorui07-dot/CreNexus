@@ -98,9 +98,7 @@ def main() -> int:
         "jobs_root": str(jobs_root),
         "repo_root": str(repo_root),
         "latest_job": str(latest_job) if latest_job else None,
-        "workspace_files": {
-            path.name: describe_path(path) for path in tracked_workspace_files
-        },
+        "workspace_files": {path.name: describe_path(path) for path in tracked_workspace_files},
         "latest_job_files": {
             str(path.relative_to(latest_job)): describe_path(path) for path in latest_job_files
         }
@@ -108,13 +106,29 @@ def main() -> int:
         else {},
     }
 
-    copy_if_exists(workspace_root / "CODEX_CAD_WORKFLOW.md", exports_root / "CODEX_CAD_WORKFLOW.local.md")
-    copy_if_exists(workspace_root / "create_trace_job_from_images.py", exports_root / "create_trace_job_from_images.py.txt")
+    copy_if_exists(
+        workspace_root / "CODEX_CAD_WORKFLOW.md", exports_root / "CODEX_CAD_WORKFLOW.local.md"
+    )
+    copy_if_exists(
+        workspace_root / "create_trace_job_from_images.py",
+        exports_root / "create_trace_job_from_images.py.txt",
+    )
     if latest_job is not None:
-        copy_if_exists(latest_job / "reference_manifest.json", exports_root / "latest_job_manifest.json")
-        copy_if_exists(latest_job / "final_production" / "final_production_draft.json", exports_root / "final_production_draft.json")
-        copy_if_exists(latest_job / "comparison" / "trace_fidelity_report.json", exports_root / "trace_fidelity_report.json")
-        copy_if_exists(latest_job / "comparison" / "trace_fidelity_report.md", exports_root / "trace_fidelity_report.md")
+        copy_if_exists(
+            latest_job / "reference_manifest.json", exports_root / "latest_job_manifest.json"
+        )
+        copy_if_exists(
+            latest_job / "final_production" / "final_production_draft.json",
+            exports_root / "final_production_draft.json",
+        )
+        copy_if_exists(
+            latest_job / "comparison" / "trace_fidelity_report.json",
+            exports_root / "trace_fidelity_report.json",
+        )
+        copy_if_exists(
+            latest_job / "comparison" / "trace_fidelity_report.md",
+            exports_root / "trace_fidelity_report.md",
+        )
         copy_if_exists(latest_job / "README.md", exports_root / "latest_job_README.md")
 
     lines = [

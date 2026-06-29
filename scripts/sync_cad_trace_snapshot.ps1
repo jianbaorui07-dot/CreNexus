@@ -2,7 +2,7 @@ param(
     [string]$RepoRoot = "C:\codex-cad-bridge-git",
     [string]$WorkspaceRoot = "C:\cad_exact_trace_workspace",
     [string]$JobsRoot = "C:\cad_jobs",
-    [string]$PythonExe = "C:\Users\84391\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
+    [string]$PythonExe = "python"
 )
 
 $ErrorActionPreference = "Stop"
