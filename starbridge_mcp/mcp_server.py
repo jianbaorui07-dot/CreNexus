@@ -815,6 +815,21 @@ TOOL_DEFINITIONS: list[JsonObject] = [
 TOOL_DEFINITIONS.extend(PHOTOSHOP_V1_TOOL_DEFINITIONS)
 
 
+def _dedupe_tool_definitions(tools: list[JsonObject]) -> list[JsonObject]:
+    unique: list[JsonObject] = []
+    seen: set[str] = set()
+    for tool in tools:
+        name = str(tool["name"])
+        if name in seen:
+            continue
+        seen.add(name)
+        unique.append(tool)
+    return unique
+
+
+TOOL_DEFINITIONS = _dedupe_tool_definitions(TOOL_DEFINITIONS)
+
+
 def _normalize_risk_level(value: str | None, *, read_only: bool) -> str:
     if value in {"safe_read_only", "guarded_local_write", "guarded_local_process"}:
         return value

@@ -6,6 +6,11 @@ from starbridge_mcp.mcp_server import TOOL_DEFINITIONS
 
 
 class McpToolSchemasTest(unittest.TestCase):
+    def test_tool_names_are_unique(self) -> None:
+        names = [tool["name"] for tool in TOOL_DEFINITIONS]
+        duplicates = sorted({name for name in names if names.count(name) > 1})
+        self.assertEqual([], duplicates)
+
     def test_all_tools_have_required_mcp_fields_and_risk_metadata(self) -> None:
         for tool in TOOL_DEFINITIONS:
             with self.subTest(tool=tool["name"]):
