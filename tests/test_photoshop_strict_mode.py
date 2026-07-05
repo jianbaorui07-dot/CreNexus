@@ -100,8 +100,7 @@ class StrictModeTests(unittest.TestCase):
         self.assertEqual(0, len(result["details"]["preview_files"]))
         self.assertEqual(0, len(result["details"]["output_artifacts"]))
 
-    def test_non_strict_real_run_still_writes_placeholder(self) -> None:
-        # Sanity: without strict=true, the old behavior is preserved.
+    def test_non_strict_real_run_refuses_placeholder_by_default(self) -> None:
         with mock.patch.object(bridge_module, "_node_proxy_probe", _disconnected_proxy_probe):
             result = _call(
                 "ps.preview.export",
@@ -113,9 +112,32 @@ class StrictModeTests(unittest.TestCase):
                     "output_dir": "sandbox",
                 },
             )
+        self.assertFalse(result["ok"], msg=result)
+        self.assertEqual("mock", result["details"]["bridge_kind"])
+        self.assertEqual(0, len(result["details"]["preview_files"]))
+        self.assertEqual(0, len(result["details"]["output_artifacts"]))
+        self.assertFalse(result["details"]["real_output_verified"])
+
+    def test_non_strict_real_run_allows_marked_placeholder_when_explicit(self) -> None:
+        with mock.patch.object(bridge_module, "_node_proxy_probe", _disconnected_proxy_probe):
+            result = _call(
+                "ps.preview.export",
+                {
+                    "dry_run": False,
+                    "writes_files": True,
+                    "requires_confirmation": True,
+                    "confirm_write": True,
+                    "allow_placeholder": True,
+                    "output_dir": "sandbox",
+                },
+            )
         self.assertTrue(result["ok"], msg=result)
         self.assertEqual("mock", result["details"]["bridge_kind"])
         self.assertEqual(1, len(result["details"]["preview_files"]))
+        self.assertFalse(result["details"]["real_output_verified"])
+        self.assertFalse(result["details"]["evidence_manifest"]["photoshop_available"])
+        artifact = result["details"]["output_artifacts"][0]
+        self.assertTrue(artifact["placeholder"])
 
 
 if __name__ == "__main__":

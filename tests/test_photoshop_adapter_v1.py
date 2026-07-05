@@ -212,6 +212,7 @@ class PhotoshopAdapterV1Tests(unittest.TestCase):
                     "dry_run": False,
                     "writes_files": True,
                     "requires_confirmation": True,
+                    "allow_placeholder": True,
                     "output_dir": "sandbox",
                 },
             },
@@ -222,6 +223,8 @@ class PhotoshopAdapterV1Tests(unittest.TestCase):
         preview_files = payload["details"]["preview_files"]
         self.assertIsNotNone(manifest_path)
         self.assertEqual(1, len(preview_files))
+        self.assertFalse(payload["details"]["real_output_verified"])
+        self.assertTrue(payload["details"]["output_artifacts"][0]["placeholder"])
         self.assertTrue((REPO_ROOT / manifest_path).exists())
         self.assertTrue((REPO_ROOT / preview_files[0]).exists())
 

@@ -144,6 +144,11 @@ def preview_export_schema() -> dict[str, Any]:
                 "default": False,
                 "description": "When true, fail instead of silently writing a placeholder PNG when the UXP bridge is unavailable.",
             },
+            "allow_placeholder": {
+                "type": "boolean",
+                "default": False,
+                "description": "When true, allow a marked placeholder PNG for local protocol demos if the UXP bridge is unavailable.",
+            },
         }
     )
 

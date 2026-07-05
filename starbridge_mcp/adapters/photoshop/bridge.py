@@ -559,6 +559,7 @@ class PhotoshopBridgeAdapter(BaseBridge):
         if refusal is not None:
             return refusal
         strict = _bool(arguments.get("strict"), False)
+        allow_placeholder = _bool(arguments.get("allow_placeholder"), False)
         proxy = _node_proxy_probe()
         preview_files: list[str] = []
         output_artifacts: list[dict[str, Any]] = []
@@ -566,6 +567,7 @@ class PhotoshopBridgeAdapter(BaseBridge):
         errors: list[str] = []
         layers_snapshot: list[dict[str, Any]] = []
         bridge_kind = "fallback"
+        real_output_verified = False
         history_state: str | None = None
         uxp_status: dict[str, Any] = {}
         host_info: dict[str, Any] = {}
@@ -634,6 +636,7 @@ class PhotoshopBridgeAdapter(BaseBridge):
                                 )
                                 output_artifacts.append(artifact)
                                 preview_files.append(artifact["relative_path"])
+                                real_output_verified = True
                             except (ValueError, FileNotFoundError) as artifact_exc:
                                 errors.append(
                                     "preview verification failed: "
@@ -667,6 +670,12 @@ class PhotoshopBridgeAdapter(BaseBridge):
                 "strict=true: refusing to write a placeholder PNG because the UXP bridge is not connected. "
                 "Start node_proxy and connect the UXP plugin, then retry."
             )
+        elif not allow_placeholder:
+            bridge_kind = "mock"
+            errors.append(
+                "Refusing to write a placeholder PNG because the UXP bridge is not connected. "
+                "Set allow_placeholder=true only for local protocol demos; use strict=true for real evidence."
+            )
         else:
             bridge_kind = "mock"
             preview_path = preview_path_for(ctx.output_root, ctx.job_id)
@@ -693,11 +702,13 @@ class PhotoshopBridgeAdapter(BaseBridge):
                 "output_dir": ctx.output_dir,
                 "format": str(arguments.get("format") or "png"),
                 "strict": strict,
+                "allow_placeholder": allow_placeholder,
+                "real_output_verified": real_output_verified,
             },
             output_files=preview_files,
             preview_files=preview_files,
             source_files=["<active_document>"],
-            photoshop_available=bridge_kind in {"node_proxy_uxp", "com"} or bool(preview_files),
+            photoshop_available=bridge_kind in {"node_proxy_uxp", "com"},
             bridge_kind=bridge_kind,
             node_proxy_status=proxy["status"],
             uxp_status=uxp_status,
@@ -705,7 +716,7 @@ class PhotoshopBridgeAdapter(BaseBridge):
             layers_snapshot=layers_snapshot,
             history_state=history_state,
             descriptor_summary=[],
-            validation_result={},
+            validation_result={"real_output_verified": real_output_verified},
             status="ok" if not errors else "not_available",
             warnings=warnings,
             errors=errors,
@@ -720,6 +731,8 @@ class PhotoshopBridgeAdapter(BaseBridge):
                 "job_id": ctx.job_id,
                 "bridge_kind": bridge_kind,
                 "strict": strict,
+                "allow_placeholder": allow_placeholder,
+                "real_output_verified": real_output_verified,
                 "preview_files": preview_files,
                 "output_artifacts": output_artifacts,
                 "layers_snapshot": layers_snapshot,
