@@ -98,7 +98,9 @@ class StarBridgeBackend:
                 {
                     "ok": False,
                     "error": "frontend build not found",
-                    "next_steps": ["Run `npm.cmd --prefix examples\\starbridge_frontend run build`."],
+                    "next_steps": [
+                        "Run `npm.cmd --prefix examples\\starbridge_frontend run build`."
+                    ],
                 },
             )
 
@@ -151,7 +153,9 @@ class StarBridgeBackend:
                 try:
                     arguments["timeout"] = int(timeout)
                 except ValueError:
-                    return BackendResponse(400, {"ok": False, "error": "timeout must be an integer"})
+                    return BackendResponse(
+                        400, {"ok": False, "error": "timeout must be an integer"}
+                    )
             return self._tool("starbridge.status", arguments)
 
         if method == "GET" and path == "/api/capabilities":
@@ -172,11 +176,15 @@ class StarBridgeBackend:
         if method == "GET" and path == "/api/resource":
             uri = self._one(query, "uri")
             if not uri:
-                return BackendResponse(400, {"ok": False, "error": "query parameter uri is required"})
+                return BackendResponse(
+                    400, {"ok": False, "error": "query parameter uri is required"}
+                )
             return self._mcp("resources/read", {"uri": uri})
 
         if method == "GET" and path == "/api/recipes":
-            return self._tool("starbridge.recipe_list", {"bridge": self._one(query, "bridge", "all")})
+            return self._tool(
+                "starbridge.recipe_list", {"bridge": self._one(query, "bridge", "all")}
+            )
 
         if method == "GET" and path == "/api/bootstrap":
             capabilities = self._tool("starbridge.tools", {"safe_only": True})
@@ -224,7 +232,9 @@ class StarBridgeBackend:
             if not isinstance(name, str):
                 return BackendResponse(400, {"ok": False, "error": "body.name must be a string"})
             if not isinstance(arguments, dict):
-                return BackendResponse(400, {"ok": False, "error": "body.arguments must be an object"})
+                return BackendResponse(
+                    400, {"ok": False, "error": "body.arguments must be an object"}
+                )
             return self._tool(name, arguments)
 
         if method == "GET" and not path.startswith("/api/"):
@@ -233,7 +243,9 @@ class StarBridgeBackend:
         return BackendResponse(404, {"ok": False, "error": f"unknown route: {method} {path}"})
 
 
-def _send(handler: BaseHTTPRequestHandler, response: BackendResponse, *, write_body: bool = True) -> None:
+def _send(
+    handler: BaseHTTPRequestHandler, response: BackendResponse, *, write_body: bool = True
+) -> None:
     body = (
         b""
         if response.status == 204

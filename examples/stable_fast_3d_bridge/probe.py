@@ -53,7 +53,9 @@ def build_report(root: Path, url: str, timeout: int) -> dict:
     }
     return {
         "bridge_id": "stable_fast_3d",
-        "status": "ok" if paths["python"]["exists"] and paths["gradio_app"]["exists"] else "missing",
+        "status": "ok"
+        if paths["python"]["exists"] and paths["gradio_app"]["exists"]
+        else "missing",
         "root": str(root),
         "url": url_status,
         "paths": paths,

@@ -1002,7 +1002,10 @@ STARBRIDGE_RECIPES: dict[str, JsonObject] = {
         "steps": [
             {"tool": "photoshop.recipe_plan", "purpose": "build the sandbox action plan"},
             {"tool": "photoshop.recipe_validate", "purpose": "check output and manifest gates"},
-            {"tool": "photoshop.recipe_run", "purpose": "dry-run first; confirmed write stays sandboxed"},
+            {
+                "tool": "photoshop.recipe_run",
+                "purpose": "dry-run first; confirmed write stays sandboxed",
+            },
         ],
         "quality_gates": ["sandbox_output_dir", "manifest_schema", "no_private_path_leak"],
         "evidence": ["examples/output/evidence/manifest.latest.json"],
@@ -1013,8 +1016,14 @@ STARBRIDGE_RECIPES: dict[str, JsonObject] = {
         "goal": "Validate a public txt2img template and return a redacted lifecycle summary.",
         "steps": [
             {"tool": "comfy.workflow_template_get", "purpose": "load a bundled public template"},
-            {"tool": "comfy.workflow_from_template", "purpose": "compose placeholder workflow JSON"},
-            {"tool": "comfy.workflow_lifecycle_summary", "purpose": "summarize job and asset lifecycle"},
+            {
+                "tool": "comfy.workflow_from_template",
+                "purpose": "compose placeholder workflow JSON",
+            },
+            {
+                "tool": "comfy.workflow_lifecycle_summary",
+                "purpose": "summarize job and asset lifecycle",
+            },
         ],
         "quality_gates": ["workflow_schema", "prompt_redacted", "no_queue_submit"],
         "evidence": ["workflow_hash", "asset_manifest_preview"],
@@ -1025,9 +1034,15 @@ STARBRIDGE_RECIPES: dict[str, JsonObject] = {
         "goal": "Convert a public CAD spec into a validated DXF dry-run plan.",
         "steps": [
             {"tool": "autocad_dxf.create_dxf_plan", "purpose": "turn spec into CAD plan"},
-            {"tool": "autocad_dxf.validate_cad_plan", "purpose": "validate units, layers, and entities"},
+            {
+                "tool": "autocad_dxf.validate_cad_plan",
+                "purpose": "validate units, layers, and entities",
+            },
             {"tool": "autocad_dxf.summarize_plan", "purpose": "produce a reviewable summary"},
-            {"tool": "autocad_dxf.write_dxf", "purpose": "dry-run first; confirmed write stays sandboxed"},
+            {
+                "tool": "autocad_dxf.write_dxf",
+                "purpose": "dry-run first; confirmed write stays sandboxed",
+            },
         ],
         "quality_gates": ["cad_plan_schema", "sandbox_output_dir", "confirm_write_for_dxf"],
         "evidence": ["plan_summary", "examples/output/evidence/manifest.latest.json"],
@@ -1038,7 +1053,10 @@ STARBRIDGE_RECIPES: dict[str, JsonObject] = {
         "goal": "Plan an Illustrator trace/preflight workflow from sanitized document metadata.",
         "steps": [
             {"tool": "illustrator.document_info", "purpose": "optional local session summary"},
-            {"tool": "illustrator.preflight", "purpose": "check links, colors, text, and export risk"},
+            {
+                "tool": "illustrator.preflight",
+                "purpose": "check links, colors, text, and export risk",
+            },
             {"tool": "starbridge.evidence_init", "purpose": "prepare redacted evidence fields"},
         ],
         "quality_gates": ["metadata_only", "no_private_ai_read", "sandbox_export_required"],

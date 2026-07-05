@@ -127,7 +127,7 @@ class BackendApiTests(unittest.TestCase):
     def test_static_frontend_is_served_when_built(self) -> None:
         with TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            (root / "index.html").write_text("<div id=\"root\">StarBridge UI</div>", encoding="utf-8")
+            (root / "index.html").write_text('<div id="root">StarBridge UI</div>', encoding="utf-8")
             backend = StarBridgeBackend(static_root=root)
 
             response = backend.route("GET", "/")
