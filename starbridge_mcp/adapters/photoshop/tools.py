@@ -69,8 +69,20 @@ def _tool(
     }
 
 
+def _unique_tools(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    unique: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for tool in tools:
+        name = str(tool["name"])
+        if name in seen:
+            continue
+        seen.add(name)
+        unique.append(tool)
+    return unique
+
+
 def build_tool_definitions() -> list[dict[str, Any]]:
-    return [
+    tools = [
         _tool(
             "ps.probe",
             "Photoshop Probe",
@@ -540,3 +552,4 @@ def build_tool_definitions() -> list[dict[str, Any]]:
             read_only=False,
         ),
     ]
+    return _unique_tools(tools)
