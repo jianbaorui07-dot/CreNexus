@@ -1,0 +1,4 @@
+interface:
+  display_name: "绘画人物高清批量"
+  short_description: "从年画展陈照片制作人物图案高清 PNG 成品"
+  default_prompt: "Use $painting-hd-batch to make 1086x1448 repaired PNGs from user-provided 年画展陈 source photos."
