@@ -177,6 +177,7 @@ npm.cmd run starbridge:tools:safe
 | 1 | 了解 Skill / MCP / UXP 三层定位 | 本页 README 和 [docs/skill-mcp-uxp-positioning.md](docs/skill-mcp-uxp-positioning.md) |
 | 2 | 按目标选择一条软件桥 | [docs/中文用途索引.md](docs/中文用途索引.md) |
 | 3 | 检查本机环境是否可用 | `python examples\bridge_status.py --json --redact-paths --soft-exit` |
+| 4 | 在 MacBook 上规划本地/远程执行通道 | [docs/macbook-use-strategy.md](docs/macbook-use-strategy.md) |
 
 ## 这个仓库解决什么
 
@@ -201,6 +202,7 @@ npm.cmd run starbridge:tools:safe
 | 查看中文总说明 | [docs/中文介绍.md](docs/中文介绍.md) | 不需要运行 |
 | 查看每个文件用途 | [docs/中文用途索引.md](docs/中文用途索引.md) | 不需要运行 |
 | 配置本地 MCP 客户端 | [docs/local-mcp-setup.md](docs/local-mcp-setup.md) | `npm.cmd run starbridge:tools:safe` |
+| MacBook 使用策略 | [docs/macbook-use-strategy.md](docs/macbook-use-strategy.md) | 先运行 macOS 只读基线检查 |
 | 查看 Photoshop UXP v2 链路 | [docs/photoshop-v2-node-proxy-uxp.md](docs/photoshop-v2-node-proxy-uxp.md) | `npm.cmd run photoshop:node-proxy` |
 | 判断 Computer Use 还是 MCP | [docs/computer-use-vs-mcp.md](docs/computer-use-vs-mcp.md) | 不需要运行 |
 | 接入 ComfyUI | [docs/02-codex-comfyui.md](docs/02-codex-comfyui.md) | `python examples\comfy_bridge\comfy_probe.py` |

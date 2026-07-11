@@ -27,6 +27,7 @@ from starbridge_mcp.core.evidence import (
     repo_relative,
 )
 from starbridge_mcp.core.job_status import JobStatus
+from starbridge_mcp.core.transaction import create_recipe_transaction
 from starbridge_mcp.core.prompts import get_prompt, list_prompts
 from starbridge_mcp.core.resources import (
     SERVER_INSTRUCTIONS,
@@ -1126,9 +1127,20 @@ def _handle_starbridge_recipe_plan(arguments: JsonObject) -> JsonObject:
                 "available_recipes": sorted(STARBRIDGE_RECIPES),
             }
         )
+    dry_run = bool(arguments.get("dry_run", True))
+    transaction = create_recipe_transaction(
+        recipe_id=recipe_id,
+        bridge=str(recipe["bridge"]),
+        intent=str(recipe["goal"]),
+        steps=list(recipe["steps"]),
+        quality_gates=list(recipe["quality_gates"]),
+        expected_outputs=list(recipe["evidence"]),
+        dry_run=dry_run,
+    )
     plan = {
         **_recipe_public_summary(recipe_id, recipe),
-        "dry_run": bool(arguments.get("dry_run", True)),
+        "dry_run": dry_run,
+        "transaction": transaction.to_dict(),
         "steps": recipe["steps"],
         "evidence_requirements": recipe["evidence"],
         "safety_boundary": recipe["safety"],

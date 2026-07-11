@@ -66,6 +66,11 @@ class StarBridgeRecipeTests(unittest.TestCase):
         self.assertTrue(plan["dry_run"])
         self.assertIn("no_arbitrary_python", plan["quality_gates"])
         self.assertIn("starbridge.evidence_init", plan["action_plan"]["tool_sequence"])
+        transaction = plan["transaction"]
+        self.assertEqual("planned", transaction["status"])
+        self.assertEqual("L2", transaction["risk_level"])
+        self.assertIn("user_confirmation_before_write", transaction["required_approvals"])
+        self.assertEqual("frontier", transaction["model_policy"]["planner"])
         self.assert_no_private_paths(structured)
 
     def test_unknown_recipe_is_structured_error(self) -> None:

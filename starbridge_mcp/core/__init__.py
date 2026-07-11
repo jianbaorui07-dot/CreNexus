@@ -19,6 +19,9 @@ __all__ = [
     "repo_relative",
     # Job & status
     "JobStatus",
+    "CreativeTransaction",
+    "ModelPolicy",
+    "create_recipe_transaction",
     # Security & safety
     "sanitize",
     "sanitize_path",
@@ -66,6 +69,11 @@ from starbridge_mcp.core.evidence import (
     save_manifest,
 )
 from starbridge_mcp.core.job_status import JobStatus
+from starbridge_mcp.core.transaction import (
+    CreativeTransaction,
+    ModelPolicy,
+    create_recipe_transaction,
+)
 from starbridge_mcp.core.result_schema import make_result, validate_result
 from starbridge_mcp.core.safe_roots import safe_roots_summary
 from starbridge_mcp.core.security import redact_path, redact_text, sanitize, sanitize_path
