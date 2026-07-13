@@ -15,9 +15,15 @@ FORBIDDEN_EXTENSIONS = {
     ".psd",
     ".dwg",
     ".ai",
+    ".blend",
     ".aep",
     ".mp4",
     ".mov",
+}
+FORBIDDEN_TRACKED_PREFIXES = {
+    "docs/cad_exact_trace_sync/exports/",
+    "examples/unreal_worldforge_agent/",
+    "integrations/",
 }
 TEXT_EXTENSIONS = {".md", ".py", ".ps1", ".json", ".txt", ".yml", ".yaml", ".toml"}
 LOCAL_ONLY_DIRS = {
@@ -96,8 +102,12 @@ def is_allowed_example(path: Path) -> bool:
 def find_failures(files: list[Path], root: Path = REPO_ROOT) -> list[str]:
     failures: list[str] = []
     for path in files:
+        relative = path.relative_to(root).as_posix()
+        if any(relative.startswith(prefix) for prefix in FORBIDDEN_TRACKED_PREFIXES):
+            failures.append(f"local-only path is tracked: {relative}")
+            continue
         if path.suffix.lower() in FORBIDDEN_EXTENSIONS and not is_allowed_example(path):
-            failures.append(f"forbidden tracked file type: {path.relative_to(root)}")
+            failures.append(f"forbidden tracked file type: {relative}")
             continue
         if path.suffix.lower() not in TEXT_EXTENSIONS:
             continue
@@ -107,7 +117,7 @@ def find_failures(files: list[Path], root: Path = REPO_ROOT) -> list[str]:
             continue
         for pattern in SENSITIVE_PATTERNS:
             if pattern.search(text):
-                failures.append(f"sensitive pattern in {path.relative_to(root)}: {pattern.pattern}")
+                failures.append(f"sensitive pattern in {relative}: {pattern.pattern}")
     return failures
 
 

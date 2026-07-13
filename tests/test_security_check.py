@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import tempfile
 import unittest
+from pathlib import Path
 
 from scripts import security_check
 
@@ -12,6 +14,21 @@ class SecurityCheckTest(unittest.TestCase):
         self.assertIn(".psd", security_check.FORBIDDEN_EXTENSIONS)
         self.assertIn(".dwg", security_check.FORBIDDEN_EXTENSIONS)
         self.assertIn(".ai", security_check.FORBIDDEN_EXTENSIONS)
+        self.assertIn(".blend", security_check.FORBIDDEN_EXTENSIONS)
+
+    def test_local_only_project_paths_are_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / "examples" / "unreal_worldforge_agent" / "manifest.json"
+            path.parent.mkdir(parents=True)
+            path.write_text("{}", encoding="utf-8")
+
+            failures = security_check.find_failures([path], root)
+
+        self.assertEqual(
+            ["local-only path is tracked: examples/unreal_worldforge_agent/manifest.json"],
+            failures,
+        )
 
     def test_example_reports_are_allowed(self) -> None:
         self.assertTrue(

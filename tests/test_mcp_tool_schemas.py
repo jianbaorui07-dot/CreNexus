@@ -58,7 +58,9 @@ class McpToolSchemasTest(unittest.TestCase):
             "starbridge.evidence_init",
             "starbridge.evidence_validate",
             "starbridge.job_status",
+            "starbridge.operation_context",
             "starbridge.recipe_evidence",
+            "comfyui.queue_snapshot",
         ):
             with self.subTest(tool=name):
                 self.assertIn(name, by_name)

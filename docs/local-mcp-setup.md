@@ -135,7 +135,7 @@ Claude Code 可直接使用仓库根目录的 `.mcp.json`。Codex 使用 `.codex
 
 1. `starbridge.status`：返回所有桥统一状态。
 2. `starbridge.probe(bridge)`：返回单桥探针结果。
-3. `comfyui.system_probe` / `comfyui.workflow_validate` / `comfy.workflow_lifecycle_summary` 已实现；下一步做 lint/repair、probe gate 和 queue payload dry-run。
+3. `comfyui.system_probe` / `comfyui.queue_snapshot` / `comfyui.workflow_validate` / `comfy.workflow_lifecycle_summary` 已实现；下一步做 live WebSocket progress、受控 cancel 和 queue payload dry-run。
 4. `photoshop.session_info` / `illustrator.document_info` 已挂入 MCP；下一步把只读当前文档摘要做细。
 5. `cad_autocad.environment_probe` / `autocad_dxf.*` 已挂入 MCP；真实 AutoCAD COM 仍作为可选。
 6. `jianying_capcut.draft_probe` 已挂入 MCP；下一步只读草稿目录结构摘要，不输出素材路径。

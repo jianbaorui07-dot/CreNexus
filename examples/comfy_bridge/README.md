@@ -29,6 +29,7 @@
 | `validate_workflow.py` | 只读 workflow 校验：检查 API format、节点和连线引用 |
 | `workflow_templates.py` | 公开 workflow template 快捷入口：list/get/from-template，只生成 JSON，不提交队列 |
 | `workflow_lifecycle.py` | 脱敏 job / asset 生命周期摘要：只返回节点统计、资产角色和确认门 |
+| `workflow_visualize.py` | 把内联 API workflow 转成 Mermaid 和脱敏节点/连线摘要，不读取 prompt 或模型名 |
 | `workflows/txt2img_basic_api.json` | API 工作流：给脚本提交到 `/prompt` 使用 |
 | `workflows/txt2img_basic_visual.json` | 可视化工作流：给人在 ComfyUI 画布中打开检查 |
 

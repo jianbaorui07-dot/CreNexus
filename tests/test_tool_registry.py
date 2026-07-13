@@ -44,6 +44,7 @@ class ToolRegistryTests(unittest.TestCase):
         self.assertIn("starbridge.evidence_init", names)
         self.assertIn("starbridge.job_status", names)
         self.assertIn("comfyui.system_probe", names)
+        self.assertIn("comfyui.queue_snapshot", names)
         self.assertNotIn("photoshop.subject_extract", names)
 
     def test_capability_summary_is_safe_json(self) -> None:
@@ -89,7 +90,9 @@ class ToolRegistryTests(unittest.TestCase):
         self.assertIn("starbridge.evidence_init", names)
         self.assertIn("starbridge.evidence_validate", names)
         self.assertIn("starbridge.job_status", names)
+        self.assertIn("starbridge.operation_context", names)
         self.assertIn("starbridge.recipe_evidence", names)
+        self.assertIn("comfyui.queue_snapshot", names)
 
     def test_photoshop_recipe_capabilities_are_registered(self) -> None:
         capabilities = list_capabilities(bridge="photoshop")

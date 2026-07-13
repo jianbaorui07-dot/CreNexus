@@ -17,6 +17,7 @@ from starbridge_mcp.bridges.blender_safe_scene import (
 )
 from starbridge_mcp.bridges.capcut_draft_structure import draft_structure_summary
 from starbridge_mcp.bridges.illustrator_preflight import preflight_summary
+from starbridge_mcp.core.control_planner import build_control_plan
 from starbridge_mcp.core.evidence import (
     DEFAULT_MANIFEST_FILENAME,
     ValidationResult,
@@ -27,7 +28,24 @@ from starbridge_mcp.core.evidence import (
     repo_relative,
 )
 from starbridge_mcp.core.job_status import JobStatus
+from starbridge_mcp.core.operation_context import (
+    build_operation_context,
+    operation_context_contract,
+)
+from starbridge_mcp.core.operation_context_schema import (
+    OPERATION_CONTEXT_INPUT_SCHEMA,
+    OPERATION_CONTEXT_OUTPUT_SCHEMA,
+)
 from starbridge_mcp.core.prompts import get_prompt, list_prompts
+from starbridge_mcp.core.queue_snapshot import (
+    DEFAULT_COMFY_URL,
+    build_queue_snapshot,
+    queue_snapshot_contract,
+)
+from starbridge_mcp.core.queue_snapshot_schema import (
+    QUEUE_SNAPSHOT_INPUT_SCHEMA,
+    QUEUE_SNAPSHOT_OUTPUT_SCHEMA,
+)
 from starbridge_mcp.core.resources import (
     SERVER_INSTRUCTIONS,
     list_resources,
@@ -73,6 +91,29 @@ def _object_schema(properties: JsonObject, required: list[str] | None = None) ->
 
 
 STARBRIDGE_OUTPUT_SCHEMA: JsonObject = {"type": "object", "additionalProperties": True}
+
+CONTROL_PLAN_OUTPUT_SCHEMA: JsonObject = {
+    "type": "object",
+    "properties": {
+        "ok": {"type": "boolean"},
+        "bridge": {"type": "string"},
+        "action": {"type": "string", "const": "control_plan"},
+        "dry_run": {"type": "boolean", "const": True},
+        "needs_clarification": {"type": "boolean"},
+        "phases": {"type": "array", "items": {"type": "object"}},
+        "quality_gates": {"type": "array", "items": {"type": "string"}},
+        "safety_boundary": {"type": "object"},
+    },
+    "required": [
+        "ok",
+        "bridge",
+        "action",
+        "dry_run",
+        "needs_clarification",
+        "safety_boundary",
+    ],
+    "additionalProperties": True,
+}
 
 
 def _safe_read_annotations(
@@ -193,6 +234,34 @@ TOOL_DEFINITIONS: list[JsonObject] = [
         "annotations": _safe_read_annotations(),
     },
     {
+        "name": "starbridge.control_plan",
+        "title": "StarBridge Codex Control Plan",
+        "description": "根据自然语言目标选择创意软件桥，返回只读控制计划、质量门和确认边界。不会启动软件或读取文件。",
+        "inputSchema": _object_schema(
+            {
+                "goal": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500,
+                    "description": "要完成的创意软件任务；不得包含真实本机路径、token 或私有素材内容。",
+                },
+                "preferred_bridge": {
+                    "type": "string",
+                    "enum": ["auto", *BRIDGE_ENUM],
+                    "default": "auto",
+                },
+                "include_guarded_candidates": {
+                    "type": "boolean",
+                    "default": False,
+                    "description": "是否列出需要再次确认的真实操作候选；本工具仍不会执行它们。",
+                },
+            },
+            required=["goal"],
+        ),
+        "outputSchema": CONTROL_PLAN_OUTPUT_SCHEMA,
+        "annotations": _safe_read_annotations(),
+    },
+    {
         "name": "starbridge.safe_roots",
         "title": "StarBridge Safe Roots",
         "description": "返回仓库相对安全根目录、可写输出边界和 MCP roots 对齐建议。",
@@ -240,6 +309,17 @@ TOOL_DEFINITIONS: list[JsonObject] = [
                 "action_name": {"type": "string", "default": "evidence_review"},
             }
         ),
+        "annotations": _safe_read_annotations(),
+    },
+    {
+        "name": "starbridge.operation_context",
+        "title": "StarBridge Operation Context",
+        "description": (
+            "Build a sanitized, chainable before/after state envelope from caller-supplied "
+            "safe metrics. This tool does not inspect local software, files, or networks."
+        ),
+        "inputSchema": OPERATION_CONTEXT_INPUT_SCHEMA,
+        "outputSchema": OPERATION_CONTEXT_OUTPUT_SCHEMA,
         "annotations": _safe_read_annotations(),
     },
     {
@@ -293,6 +373,17 @@ TOOL_DEFINITIONS: list[JsonObject] = [
             }
         ),
     ),
+    {
+        "name": "comfyui.queue_snapshot",
+        "title": "ComfyUI Queue Snapshot",
+        "description": (
+            "默认只返回计划；probe=true 时只读访问 loopback ComfyUI /queue，并返回脱敏队列、"
+            "backpressure 和可选单调数值进度。不会返回 workflow、prompt id 或 history。"
+        ),
+        "inputSchema": QUEUE_SNAPSHOT_INPUT_SCHEMA,
+        "outputSchema": QUEUE_SNAPSHOT_OUTPUT_SCHEMA,
+        "annotations": _safe_read_annotations(requires_local_software=True),
+    },
     _standard_tool(
         name="comfyui.workflow_validate",
         title="Validate ComfyUI Workflow",
@@ -505,6 +596,26 @@ TOOL_DEFINITIONS: list[JsonObject] = [
                 },
                 "confirm_run": {"type": "boolean", "default": False},
             }
+        ),
+    ),
+    _standard_tool(
+        name="comfy.workflow_visualize",
+        title="Visualize ComfyUI Workflow",
+        description="把内联 API workflow 转为 Mermaid 和脱敏节点/连线摘要；不读取文件、prompt 或模型目录。",
+        input_schema=_object_schema(
+            {
+                "workflow": {
+                    "type": "object",
+                    "description": "内联 ComfyUI API-format workflow JSON。",
+                },
+                "direction": {
+                    "type": "string",
+                    "enum": ["LR", "TD"],
+                    "default": "LR",
+                },
+                "include_node_ids": {"type": "boolean", "default": True},
+            },
+            required=["workflow"],
         ),
     ),
     _standard_tool(
@@ -914,6 +1025,14 @@ def _handle_tools(arguments: JsonObject) -> JsonObject:
     )
 
 
+def _handle_control_plan(arguments: JsonObject) -> JsonObject:
+    return build_control_plan(
+        goal=str(arguments.get("goal") or ""),
+        preferred_bridge=str(arguments.get("preferred_bridge") or "auto"),
+        include_guarded_candidates=bool(arguments.get("include_guarded_candidates", False)),
+    )
+
+
 def _handle_safe_roots(arguments: JsonObject) -> JsonObject:
     bridge = BRIDGE_ALIASES.get(
         str(arguments.get("bridge") or "all"), str(arguments.get("bridge") or "all")
@@ -996,6 +1115,21 @@ def _handle_job_status(arguments: JsonObject) -> JsonObject:
     return sanitize(payload)
 
 
+def _handle_operation_context(arguments: JsonObject) -> JsonObject:
+    return build_operation_context(
+        bridge=arguments.get("bridge"),
+        action=arguments.get("action"),
+        operation_id=arguments.get("operation_id", "operation_preview"),
+        phase=arguments.get("phase", "completed"),
+        dry_run=arguments.get("dry_run", True),
+        before_state=arguments.get("before_state"),
+        after_state=arguments.get("after_state"),
+        warnings=arguments.get("warnings"),
+        evidence_refs=arguments.get("evidence_refs"),
+        parent_context_id=arguments.get("parent_context_id"),
+    )
+
+
 STARBRIDGE_RECIPES: dict[str, JsonObject] = {
     "photoshop_preview_export": {
         "bridge": "photoshop",
@@ -1016,6 +1150,10 @@ STARBRIDGE_RECIPES: dict[str, JsonObject] = {
         "bridge": "comfyui",
         "goal": "Validate a public txt2img template and return a redacted lifecycle summary.",
         "steps": [
+            {
+                "tool": "comfyui.queue_snapshot",
+                "purpose": "plan a safe queue check; live loopback read remains an explicit probe",
+            },
             {"tool": "comfy.workflow_template_get", "purpose": "load a bundled public template"},
             {
                 "tool": "comfy.workflow_from_template",
@@ -1026,9 +1164,17 @@ STARBRIDGE_RECIPES: dict[str, JsonObject] = {
                 "purpose": "summarize job and asset lifecycle",
             },
         ],
-        "quality_gates": ["workflow_schema", "prompt_redacted", "no_queue_submit"],
+        "quality_gates": [
+            "queue_backpressure_reviewed",
+            "workflow_schema",
+            "prompt_redacted",
+            "no_queue_submit",
+        ],
         "evidence": ["workflow_hash", "asset_manifest_preview"],
-        "safety": "does not submit to /prompt or read local model/image folders.",
+        "safety": (
+            "queue snapshot is plan-only by default and live mode is loopback read-only; "
+            "the recipe does not submit to /prompt or read local model/image folders."
+        ),
     },
     "cad_dxf_from_spec": {
         "bridge": "autocad_dxf",
@@ -1143,17 +1289,22 @@ def _handle_starbridge_recipe_plan(arguments: JsonObject) -> JsonObject:
         "transaction": transaction.to_dict(),
         "steps": recipe["steps"],
         "evidence_requirements": recipe["evidence"],
+        "operation_context": operation_context_contract(),
         "safety_boundary": recipe["safety"],
         "next_steps": [
             "Run listed tools in order only after reviewing their own safety annotations.",
             "Use starbridge.evidence_validate after any confirmed sandbox write.",
         ],
     }
+    if recipe["bridge"] == "comfyui":
+        plan["queue_snapshot"] = queue_snapshot_contract()
     if arguments.get("action_plan", True):
         plan["action_plan"] = {
             "mode": "plan_then_execute",
             "requires_user_confirmation_before_write": True,
             "tool_sequence": [step["tool"] for step in recipe["steps"]],
+            "observation_tool": "starbridge.operation_context",
+            "observation_capture_points": operation_context_contract()["capture_points"],
         }
     return sanitize(
         {
@@ -1180,6 +1331,15 @@ def _handle_starbridge_recipe_evidence(arguments: JsonObject) -> JsonObject:
                 "available_recipes": sorted(STARBRIDGE_RECIPES),
             }
         )
+    input_summary = {
+        "recipe_id": recipe_id,
+        "goal": recipe["goal"],
+        "tools": [step["tool"] for step in recipe["steps"]],
+        "safety_boundary": recipe["safety"],
+        "operation_context_schema": operation_context_contract()["schema_version"],
+    }
+    if recipe["bridge"] == "comfyui":
+        input_summary["queue_snapshot_schema"] = queue_snapshot_contract()["schema_version"]
     manifest = create_manifest(
         bridge=str(recipe["bridge"]),
         action="recipe_evidence",
@@ -1188,15 +1348,12 @@ def _handle_starbridge_recipe_evidence(arguments: JsonObject) -> JsonObject:
         confirm_write=bool(arguments.get("confirm_write", False)),
         plan_id=f"recipe::{recipe_id}",
         job_id=f"job::{recipe_id}::preview",
-        input_summary={
-            "recipe_id": recipe_id,
-            "goal": recipe["goal"],
-            "tools": [step["tool"] for step in recipe["steps"]],
-            "safety_boundary": recipe["safety"],
-        },
+        input_summary=input_summary,
         notes=[
             "preview only; not saved to disk",
             "quality gates must pass before any confirmed bridge write",
+            "capture a sanitized operation context after every major action or failure",
+            "review queue backpressure before any confirmed ComfyUI submit",
         ],
     )
     for gate_name in recipe["quality_gates"]:
@@ -1220,6 +1377,8 @@ def _handle_starbridge_recipe_evidence(arguments: JsonObject) -> JsonObject:
         "confirm_write": manifest.confirm_write,
         "requires_confirmation_before_write": True,
         "sandbox_or_metadata_only": True,
+        "operation_context_required_after_major_action": True,
+        "queue_backpressure_review_required": recipe["bridge"] == "comfyui",
     }
     return sanitize(
         {
@@ -1272,6 +1431,16 @@ def _handle_comfy_system_probe(arguments: JsonObject) -> JsonObject:
         action="system_probe",
         report=probe(base_url, timeout),
         display_name="ComfyUI 图像生成桥",
+    )
+
+
+def _handle_comfy_queue_snapshot(arguments: JsonObject) -> JsonObject:
+    return build_queue_snapshot(
+        probe=arguments.get("probe", False),
+        comfy_url=arguments.get("comfy_url", DEFAULT_COMFY_URL),
+        timeout=arguments.get("timeout", 5),
+        max_items=arguments.get("max_items", 25),
+        progress=arguments.get("progress"),
     )
 
 
@@ -1373,6 +1542,19 @@ def _handle_comfy_workflow_lifecycle_summary(arguments: JsonObject) -> JsonObjec
     from examples.comfy_bridge.workflow_agent import workflow_lifecycle_summary
 
     return workflow_lifecycle_summary(arguments)
+
+
+def _handle_comfy_workflow_visualize(arguments: JsonObject) -> JsonObject:
+    from examples.comfy_bridge.workflow_visualize import visualize_workflow
+
+    workflow = arguments.get("workflow")
+    if not isinstance(workflow, dict):
+        raise ValueError("workflow is required and must be an object")
+    return visualize_workflow(
+        workflow,
+        direction=str(arguments.get("direction") or "LR"),
+        include_node_ids=bool(arguments.get("include_node_ids", True)),
+    )
 
 
 def _handle_write_dxf(arguments: JsonObject) -> JsonObject:
@@ -2040,14 +2222,17 @@ TOOL_HANDLERS: dict[str, ToolHandler] = {
     "starbridge.status": _handle_status,
     "starbridge.probe": _handle_probe,
     "starbridge.tools": _handle_tools,
+    "starbridge.control_plan": _handle_control_plan,
     "starbridge.safe_roots": _handle_safe_roots,
     "starbridge.evidence_init": _handle_evidence_init,
     "starbridge.evidence_validate": _handle_evidence_validate,
     "starbridge.job_status": _handle_job_status,
+    "starbridge.operation_context": _handle_operation_context,
     "starbridge.recipe_list": _handle_starbridge_recipe_list,
     "starbridge.recipe_plan": _handle_starbridge_recipe_plan,
     "starbridge.recipe_evidence": _handle_starbridge_recipe_evidence,
     "comfyui.system_probe": _handle_comfy_system_probe,
+    "comfyui.queue_snapshot": _handle_comfy_queue_snapshot,
     "comfyui.workflow_validate": _handle_workflow_validate,
     "comfyui.workflow_build_plan": _handle_comfy_workflow_build_plan,
     "comfyui.workflow_build": _handle_comfy_workflow_build,
@@ -2059,6 +2244,7 @@ TOOL_HANDLERS: dict[str, ToolHandler] = {
     "comfy.workflow_template_get": _handle_comfy_workflow_template_get,
     "comfy.workflow_from_template": _handle_comfy_workflow_from_template,
     "comfy.workflow_lifecycle_summary": _handle_comfy_workflow_lifecycle_summary,
+    "comfy.workflow_visualize": _handle_comfy_workflow_visualize,
     "blender.environment_probe": lambda _arguments: _handle_python_probe(
         bridge="blender",
         action="environment_probe",

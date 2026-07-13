@@ -1,8 +1,0 @@
-{
-  "framework_version": "1.1",
-  "framework_phase": "LOOKDEV_PREP_READY__P2_EXECUTION_REQUIRES_PREFLIGHT",
-  "active_job_id": "WF0010_DNABonsaiWorkshop_R1",
-  "latest_successful_job_id": "WF0010_DNABonsaiWorkshop_R1",
-  "resource_policy": "P1_STRUCTURE_CURRENT__P2_LOOKDEV_REQUIRES_PREFLIGHT",
-  "updated_at": "2026-07-06T20:40:59.021140+08:00"
-}

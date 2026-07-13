@@ -84,26 +84,21 @@
       "status_file": "examples/stable_fast_3d_bridge/bridge_status.json",
       "primary_docs": [
         "docs/08-codex-stable-fast-3d.md",
-        "integrations/stable-fast-3d/README.md"
+        "examples/stable_fast_3d_bridge/README.md"
       ],
       "safe_probe_commands": [
         "python examples\\stable_fast_3d_bridge\\probe.py --json"
       ],
-      "local_action_commands": [
-        "integrations\\stable-fast-3d\\start_sf3d_gradio.bat"
-      ],
+      "local_action_commands": [],
       "capability_categories": [
         "discovery",
-        "execution",
         "validation",
-        "evidence",
-        "cleanup"
+        "evidence"
       ],
       "current_capabilities": [
-        "\u63d0\u4f9b Windows \u672c\u673a Stable Fast 3D \u5b89\u88c5\u548c Gradio \u542f\u52a8\u5165\u53e3",
-        "\u68c0\u6d4b SF3D checkout\u3001Python \u865a\u62df\u73af\u5883\u3001Gradio \u5165\u53e3\u548c texture_baker \u8865\u4e01\u6587\u4ef6",
-        "\u8bb0\u5f55 Hugging Face \u7f13\u5b58\u3001U2Net \u7f13\u5b58\u548c\u751f\u6210 GLB \u8d44\u4ea7\u7684\u672c\u5730\u8fb9\u754c",
-        "\u4e3a texture_baker \u65e0 CUDA op \u7684 Windows \u73af\u5883\u63d0\u4f9b CPU fallback \u8865\u4e01"
+        "\u901a\u8fc7 SF3D_ROOT \u7b49\u73af\u5883\u53d8\u91cf\u63a5\u6536\u672c\u5730\u914d\u7f6e\uff0c\u4e0d\u5199\u6b7b\u4e2a\u4eba\u8def\u5f84",
+        "\u5bf9\u7528\u6237\u663e\u5f0f\u4f20\u5165\u7684 SF3D checkout\u3001Python \u865a\u62df\u73af\u5883\u548c Gradio \u5165\u53e3\u505a\u53ea\u8bfb\u68c0\u67e5",
+        "\u8f93\u51fa\u53ef\u8131\u654f\u7684\u7ed3\u6784\u5316 probe report\uff0c\u4e0d\u63d0\u4ea4\u6216\u751f\u6210\u4e09\u7ef4\u8d44\u4ea7"
       ],
       "planned_capabilities": [
         "\u628a GLB \u5bfc\u51fa\u8def\u5f84\u3001SHA256\u3001\u5c3a\u5bf8\u548c\u6e05\u7406\u7b56\u7565\u5c01\u88c5\u6210\u53ef\u5ba1\u8ba1 MCP \u5de5\u5177",
@@ -112,7 +107,7 @@
       "public_safety_rules": [
         "\u4e0d\u63d0\u4ea4 Hugging Face token\u3001\u6a21\u578b\u6743\u91cd\u3001ONNX \u7f13\u5b58\u3001.venv \u548c\u6d4f\u89c8\u5668 session",
         "\u4e0d\u63d0\u4ea4\u7528\u6237\u6e90\u56fe\u3001\u751f\u6210\u7684 GLB/OBJ/FBX/STL \u548c\u672c\u673a\u8f93\u51fa\u76ee\u5f55",
-        "\u63d0\u4ea4\u5230 GitHub \u7684\u5185\u5bb9\u53ea\u5305\u542b\u5b89\u88c5\u811a\u672c\u3001\u542f\u52a8\u6a21\u677f\u3001\u8865\u4e01\u548c\u8bfb\u53d6\u578b probe"
+        "\u516c\u5f00\u4ed3\u5e93\u53ea\u4fdd\u7559\u53c2\u6570\u5316\u8bf4\u660e\u548c\u53ea\u8bfb probe\uff0c\u672c\u5730\u5b89\u88c5\u3001\u8865\u4e01\u4e0e\u751f\u6210\u7ed3\u679c\u4e0d\u8fdb\u5165 GitHub"
       ]
     },
     {

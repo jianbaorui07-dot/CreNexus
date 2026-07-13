@@ -7,7 +7,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-DEFAULT_ROOT = Path(os.environ.get("SF3D_ROOT", r"D:\AIGC\stable-fast-3d"))
+DEFAULT_ROOT = os.environ.get("SF3D_ROOT")
 DEFAULT_URL = os.environ.get("SF3D_URL", "http://127.0.0.1:7860")
 
 
@@ -27,7 +27,12 @@ def check_url(url: str, timeout: int) -> dict:
         }
 
 
-def check_path(root: Path) -> dict:
+def check_path(root: Path | None) -> dict:
+    if root is None:
+        return {
+            name: {"path": None, "exists": False}
+            for name in ("root", "python", "gradio_app", "start_script", "texture_baker")
+        }
     expected = {
         "root": root,
         "python": root / ".venv" / "Scripts" / "python.exe",
@@ -44,7 +49,7 @@ def check_path(root: Path) -> dict:
     }
 
 
-def build_report(root: Path, url: str, timeout: int) -> dict:
+def build_report(root: Path | None, url: str, timeout: int) -> dict:
     paths = check_path(root)
     url_status = check_url(url, timeout)
     cache = {
@@ -56,12 +61,13 @@ def build_report(root: Path, url: str, timeout: int) -> dict:
         "status": "ok"
         if paths["python"]["exists"] and paths["gradio_app"]["exists"]
         else "missing",
-        "root": str(root),
+        "root": str(root) if root else None,
         "url": url_status,
         "paths": paths,
         "cache": cache,
         "notes": [
             "This probe is read-only.",
+            "Set SF3D_ROOT or pass --root to enable local path checks.",
             "It does not submit image-to-3D generation jobs.",
             "Generated assets and model weights are intentionally outside the repository.",
         ],
@@ -70,18 +76,18 @@ def build_report(root: Path, url: str, timeout: int) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Probe local Stable Fast 3D bridge status.")
-    parser.add_argument("--root", default=str(DEFAULT_ROOT), help="Local stable-fast-3d checkout.")
+    parser.add_argument("--root", default=DEFAULT_ROOT, help="Local stable-fast-3d checkout.")
     parser.add_argument("--url", default=DEFAULT_URL, help="Local Gradio URL.")
     parser.add_argument("--timeout", type=int, default=3)
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
-    report = build_report(Path(args.root), args.url, args.timeout)
+    report = build_report(Path(args.root) if args.root else None, args.url, args.timeout)
     if args.json:
         print(json.dumps(report, ensure_ascii=False, indent=2))
     else:
         print(f"Stable Fast 3D bridge: {report['status']}")
-        print(f"Root: {report['root']}")
+        print(f"Root: {report['root'] or 'not configured'}")
         print(f"Gradio: {report['url']['status']} ({report['url']['url']})")
         for key, item in report["paths"].items():
             print(f"- {key}: {'ok' if item['exists'] else 'missing'} - {item['path']}")

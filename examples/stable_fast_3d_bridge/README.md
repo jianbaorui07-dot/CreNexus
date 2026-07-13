@@ -7,7 +7,7 @@ not submit generation jobs by default.
 
 - Do not commit generated 3D assets.
 - Do not commit model weights, ONNX files, Hugging Face tokens, or `.venv`.
-- Keep generated outputs under `D:\AIGC\stable-fast-3d\outputs` or another ignored local directory.
+- Keep generated outputs under an ignored local directory outside this repository.
 - Treat SF3D as an external dependency installed from the official upstream repository.
 
 ## Probe
@@ -20,8 +20,8 @@ python examples\stable_fast_3d_bridge\probe.py --json
 Optional environment variables:
 
 ```powershell
-$env:SF3D_ROOT="D:\AIGC\stable-fast-3d"
+$env:SF3D_ROOT="<LOCAL_SF3D_ROOT>"
 $env:SF3D_URL="http://127.0.0.1:7860"
-$env:HUGGINGFACE_HUB_CACHE="D:\AIGC\hf-cache\hub"
-$env:U2NET_HOME="D:\AIGC\u2net"
+$env:HUGGINGFACE_HUB_CACHE="<LOCAL_CACHE_ROOT>\huggingface"
+$env:U2NET_HOME="<LOCAL_CACHE_ROOT>\u2net"
 ```

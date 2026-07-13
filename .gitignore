@@ -33,6 +33,10 @@ _scene_audit_*/
 research_repos/
 third_party_research/
 external_references/
+integrations/
+examples/unreal_worldforge_agent/
+docs/unreal-worldforge-agent-framework.md
+docs/cad_exact_trace_sync/exports/
 docx_render_check/
 .codex_video_deps/
 .codex_video_frames/

@@ -1,9 +1,0 @@
-{
-  "success": true,
-  "map_path": "/Game/CodexTests/Codex_StarterScene",
-  "adjusted": [
-    "CODEX_TEST_Camera",
-    "CODEX_TEST_Light"
-  ],
-  "result_path": "<WORLDFORGE_ROOT_ESCAPED>\\Codex_UE_AdjustStarterSceneView_result.json"
-}

@@ -62,7 +62,9 @@ def find_window(title_contains: str) -> WindowTarget | None:
     return matches[0]
 
 
-def encode_frame(raw: bytes, width: int, height: int, max_width: int, quality: int) -> tuple[bytes, int, int]:
+def encode_frame(
+    raw: bytes, width: int, height: int, max_width: int, quality: int
+) -> tuple[bytes, int, int]:
     expected = width * height * 4
     if width <= 0 or height <= 0 or len(raw) < expected:
         raise ValueError("invalid_wgc_frame")
@@ -149,7 +151,7 @@ def main() -> None:
             )
         )
         if not args.soft_exit:
-            raise SystemExit(1)
+            raise SystemExit(1) from error
 
 
 if __name__ == "__main__":

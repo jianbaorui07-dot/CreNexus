@@ -12,21 +12,21 @@
     "Hugging Face model access for stabilityai/stable-fast-3d"
   ],
   "required_env": [
-    "SF3D_ROOT or D:\\AIGC\\stable-fast-3d",
+    "SF3D_ROOT",
     "HUGGINGFACE_HUB_CACHE",
     "U2NET_HOME"
   ],
   "probe_supported": true,
-  "write_supported": true,
+  "write_supported": false,
   "safe_report_supported": true,
-  "last_verified": "2026-07-04",
+  "last_verified": null,
   "known_risks": [
     "Model weights, Hugging Face tokens, virtual environments, cached ONNX files, and generated GLB/OBJ/FBX/STL outputs must not be committed to GitHub.",
-    "Windows builds may compile texture_baker without CUDA kernels; the integration includes a CPU fallback patch for texture baking.",
+    "GPU and texture-baking compatibility require local manual validation and are not verified by the public probe.",
     "The Gradio app can consume about 6 GB VRAM at 512 texture resolution and may fail if other GPU-heavy applications are open."
   ],
   "next_steps": [
-    "Keep the bridge as a local integration package, not a vendored copy of the upstream model repository.",
+    "Keep the upstream installation outside this repository and pass its location through SF3D_ROOT.",
     "Add a StarBridge MCP wrapper only after export paths, file hashing, and artifact cleanup are fully explicit.",
     "Record GLB dimensions, file size, and SHA256 when generated assets are used as evidence."
   ]

@@ -1,7 +1,0 @@
-{
-  "job_id": "WF0009_v1.2_microbuild",
-  "status": "failed",
-  "completion": "not_completed",
-  "error": "'DirectionalLight' object has no attribute 'directional_light_component'",
-  "traceback": "Traceback (most recent call last):\n  File \"<WORLDFORGE_PROJECT_ROOT>/WorldForgeEditorScripts/WF0009_microbuild_formal.py\", line 409, in main\n    actors = spawn_scene(material_record[\"asset\"], {r[\"package_path\"].rsplit(\"/\", 1)[-1]: r for r in blueprint_records})\n  File \"<WORLDFORGE_PROJECT_ROOT>/WorldForgeEditorScripts/WF0009_microbuild_formal.py\", line 301, in spawn_scene\n    sun.directional_light_component.set_editor_property(\"intensity\", 2.2)\nAttributeError: 'DirectionalLight' object has no attribute 'directional_light_component'\n"
-}

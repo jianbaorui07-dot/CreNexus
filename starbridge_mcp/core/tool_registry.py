@@ -88,6 +88,20 @@ CAPABILITIES: tuple[ToolCapability, ...] = (
         invocation="python -m starbridge_mcp.server tools --json",
     ),
     ToolCapability(
+        name="starbridge.control_plan",
+        bridge="all",
+        action="control_plan",
+        maturity="implemented",
+        risk_level="safe_read_only",
+        description="根据创作目标为 Codex 选择软件桥，并返回只读、分阶段的安全控制计划。",
+        side_effects="只返回路由、工具顺序和质量门；不启动软件、不读私有文件、不执行写入。",
+        safe_default=True,
+        requires_confirmation=False,
+        requires_local_software=False,
+        source_projects=("modelcontextprotocol/specification",),
+        invocation="python -m starbridge_mcp.mcp_server",
+    ),
+    ToolCapability(
         name="starbridge.safe_roots",
         bridge="all",
         action="safe_roots",
@@ -145,6 +159,23 @@ CAPABILITIES: tuple[ToolCapability, ...] = (
         requires_local_software=False,
         source_projects=("artokun/comfyui-mcp", "joenorton/comfyui-mcp-server"),
         invocation="python -m starbridge_mcp.server job-status --json",
+    ),
+    ToolCapability(
+        name="starbridge.operation_context",
+        bridge="all",
+        action="operation_context",
+        maturity="implemented",
+        risk_level="safe_read_only",
+        description="把调用方传入的安全 before/after 指标转换为可链式状态差异和证据引用。",
+        side_effects="纯内存处理；不访问文件、网络或桌面软件，不接收文档名、图层名或任意路径。",
+        safe_default=True,
+        requires_confirmation=False,
+        requires_local_software=False,
+        source_projects=(
+            "alisaitteke/photoshop-mcp",
+            "modelcontextprotocol/specification",
+        ),
+        invocation="python -m starbridge_mcp.mcp_server",
     ),
     ToolCapability(
         name="starbridge.recipe_list",
@@ -268,6 +299,26 @@ CAPABILITIES: tuple[ToolCapability, ...] = (
         requires_local_software=True,
         source_projects=("IO-AtelierTech/comfyui-mcp", "artokun/comfyui-mcp"),
         invocation="python examples/comfy_bridge/probe.py --json",
+    ),
+    ToolCapability(
+        name="comfyui.queue_snapshot",
+        bridge="comfyui",
+        action="queue_snapshot",
+        maturity="implemented",
+        risk_level="safe_read_only",
+        description="默认只返回计划；显式 probe 时读取 loopback /queue 并输出脱敏队列与 backpressure。",
+        side_effects=(
+            "不提交或取消任务，不读取 workflow/history/output；live 模式只发送一次 loopback GET。"
+        ),
+        safe_default=True,
+        requires_confirmation=False,
+        requires_local_software=True,
+        source_projects=(
+            "artokun/comfyui-mcp",
+            "IO-AtelierTech/comfyui-mcp",
+            "modelcontextprotocol/specification",
+        ),
+        invocation="python -m starbridge_mcp.mcp_server",
     ),
     ToolCapability(
         name="comfyui.workflow_validate",
@@ -421,6 +472,19 @@ CAPABILITIES: tuple[ToolCapability, ...] = (
         requires_local_software=False,
         source_projects=("joenorton/comfyui-mcp-server", "artokun/comfyui-mcp"),
         invocation="python examples/comfy_bridge/workflow_lifecycle.py --template-id txt2img_basic_v1 --json",
+    ),
+    ToolCapability(
+        name="comfy.workflow_visualize",
+        bridge="comfyui",
+        action="workflow_visualize",
+        maturity="implemented",
+        risk_level="safe_read_only",
+        description="把内联 ComfyUI API workflow 转换成 Mermaid 图和脱敏结构摘要。",
+        side_effects="只分析内存中的节点和连线；不输出 prompt、模型名或输入值，不访问文件和网络。",
+        safe_default=True,
+        requires_confirmation=False,
+        requires_local_software=False,
+        source_projects=("artokun/comfyui-mcp",),
     ),
     ToolCapability(
         name="photoshop.session_info",
@@ -1169,6 +1233,7 @@ def capability_summary(*, bridge: str = "all", include_guarded: bool = True) -> 
                     "starbridge.recipe_evidence",
                     "starbridge.job_status",
                 ],
+                "observation_tools": ["starbridge.operation_context"],
                 "confirmed_action_rule": (
                     "Call safe_default tools first; guarded tools require the matching "
                     "confirm_write, confirm_export, or confirm_run flag and must stay inside safe roots."
