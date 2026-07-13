@@ -19,7 +19,7 @@ StarBridge 是一个面向本地创意软件的开源接入层，聚焦三件事
 
 | 等级 | 当前范围 |
 | --- | --- |
-| stable | MCP stdio、tool registry、resources/prompts、状态探针、路径脱敏、operation context、ComfyUI workflow validate、AutoCAD/DXF plan validate / dry-run / guarded write |
+| stable | MCP stdio、tool registry、resources/prompts、状态探针、路径脱敏、operation context、ComfyUI queue snapshot / workflow validate、AutoCAD/DXF plan validate / dry-run / guarded write |
 | experimental | Photoshop / Illustrator UXP 与本地代理、sandbox demo、部分桌面软件探针 |
 | planned | Blender confirmed render、CapCut draft skeleton、跨软件 asset handoff |
 | not implemented | 自动登录、绕过授权、读取客户私有工程、无确认写入真实桌面软件 |
@@ -85,6 +85,7 @@ flowchart LR
 | 总体定位 | [Skill / MCP / UXP 定位](docs/skill-mcp-uxp-positioning.md) | `python scripts\starbridge_preflight.py --markdown` |
 | Codex 跨软件控制 | [控制规划器](docs/codex-software-control-planner.md) | MCP `starbridge.control_plan` |
 | 操作状态闭环 | [Operation Context Envelope](docs/operation-context-envelope.md) | MCP `starbridge.operation_context` |
+| ComfyUI 队列背压 | [只读 Queue Snapshot](docs/comfyui-queue-snapshot.md) | MCP `comfyui.queue_snapshot` |
 | 同类项目差距 | [先进能力与迭代优先级](docs/competitive-gap-analysis.md) | MCP `comfy.workflow_visualize` |
 | MCP 客户端接入 | [本地 MCP 配置](docs/local-mcp-setup.md) | `python -m starbridge_mcp.server tools --json --safe-only` |
 | ComfyUI | [ComfyUI 接入](docs/02-codex-comfyui.md) | `python examples\comfy_bridge\comfy_probe.py` |

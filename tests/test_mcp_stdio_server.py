@@ -52,6 +52,7 @@ class McpStdioServerTests(unittest.TestCase):
         self.assertIn("starbridge.tools", names)
         self.assertIn("starbridge.safe_roots", names)
         self.assertIn("comfyui.system_probe", names)
+        self.assertIn("comfyui.queue_snapshot", names)
         self.assertIn("blender.environment_probe", names)
         self.assertIn("blender.scene_plan", names)
         self.assertIn("blender.reference_reconstruction_plan", names)

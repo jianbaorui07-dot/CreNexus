@@ -32,7 +32,7 @@
 
 返回计划固定包含以下安全阶段：
 
-1. `discover`：先检查 `starbridge.safe_roots` 和软件桥状态；
+1. `discover`：先检查 `starbridge.safe_roots` 和软件桥状态；ComfyUI 额外加入默认 plan-only 的 `comfyui.queue_snapshot`；
 2. `plan`：调用软件专属的只读 planner / validator；
 3. `visual_review`：仅 ComfyUI 路线使用，把内联 workflow 转为脱敏 Mermaid；
 4. `observe`：用 `starbridge.operation_context` 形成白名单 before/after 状态差异；
@@ -40,6 +40,8 @@
 6. `confirmed_action_candidate`：仅在显式请求时列出，仍需用户确认后另行调用。
 
 每个 `starbridge.recipe_plan` 还会返回相同的 `operation_context` 契约。Codex 应在首个主要动作前、主要动作后和失败后调用该工具，只传入白名单指标并串联 `context_id`；这不会自动读取桌面软件。
+
+ComfyUI 路线还返回 `queue_snapshot` 契约和 `queue_backpressure_reviewed` 质量门。规划器只列出 `probe=false`；调用方要读取真实队列必须显式改为 `probe=true`，并且只有 live snapshot 返回 `decision=idle` 与 `safe_to_enqueue=true` 才表示当前没有 backlog。这不代替 `agent_run` 的真实提交确认。
 
 目标无法可靠归类时，工具返回 `needs_clarification=true` 和可选软件桥，不会猜测执行。
 
@@ -49,7 +51,7 @@
 | --- | --- | --- |
 | Photoshop | 修图、抠图、图层、蒙版、Camera Raw | `photoshop.recipe_plan` |
 | Illustrator | 矢量、画板、SVG、Image Trace | `illustrator.preflight` |
-| ComfyUI | 文生图、图生图、workflow | `comfyui.workflow_build_plan` |
+| ComfyUI | 文生图、图生图、workflow | `comfyui.queue_snapshot` → `comfyui.workflow_build_plan` |
 | CAD / AutoCAD | 工程图、DXF、结构化 CAD plan | `autocad_dxf.create_dxf_plan` |
 | Blender | 三维、建模、场景、渲染规划 | `blender.scene_plan` |
 | 剪映 / CapCut | 视频、字幕、时间线、草稿摘要 | `jianying_capcut.draft_structure` |

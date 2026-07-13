@@ -37,6 +37,15 @@ from starbridge_mcp.core.operation_context_schema import (
     OPERATION_CONTEXT_OUTPUT_SCHEMA,
 )
 from starbridge_mcp.core.prompts import get_prompt, list_prompts
+from starbridge_mcp.core.queue_snapshot import (
+    DEFAULT_COMFY_URL,
+    build_queue_snapshot,
+    queue_snapshot_contract,
+)
+from starbridge_mcp.core.queue_snapshot_schema import (
+    QUEUE_SNAPSHOT_INPUT_SCHEMA,
+    QUEUE_SNAPSHOT_OUTPUT_SCHEMA,
+)
 from starbridge_mcp.core.resources import (
     SERVER_INSTRUCTIONS,
     list_resources,
@@ -364,6 +373,17 @@ TOOL_DEFINITIONS: list[JsonObject] = [
             }
         ),
     ),
+    {
+        "name": "comfyui.queue_snapshot",
+        "title": "ComfyUI Queue Snapshot",
+        "description": (
+            "默认只返回计划；probe=true 时只读访问 loopback ComfyUI /queue，并返回脱敏队列、"
+            "backpressure 和可选单调数值进度。不会返回 workflow、prompt id 或 history。"
+        ),
+        "inputSchema": QUEUE_SNAPSHOT_INPUT_SCHEMA,
+        "outputSchema": QUEUE_SNAPSHOT_OUTPUT_SCHEMA,
+        "annotations": _safe_read_annotations(requires_local_software=True),
+    },
     _standard_tool(
         name="comfyui.workflow_validate",
         title="Validate ComfyUI Workflow",
@@ -1130,6 +1150,10 @@ STARBRIDGE_RECIPES: dict[str, JsonObject] = {
         "bridge": "comfyui",
         "goal": "Validate a public txt2img template and return a redacted lifecycle summary.",
         "steps": [
+            {
+                "tool": "comfyui.queue_snapshot",
+                "purpose": "plan a safe queue check; live loopback read remains an explicit probe",
+            },
             {"tool": "comfy.workflow_template_get", "purpose": "load a bundled public template"},
             {
                 "tool": "comfy.workflow_from_template",
@@ -1140,9 +1164,17 @@ STARBRIDGE_RECIPES: dict[str, JsonObject] = {
                 "purpose": "summarize job and asset lifecycle",
             },
         ],
-        "quality_gates": ["workflow_schema", "prompt_redacted", "no_queue_submit"],
+        "quality_gates": [
+            "queue_backpressure_reviewed",
+            "workflow_schema",
+            "prompt_redacted",
+            "no_queue_submit",
+        ],
         "evidence": ["workflow_hash", "asset_manifest_preview"],
-        "safety": "does not submit to /prompt or read local model/image folders.",
+        "safety": (
+            "queue snapshot is plan-only by default and live mode is loopback read-only; "
+            "the recipe does not submit to /prompt or read local model/image folders."
+        ),
     },
     "cad_dxf_from_spec": {
         "bridge": "autocad_dxf",
@@ -1264,6 +1296,8 @@ def _handle_starbridge_recipe_plan(arguments: JsonObject) -> JsonObject:
             "Use starbridge.evidence_validate after any confirmed sandbox write.",
         ],
     }
+    if recipe["bridge"] == "comfyui":
+        plan["queue_snapshot"] = queue_snapshot_contract()
     if arguments.get("action_plan", True):
         plan["action_plan"] = {
             "mode": "plan_then_execute",
@@ -1297,6 +1331,15 @@ def _handle_starbridge_recipe_evidence(arguments: JsonObject) -> JsonObject:
                 "available_recipes": sorted(STARBRIDGE_RECIPES),
             }
         )
+    input_summary = {
+        "recipe_id": recipe_id,
+        "goal": recipe["goal"],
+        "tools": [step["tool"] for step in recipe["steps"]],
+        "safety_boundary": recipe["safety"],
+        "operation_context_schema": operation_context_contract()["schema_version"],
+    }
+    if recipe["bridge"] == "comfyui":
+        input_summary["queue_snapshot_schema"] = queue_snapshot_contract()["schema_version"]
     manifest = create_manifest(
         bridge=str(recipe["bridge"]),
         action="recipe_evidence",
@@ -1305,17 +1348,12 @@ def _handle_starbridge_recipe_evidence(arguments: JsonObject) -> JsonObject:
         confirm_write=bool(arguments.get("confirm_write", False)),
         plan_id=f"recipe::{recipe_id}",
         job_id=f"job::{recipe_id}::preview",
-        input_summary={
-            "recipe_id": recipe_id,
-            "goal": recipe["goal"],
-            "tools": [step["tool"] for step in recipe["steps"]],
-            "safety_boundary": recipe["safety"],
-            "operation_context_schema": operation_context_contract()["schema_version"],
-        },
+        input_summary=input_summary,
         notes=[
             "preview only; not saved to disk",
             "quality gates must pass before any confirmed bridge write",
             "capture a sanitized operation context after every major action or failure",
+            "review queue backpressure before any confirmed ComfyUI submit",
         ],
     )
     for gate_name in recipe["quality_gates"]:
@@ -1340,6 +1378,7 @@ def _handle_starbridge_recipe_evidence(arguments: JsonObject) -> JsonObject:
         "requires_confirmation_before_write": True,
         "sandbox_or_metadata_only": True,
         "operation_context_required_after_major_action": True,
+        "queue_backpressure_review_required": recipe["bridge"] == "comfyui",
     }
     return sanitize(
         {
@@ -1392,6 +1431,16 @@ def _handle_comfy_system_probe(arguments: JsonObject) -> JsonObject:
         action="system_probe",
         report=probe(base_url, timeout),
         display_name="ComfyUI 图像生成桥",
+    )
+
+
+def _handle_comfy_queue_snapshot(arguments: JsonObject) -> JsonObject:
+    return build_queue_snapshot(
+        probe=arguments.get("probe", False),
+        comfy_url=arguments.get("comfy_url", DEFAULT_COMFY_URL),
+        timeout=arguments.get("timeout", 5),
+        max_items=arguments.get("max_items", 25),
+        progress=arguments.get("progress"),
     )
 
 
@@ -2183,6 +2232,7 @@ TOOL_HANDLERS: dict[str, ToolHandler] = {
     "starbridge.recipe_plan": _handle_starbridge_recipe_plan,
     "starbridge.recipe_evidence": _handle_starbridge_recipe_evidence,
     "comfyui.system_probe": _handle_comfy_system_probe,
+    "comfyui.queue_snapshot": _handle_comfy_queue_snapshot,
     "comfyui.workflow_validate": _handle_workflow_validate,
     "comfyui.workflow_build_plan": _handle_comfy_workflow_build_plan,
     "comfyui.workflow_build": _handle_comfy_workflow_build,

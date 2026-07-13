@@ -74,6 +74,9 @@ class ControlPlannerTests(unittest.TestCase):
             phases,
         )
         self.assertEqual(["comfy.workflow_visualize"], result["phases"][2]["tools"])
+        self.assertIn("comfyui.queue_snapshot", result["phases"][0]["tools"])
+        self.assertFalse(result["phases"][0]["tool_arguments"]["comfyui.queue_snapshot"]["probe"])
+        self.assertIn("queue_backpressure_reviewed", result["quality_gates"])
 
     def test_every_selected_route_includes_operation_context_observation(self) -> None:
         for bridge in (

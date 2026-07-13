@@ -102,11 +102,13 @@ python examples\comfy_bridge\run_txt2img.py `
 - 不能把本机 ComfyUI 根目录、输出目录或模型路径写进仓库。
 - 当前模板入口只生成 placeholder workflow，不会提交 ComfyUI 队列。
 - 当前 lifecycle 摘要只返回节点统计、资产角色、workflow hash、确认门和 evidence 预览；不返回原始 workflow、prompt 文本、模型名或输出文件名。
+- 当前 queue snapshot 默认 plan-only；`probe=true` 时只读 loopback `/queue`，只返回哈希 job ID、计数、顺序与 backpressure，不返回 workflow/history。
 - 当前 workflow 校验覆盖 bundled public workflow 和模板组合结果，不是通用 ComfyUI 图校验器。
 
 ## 下一步
 
 1. 扩展 workflow 校验，覆盖更多输入引用、节点类型和常见错误。
-2. 增加本机 ComfyUI probe gate，缺服务时 soft-exit。
+2. 增加 live WebSocket progress，并保持数值单调与 stall/backlog 检测。
 3. 增加 queue payload dry-run，默认不请求 `/prompt`。
-4. 保持真实 submit 走显式确认，本地 manifest 继续脱敏。
+4. 设计受控 cancel；必须区分 running interrupt 与 pending removal，不自动升级到进程重启。
+5. 保持真实 submit 走显式确认，本地 manifest 继续脱敏。

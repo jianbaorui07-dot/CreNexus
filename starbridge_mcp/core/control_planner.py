@@ -26,6 +26,7 @@ BRIDGE_ROUTES: dict[str, dict[str, Any]] = {
         "keywords": ("comfyui", "文生图", "图生图", "扩散", "workflow", "工作流"),
         "label": "ComfyUI 图像生成桥",
         "probe": "comfyui.system_probe",
+        "queue_snapshot": "comfyui.queue_snapshot",
         "plan": "comfyui.workflow_build_plan",
         "visual_review": "comfy.workflow_visualize",
         "recipe_id": "comfyui_txt2img_lifecycle",
@@ -137,12 +138,18 @@ def build_control_plan(
             "purpose": "按当前软件 recipe 预览质量门、脱敏摘要和证据要求。",
         }
 
+    discover_phase: dict[str, Any] = {
+        "phase": "discover",
+        "tools": ["starbridge.safe_roots", route["probe"]],
+        "purpose": "确认安全根目录与当前软件桥就绪状态。",
+    }
+    queue_snapshot = route.get("queue_snapshot")
+    if queue_snapshot:
+        discover_phase["tools"].append(queue_snapshot)
+        discover_phase["tool_arguments"] = {queue_snapshot: {"probe": False}}
+
     phases: list[dict[str, Any]] = [
-        {
-            "phase": "discover",
-            "tools": ["starbridge.safe_roots", route["probe"]],
-            "purpose": "确认安全根目录与当前软件桥就绪状态。",
-        },
+        discover_phase,
         {
             "phase": "plan",
             "tools": [route["plan"]],
@@ -181,6 +188,17 @@ def build_control_plan(
             }
         )
 
+    quality_gates = [
+        "safe_roots_reviewed",
+        "no_private_path_leak",
+        "dry_run_first",
+        "explicit_confirmation_before_write",
+        "operation_context_captured",
+        "evidence_manifest_valid",
+    ]
+    if queue_snapshot:
+        quality_gates.insert(1, "queue_backpressure_reviewed")
+
     return sanitize(
         {
             "ok": True,
@@ -192,14 +210,7 @@ def build_control_plan(
             "selection_evidence": matched_keywords,
             "needs_clarification": False,
             "phases": phases,
-            "quality_gates": [
-                "safe_roots_reviewed",
-                "no_private_path_leak",
-                "dry_run_first",
-                "explicit_confirmation_before_write",
-                "operation_context_captured",
-                "evidence_manifest_valid",
-            ],
+            "quality_gates": quality_gates,
             "safety_boundary": safety_boundary,
         }
     )

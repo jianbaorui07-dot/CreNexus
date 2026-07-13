@@ -301,6 +301,26 @@ CAPABILITIES: tuple[ToolCapability, ...] = (
         invocation="python examples/comfy_bridge/probe.py --json",
     ),
     ToolCapability(
+        name="comfyui.queue_snapshot",
+        bridge="comfyui",
+        action="queue_snapshot",
+        maturity="implemented",
+        risk_level="safe_read_only",
+        description="默认只返回计划；显式 probe 时读取 loopback /queue 并输出脱敏队列与 backpressure。",
+        side_effects=(
+            "不提交或取消任务，不读取 workflow/history/output；live 模式只发送一次 loopback GET。"
+        ),
+        safe_default=True,
+        requires_confirmation=False,
+        requires_local_software=True,
+        source_projects=(
+            "artokun/comfyui-mcp",
+            "IO-AtelierTech/comfyui-mcp",
+            "modelcontextprotocol/specification",
+        ),
+        invocation="python -m starbridge_mcp.mcp_server",
+    ),
+    ToolCapability(
         name="comfyui.workflow_validate",
         bridge="comfyui",
         action="workflow_validate",
