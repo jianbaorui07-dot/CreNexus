@@ -22,7 +22,8 @@ flowchart TD
     O --> P["Resume bounded history polling"]
     P --> M
     M --> Q["Review asset_id"]
-    Q --> R["comfyui.regenerate (dry-run)"]
+    Q --> S["comfyui.asset_metadata"]
+    S --> R["comfyui.regenerate (dry-run)"]
     R -->|confirm_run=true| J
 ```
 
@@ -36,6 +37,7 @@ flowchart TD
 | `comfy.workflow_lifecycle_summary` | safe read-only | Returns redacted job / asset lifecycle, submit gate, and evidence preview for a reviewed workflow. | None |
 | `comfyui.agent_run` | dry-run by default; confirmed run with `confirm_run=true` | Runs build, validate, repair, submit, status, manifest. | Contacts local ComfyUI and may cause ComfyUI to write images to its own output folder |
 | `comfyui.generation_result` | live read-only | Resumes bounded polling for one explicit prompt ID and returns terminal state plus a stable-ID, basename-only output manifest. | Sends loopback-only `GET /history/{prompt_id}` requests; never submits or reads image bytes |
+| `comfyui.asset_metadata` | session read-only | Checks whether one stable `asset_id` still has usable in-memory provenance and reports its remaining TTL plus supported regeneration overrides. | None; never contacts ComfyUI or reads files |
 | `comfyui.regenerate` | dry-run by default; confirmed run with `confirm_run=true` | Replays the in-memory workflow provenance for one `asset_id` with bounded parameter overrides. | Confirmed mode submits a new loopback ComfyUI job; provenance is never persisted |
 
 ## Build Plan Contract
@@ -163,6 +165,18 @@ If the confirmed run returns `queued_or_running`, call `comfyui.generation_resul
 - distinguishes `queued_or_running`, `completed`, `completed_no_outputs`, `failed`, `cancelled`, and `status_unavailable`.
 
 `asset_id` is a logical identity, not a filesystem path or download URL. It is stable for the same prompt/output tuple and changes when the prompt ID, output node, filename, subfolder, type, or output position changes. The guarded `comfyui.regenerate` tool resolves this identity only against an in-memory provenance record; this protocol does not persist private workflow data to Git.
+
+## Asset Metadata Contract
+
+Call `comfyui.asset_metadata` before regeneration to check whether the current server session can still resolve an asset:
+
+```json
+{
+  "asset_id": "asset_0123456789abcdef"
+}
+```
+
+The read-only response contains only `available`, `can_regenerate`, `workflow_hash`, remaining provenance TTL, and a fixed list of supported override field names. It never returns the stored workflow, prompts, node parameters, model names, filenames, image bytes, or local paths. Unknown, expired, or post-restart asset IDs return `asset_provenance_unavailable`; the tool never scans ComfyUI history or the filesystem to reconstruct provenance.
 
 ## Regenerate Contract
 
