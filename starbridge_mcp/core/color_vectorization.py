@@ -63,9 +63,7 @@ def _number(
 def _optional_dimension(value: Any, name: str) -> int | None:
     if value is None:
         return None
-    return int(
-        _number(value, name=name, minimum=1, maximum=32768, integer=True)
-    )
+    return int(_number(value, name=name, minimum=1, maximum=32768, integer=True))
 
 
 def _boolean(arguments: dict[str, Any], name: str, default: bool) -> bool:
@@ -78,9 +76,7 @@ def _boolean(arguments: dict[str, Any], name: str, default: bool) -> bool:
 def _reference_id(arguments: dict[str, Any]) -> str:
     reference_id = str(arguments.get("reference_id") or "")
     if not REFERENCE_ID_PATTERN.fullmatch(reference_id):
-        raise ValueError(
-            "reference_id must match ^[a-z0-9][a-z0-9_-]{0,63}$"
-        )
+        raise ValueError("reference_id must match ^[a-z0-9][a-z0-9_-]{0,63}$")
     return reference_id
 
 
@@ -135,9 +131,7 @@ def build_color_vectorization_plan(arguments: dict[str, Any]) -> dict[str, Any]:
                 "reference_id": reference_id,
                 "reference_authorized": False,
                 "verdict": "blocked",
-                "warnings": [
-                    "reference_authorized=true is required before planning image use."
-                ],
+                "warnings": ["reference_authorized=true is required before planning image use."],
             }
         )
 
@@ -296,18 +290,10 @@ def validate_color_vectorization_metrics(
         ),
     }
     measured = {
-        "silhouette_iou": _metric(
-            metrics, "silhouette_iou", minimum=0, maximum=1
-        ),
-        "mean_delta_e": _metric(
-            metrics, "mean_delta_e", minimum=0, maximum=100
-        ),
-        "p95_delta_e": _metric(
-            metrics, "p95_delta_e", minimum=0, maximum=100
-        ),
-        "perceptual_similarity": _metric(
-            metrics, "perceptual_similarity", minimum=0, maximum=1
-        ),
+        "silhouette_iou": _metric(metrics, "silhouette_iou", minimum=0, maximum=1),
+        "mean_delta_e": _metric(metrics, "mean_delta_e", minimum=0, maximum=100),
+        "p95_delta_e": _metric(metrics, "p95_delta_e", minimum=0, maximum=100),
+        "perceptual_similarity": _metric(metrics, "perceptual_similarity", minimum=0, maximum=1),
         "anchor_count": _metric(
             metrics,
             "anchor_count",
@@ -324,9 +310,7 @@ def validate_color_vectorization_metrics(
         ),
     }
 
-    failed_hard_gates = [
-        name for name in HARD_GATE_NAMES if hard_gates.get(name) is not True
-    ]
+    failed_hard_gates = [name for name in HARD_GATE_NAMES if hard_gates.get(name) is not True]
     findings: list[dict[str, str]] = []
     for name in failed_hard_gates:
         findings.append(
@@ -339,8 +323,7 @@ def validate_color_vectorization_metrics(
 
     checks = (
         (
-            measured["silhouette_iou"]
-            < validated_gates["silhouette_iou_min"],
+            measured["silhouette_iou"] < validated_gates["silhouette_iou_min"],
             "silhouette_iou_low",
             "Silhouette overlap is below the configured minimum.",
         ),
@@ -355,8 +338,7 @@ def validate_color_vectorization_metrics(
             "Tail color difference is above the configured maximum.",
         ),
         (
-            measured["perceptual_similarity"]
-            < validated_gates["perceptual_similarity_min"],
+            measured["perceptual_similarity"] < validated_gates["perceptual_similarity_min"],
             "perceptual_similarity_low",
             "Perceptual similarity is below the configured minimum.",
         ),

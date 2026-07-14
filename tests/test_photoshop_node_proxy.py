@@ -190,9 +190,9 @@ class PhotoshopNodeProxyTests(unittest.TestCase):
         self.assertIn("ps.batchplay.execute_confirmed", methods)
 
     def test_uxp_bridge_declares_runtime_sandbox_guards(self) -> None:
-        index_source = (
-            REPO_ROOT / "uxp" / "photoshop-bridge" / "src" / "index.js"
-        ).read_text(encoding="utf-8")
+        index_source = (REPO_ROOT / "uxp" / "photoshop-bridge" / "src" / "index.js").read_text(
+            encoding="utf-8"
+        )
         runner_source = (
             REPO_ROOT / "uxp" / "photoshop-bridge" / "src" / "batchplay-runner.js"
         ).read_text(encoding="utf-8")

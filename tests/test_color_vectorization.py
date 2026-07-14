@@ -13,11 +13,7 @@ from starbridge_mcp.mcp_server import handle_request
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA = (
-    ROOT
-    / "examples"
-    / "illustrator_bridge"
-    / "protocols"
-    / "color_vectorization.v1.schema.json"
+    ROOT / "examples" / "illustrator_bridge" / "protocols" / "color_vectorization.v1.schema.json"
 )
 SCRIPT = ROOT / "examples" / "illustrator_bridge" / "scripts" / "color_vectorize.ps1"
 JSX = ROOT / "examples" / "illustrator_bridge" / "jsx" / "color_vectorize.jsx"

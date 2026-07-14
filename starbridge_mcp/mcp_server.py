@@ -980,8 +980,7 @@ TOOL_DEFINITIONS: list[JsonObject] = [
         name="illustrator.color_vectorize_validate",
         title="Validate Color Vectorization Evidence",
         description=(
-            "校验调用方传入的脱敏轮廓、色差、感知相似度和节点统计；"
-            "不读取参考图或预览文件。"
+            "校验调用方传入的脱敏轮廓、色差、感知相似度和节点统计；不读取参考图或预览文件。"
         ),
         input_schema=_object_schema(
             {
