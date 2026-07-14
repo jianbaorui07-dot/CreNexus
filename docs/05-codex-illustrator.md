@@ -69,6 +69,7 @@ powershell -ExecutionPolicy Bypass -File examples\illustrator_bridge\scripts\col
 | `illustrator.color_vectorize_plan` | 生成 Photoshop / Illustrator 应用矩阵、彩色描摹参数和质量闸门 | 已实现，纯内存 dry-run |
 | `illustrator.color_vectorize_validate` | 校验调用方提供的轮廓、色差、感知相似度和节点统计 | 已实现，不读取图片 |
 | `illustrator.color_vectorize_compare` | 比较明确授权参考图与 sandbox PNG，自动计算 ICC、轮廓、色差、SSIM 和矢量证据 | 已实现，只读两个明确文件，不返回路径、像素或元数据 |
+| `illustrator.color_vectorize_repair_plan` | 把脱敏 compare findings 编译为最多三轮的确定性 Image Trace 参数修复计划 | 已实现纯内存计划；hard gate 失败或预算耗尽时交还用户 |
 | `illustrator.color_vectorize_execute` | 对明确传入的 PNG/JPEG 执行固定 Image Trace，输出 AI/SVG/PNG | 已实现受控本地原型，默认 dry-run、双确认 |
 | `illustrator.export_demo_assets` | 从 sandbox demo 文档导出 SVG、PDF 和 PNG | 已有 sandbox demo，需显式确认 |
 | `illustrator.run_demo` | 创建测试画板、导出 demo 产物并生成 manifest | 已有一键流程，需显式确认 |
@@ -89,6 +90,6 @@ powershell -ExecutionPolicy Bypass -File examples\illustrator_bridge\scripts\col
 1. 保留 `examples/bridge_status.py` 的 Illustrator 状态检查入口。
 2. 继续把 demo 输出保持在 `examples/output/illustrator/`，不提交真实生成物。
 3. 补 Photoshop sandbox 预处理执行器，并保持源图只由参数传入。
-4. 基于本地比较器 findings 生成受控 VectorPatch 修复建议。
+4. 将 `color_vectorize_repair_plan` 接入显式确认的 execute → compare 有界编排；当前只生成下一轮参数，不自动重复桌面写入。
 5. 扩展 preflight 检查，例如字体替换风险、颜色空间和链接资产风险。
 6. 所有真实写入继续要求 dry-run 之后显式确认。

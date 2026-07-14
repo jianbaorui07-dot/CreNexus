@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://starbridge.local/schemas/color_vector_repair.v1.schema.json",
+  "title": "StarBridge Color Vector Repair Plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok",
+    "bridge",
+    "action",
+    "schema_version",
+    "reference_id",
+    "reference_authorized",
+    "verdict",
+    "repair_round",
+    "max_repair_rounds",
+    "current_settings",
+    "next_settings",
+    "changes",
+    "addressed_findings",
+    "unresolved_findings",
+    "requires_execute",
+    "requires_user_review",
+    "suggested_next_tool",
+    "warnings",
+    "safety",
+    "dry_run",
+    "side_effects"
+  ],
+  "properties": {
+    "ok": { "type": "boolean" },
+    "bridge": { "const": "illustrator" },
+    "action": { "const": "color_vectorize_repair_plan" },
+    "schema_version": { "const": "starbridge.color-vector-repair.v1" },
+    "reference_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+    },
+    "reference_authorized": { "type": "boolean" },
+    "verdict": {
+      "enum": ["planned", "pass_through", "needs_user", "blocked"]
+    },
+    "repair_round": { "type": "integer", "minimum": 1, "maximum": 3 },
+    "max_repair_rounds": { "type": "integer", "minimum": 1, "maximum": 3 },
+    "current_settings": { "$ref": "#/$defs/settings" },
+    "next_settings": { "$ref": "#/$defs/settings" },
+    "changes": {
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["parameter", "previous", "next", "reason_code"],
+        "properties": {
+          "parameter": {
+            "enum": [
+              "max_colors",
+              "path_fitting",
+              "min_area",
+              "preprocess_blur",
+              "photoshop_preprocess",
+              "normalize_srgb",
+              "median_radius"
+            ]
+          },
+          "previous": { "type": ["number", "boolean"] },
+          "next": { "type": ["number", "boolean"] },
+          "reason_code": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,63}$"
+          }
+        }
+      }
+    },
+    "addressed_findings": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/finding_code" }
+    },
+    "unresolved_findings": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/finding_code" }
+    },
+    "requires_execute": { "type": "boolean" },
+    "requires_user_review": { "type": "boolean" },
+    "suggested_next_tool": {
+      "oneOf": [
+        { "const": "illustrator.color_vectorize_execute" },
+        { "type": "null" }
+      ]
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1, "maxLength": 512 }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "inputs_sanitized",
+        "reads_files",
+        "writes_files",
+        "starts_adobe",
+        "arbitrary_script",
+        "quality_gates_relaxed",
+        "bounded_repair",
+        "visual_review_required"
+      ],
+      "properties": {
+        "inputs_sanitized": { "const": true },
+        "reads_files": { "const": false },
+        "writes_files": { "const": false },
+        "starts_adobe": { "const": false },
+        "arbitrary_script": { "const": false },
+        "quality_gates_relaxed": { "const": false },
+        "bounded_repair": { "const": true },
+        "visual_review_required": { "const": true }
+      }
+    },
+    "dry_run": { "const": true },
+    "side_effects": { "const": false }
+  },
+  "$defs": {
+    "finding_code": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{0,63}$"
+    },
+    "settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["trace", "preprocess"],
+      "properties": {
+        "trace": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "max_colors",
+            "path_fitting",
+            "min_area",
+            "preprocess_blur",
+            "ignore_white",
+            "output_to_swatches"
+          ],
+          "properties": {
+            "max_colors": { "type": "integer", "minimum": 2, "maximum": 256 },
+            "path_fitting": { "type": "number", "minimum": 0, "maximum": 10 },
+            "min_area": { "type": "integer", "minimum": 1, "maximum": 1000 },
+            "preprocess_blur": { "type": "number", "minimum": 0, "maximum": 2 },
+            "ignore_white": { "type": "boolean" },
+            "output_to_swatches": { "type": "boolean" }
+          }
+        },
+        "preprocess": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "photoshop_preprocess",
+            "normalize_srgb",
+            "max_dimension",
+            "median_radius"
+          ],
+          "properties": {
+            "photoshop_preprocess": { "type": "boolean" },
+            "normalize_srgb": { "type": "boolean" },
+            "max_dimension": { "type": "integer", "minimum": 256, "maximum": 8192 },
+            "median_radius": { "type": "integer", "minimum": 0, "maximum": 5 }
+          }
+        }
+      }
+    }
+  }
+}
