@@ -1556,9 +1556,7 @@ def generation_result(arguments: dict[str, Any]) -> dict[str, Any]:
     base_url = _validate_loopback_url(str(arguments.get("comfy_url") or DEFAULT_BASE_URL))
     timeout = _as_int(arguments.get("timeout"), 8, minimum=1, maximum=15)
     wait_seconds = _as_int(arguments.get("wait_seconds"), 0, minimum=0, maximum=60)
-    poll_interval = _as_float(
-        arguments.get("poll_interval"), 1.0, minimum=0.2, maximum=5.0
-    )
+    poll_interval = _as_float(arguments.get("poll_interval"), 1.0, minimum=0.2, maximum=5.0)
     logical_job_id = _logical_generation_id(prompt_id)
     history: dict[str, Any] = {}
     deadline = time.monotonic() + wait_seconds
@@ -1678,9 +1676,7 @@ def _regeneration_workflow(
         sampler_inputs["seed"] = random.randint(1, 2**48)
         applied.append("seed")
     if "cfg" in arguments and arguments.get("cfg") is not None:
-        sampler_inputs["cfg"] = _as_float(
-            arguments.get("cfg"), 7.0, minimum=0.1, maximum=30.0
-        )
+        sampler_inputs["cfg"] = _as_float(arguments.get("cfg"), 7.0, minimum=0.1, maximum=30.0)
         applied.append("cfg")
     for field, input_name in (("sampler", "sampler_name"), ("scheduler", "scheduler")):
         if field in arguments:
@@ -1688,9 +1684,7 @@ def _regeneration_workflow(
             applied.append(field)
     for field in ("width", "height"):
         if field in arguments and arguments.get(field) is not None:
-            latent_inputs[field] = _as_int(
-                arguments.get(field), 1024, minimum=64, maximum=4096
-            )
+            latent_inputs[field] = _as_int(arguments.get(field), 1024, minimum=64, maximum=4096)
             applied.append(field)
     return candidate, applied
 

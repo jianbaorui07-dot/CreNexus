@@ -118,9 +118,7 @@ class ComfyRegenerateTests(unittest.TestCase):
             self.assertEqual("asset_provenance_unavailable", missing["error_code"])
 
             workflow_agent._ASSET_RECORDS[self.asset_id]["created_at"] = -100000.0
-            expired = workflow_agent.regenerate(
-                {"asset_id": self.asset_id, "confirm_run": True}
-            )
+            expired = workflow_agent.regenerate({"asset_id": self.asset_id, "confirm_run": True})
             self.assertEqual("asset_provenance_unavailable", expired["error_code"])
 
             with self.assertRaises(ValueError):

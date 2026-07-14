@@ -30,14 +30,10 @@ class ComfyGenerationResultTests(unittest.TestCase):
                 },
             }
         }
-        with patch(
-            "examples.comfy_bridge.workflow_agent.get_json", return_value=history
-        ) as read:
+        with patch("examples.comfy_bridge.workflow_agent.get_json", return_value=history) as read:
             result = generation_result({"prompt_id": PROMPT_ID})
 
-        read.assert_called_once_with(
-            "http://127.0.0.1:8188", f"/history/{PROMPT_ID}", 8
-        )
+        read.assert_called_once_with("http://127.0.0.1:8188", f"/history/{PROMPT_ID}", 8)
         self.assertTrue(result["ok"])
         self.assertEqual("completed", result["state"])
         self.assertTrue(result["terminal"])
@@ -73,9 +69,7 @@ class ComfyGenerationResultTests(unittest.TestCase):
                 },
             }
         }
-        with patch(
-            "examples.comfy_bridge.workflow_agent.get_json", return_value=base_history
-        ):
+        with patch("examples.comfy_bridge.workflow_agent.get_json", return_value=base_history):
             first = generation_result({"prompt_id": PROMPT_ID})
             second = generation_result({"prompt_id": PROMPT_ID})
 
@@ -118,8 +112,9 @@ class ComfyGenerationResultTests(unittest.TestCase):
             ),
         )
         for history, state, ok, terminal in cases:
-            with self.subTest(state=state), patch(
-                "examples.comfy_bridge.workflow_agent.get_json", return_value=history
+            with (
+                self.subTest(state=state),
+                patch("examples.comfy_bridge.workflow_agent.get_json", return_value=history),
             ):
                 result = generation_result({"prompt_id": PROMPT_ID})
             self.assertEqual(state, result["state"])
@@ -181,9 +176,7 @@ class ComfyGenerationResultTests(unittest.TestCase):
             )
         assert response is not None
         self.assertFalse(response["result"]["isError"])
-        self.assertEqual(
-            "completed", response["result"]["structuredContent"]["state"]
-        )
+        self.assertEqual("completed", response["result"]["structuredContent"]["state"])
 
 
 if __name__ == "__main__":
