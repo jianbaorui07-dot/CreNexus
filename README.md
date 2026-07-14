@@ -29,11 +29,13 @@ flowchart LR
 
 | 状态 | 已覆盖能力 | 证据边界 |
 | --- | --- | --- |
-| 可稳定离线验证 | MCP stdio、工具注册、resources / prompts、状态探针、路径脱敏、operation context、ComfyUI 队列/进度/任务快照与工作流验证、AutoCAD / DXF 计划和受控写入 | Windows 与 Ubuntu CI 验证结构、schema、安全边界和 soft-exit |
-| Adobe 协议已实现 | Photoshop / Illustrator 规划、预检、受控执行接口；彩色矢量化 plan / execute / compare；最多 3 轮的确定性 repair plan | 默认 dry-run；compare 只读取两个明确授权文件，输出不含路径、像素或元数据 |
+| stable（稳定） | MCP stdio、工具注册、resources / prompts、状态探针、路径脱敏、operation context、ComfyUI 队列/进度/任务快照与工作流验证；AutoCAD/DXF plan validate / dry-run / guarded write | Windows 与 Ubuntu CI 验证结构、schema、安全边界和 soft-exit |
+| experimental（Adobe 协议已实现） | Photoshop / Illustrator 规划、预检、受控执行接口；彩色矢量化 plan / execute / compare；最多 3 轮的确定性 repair plan | 默认 dry-run；compare 只读取两个明确授权文件，输出不含路径、像素或元数据 |
 | UXP 安全执行已实现 | Photoshop `executeAsModal` 有界排队、取消状态、history commit / rollback、临时文档自动关闭 | 已通过 Node 模拟与协议测试；仍需已授权 Photoshop 桌面实测 |
-| 仍在推进 | repair plan → Illustrator execute → compare 的显式确认闭环、Adobe 桌面端端到端验收、Blender 确认渲染、CapCut 草稿骨架 | 未经本地运行证据，不宣称真实桌面控制已验证 |
-| 不实现 | 自动登录、绕过授权、递归扫描私有目录、无确认写入真实软件、上传客户工程或商业素材 | 安全硬边界 |
+| planned（仍在推进） | repair plan → Illustrator execute → compare 的显式确认闭环、Adobe 桌面端端到端验收、Blender 确认渲染、CapCut 草稿骨架 | 未经本地运行证据，不宣称真实桌面控制已验证 |
+| not implemented（不实现） | 自动登录、绕过授权、递归扫描私有目录、无确认写入真实软件、上传客户工程或商业素材 | 安全硬边界 |
+
+Photoshop, Illustrator, Blender, and CapCut write flows are experimental or planned unless a reviewed local run proves otherwise.
 
 完整状态见 [能力矩阵](docs/CAPABILITY_MATRIX.md)、[彩色矢量化协议](docs/color-faithful-vectorization.md) 和 [v0.1-alpha 发布说明](docs/RELEASE_V0_1_ALPHA.md)。
 
@@ -116,6 +118,16 @@ flowchart LR
 | MCP 客户端配置 | [本地 MCP 配置](docs/local-mcp-setup.md) | `python -m starbridge_mcp.server tools --json --safe-only` |
 | 中文导航 | [中文用途索引](docs/中文用途索引.md) | 按软件和目标查找入口 |
 
+### 中文阅读指南与仓库区域标注
+
+| 中文区域 | 对应能力 |
+| --- | --- |
+| 图像生成区 | ComfyUI workflow 校验、队列监控、模板和任务生命周期摘要 |
+| 工程制图区 | CAD / AutoCAD plan、DXF dry-run 与受控写入 |
+| AI 矢量文件桥 | Illustrator 彩色矢量规划、比较、修复计划与受控执行 |
+| 图像编辑区 | Photoshop UXP、Node Proxy、modal 回滚与 sandbox demo |
+| 视频草稿区 | CapCut / 剪映只读探针；未配置时报告“剪映可执行文件”状态 |
+
 ## 仓库结构
 
 ```text
@@ -149,10 +161,15 @@ docs/                        接入协议、能力矩阵与中文索引
 python -m ruff check .
 python -m ruff format --check .
 python -m unittest discover -s tests
-python scripts\security_check.py
-python examples\bridge_status.py --json --redact-paths --soft-exit
+python scripts/security_check.py
+python scripts/collect_bridge_status.py --json
+python examples/bridge_status.py --json --redact-paths --soft-exit
 python -m starbridge_mcp.server tools --json --safe-only
+python -m starbridge_mcp.server evidence --init --json
+python -m starbridge_mcp.server evidence --validate --json
+python -m starbridge_mcp.server job-status --json
 python scripts\starbridge_preflight.py --markdown
+python scripts\starbridge_preflight.py --write-report --soft-exit
 npm.cmd test
 ```
 
