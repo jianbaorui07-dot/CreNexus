@@ -1086,6 +1086,8 @@ class PhotoshopBridgeAdapter(BaseBridge):
             descriptors = [descriptor, *descriptors]
         if not isinstance(descriptors, list):
             raise ValueError("descriptors must be a list")
+        if len(descriptors) > 32:
+            raise ValueError("descriptors must contain at most 32 items")
 
         validations: list[dict[str, Any]] = []
         warnings: list[str] = []

@@ -9,6 +9,22 @@ PLUGIN = ROOT / "uxp" / "illustrator-bridge"
 
 
 class IllustratorUxpBridgeTests(unittest.TestCase):
+    def test_state_v2_schema_excludes_private_names_and_paths(self):
+        schema = json.loads(
+            (
+                ROOT
+                / "examples"
+                / "illustrator_bridge"
+                / "protocols"
+                / "realtime_state.v2.schema.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertEqual(2, schema["properties"]["protocol_version"]["const"])
+        self.assertFalse(schema["additionalProperties"])
+        serialized = json.dumps(schema)
+        for forbidden in ("document_name", "layer_name", "file_path", "font", "linked"):
+            self.assertNotIn(forbidden, serialized)
+
     def test_manifest_is_local_network_only(self):
         manifest = json.loads((PLUGIN / "manifest.json").read_text(encoding="utf-8"))
         domains = manifest["requiredPermissions"]["network"]["domains"]
@@ -30,6 +46,19 @@ class IllustratorUxpBridgeTests(unittest.TestCase):
             self.assertIn(f"illustrator.{method}", source)
         self.assertNotIn("run_jsx", source)
         self.assertNotIn("eval(", source)
+        schema = json.loads(
+            (
+                ROOT
+                / "examples"
+                / "illustrator_bridge"
+                / "protocols"
+                / "realtime_command.v1.schema.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertEqual(
+            "^item:[1-9][0-9]*$",
+            schema["properties"]["params"]["properties"]["object_id"]["pattern"],
+        )
 
     def test_write_confirmation_guard_exists(self):
         source = (PLUGIN / "src" / "protocol.js").read_text(encoding="utf-8")
@@ -41,6 +70,10 @@ class IllustratorUxpBridgeTests(unittest.TestCase):
         self.assertNotIn("fullName", source)
         self.assertNotIn("filePath", source)
         self.assertNotIn("linkedItems", source)
+        self.assertNotIn("document.name", source)
+        self.assertNotIn("layer?.name", source)
+        self.assertNotIn("board?.name", source)
+        self.assertIn("protocol_version: 2", source)
 
 
 if __name__ == "__main__":

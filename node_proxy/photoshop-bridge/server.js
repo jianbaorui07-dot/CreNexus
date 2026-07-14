@@ -1,5 +1,7 @@
 import http from "node:http";
+import path from "node:path";
 import { URL } from "node:url";
+import { fileURLToPath } from "node:url";
 
 let WebSocketServer = null;
 try {
@@ -9,6 +11,23 @@ try {
 }
 
 const PORT = Number(process.env.STARBRIDGE_PHOTOSHOP_PROXY_PORT || 8971);
+const MAX_RPC_BYTES = 256 * 1024;
+const PROXY_DIR = path.dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = path.resolve(PROXY_DIR, "../..");
+const OUTPUT_ROOTS = [
+  path.resolve(REPO_ROOT, "sandbox"),
+  path.resolve(REPO_ROOT, "output"),
+  path.resolve(REPO_ROOT, "examples/output/photoshop"),
+];
+const ALLOWED_METHODS = new Set([
+  "starbridge.ping",
+  "ps.document.info",
+  "ps.layers.list",
+  "ps.preview.export",
+  "ps.camera_raw.tune",
+  "ps.batchplay.validate.local",
+  "ps.batchplay.execute_confirmed",
+]);
 const state = {
   node_proxy_running: true,
   uxp_client_connected: false,
@@ -71,6 +90,30 @@ function bridgeStatusPayload() {
   };
 }
 
+function pathInside(candidate, root) {
+  const relative = path.relative(root, candidate);
+  return relative === "" || (relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
+}
+
+function normalizeSandboxOutput(rawPath) {
+  if (typeof rawPath !== "string" || !rawPath.trim() || !path.isAbsolute(rawPath)) {
+    return null;
+  }
+  const candidate = path.resolve(rawPath);
+  if (path.extname(candidate).toLowerCase() !== ".png") {
+    return null;
+  }
+  return OUTPUT_ROOTS.some((root) => pathInside(candidate, root)) ? candidate : null;
+}
+
+function safeHostInfo(value) {
+  const version = String(value?.version || "unknown");
+  return {
+    app: "Photoshop",
+    version: /^[0-9A-Za-z._ -]{1,32}$/.test(version) ? version : "unknown",
+  };
+}
+
 function validateRpcMessage(message) {
   if (!message || typeof message !== "object" || Array.isArray(message)) {
     return rpcError(null, -32600, "invalid_request_object");
@@ -81,8 +124,54 @@ function validateRpcMessage(message) {
   if (typeof message.method !== "string" || !message.method.trim()) {
     return rpcError(message.id, -32600, "method_must_be_a_string");
   }
+  if (!ALLOWED_METHODS.has(message.method)) {
+    return rpcError(message.id, -32601, "method_not_allowed");
+  }
   if (message.params !== undefined && (typeof message.params !== "object" || message.params === null || Array.isArray(message.params))) {
     return rpcError(message.id, -32602, "params_must_be_an_object");
+  }
+  const params = message.params || {};
+  const descriptors = params.descriptors || (params.descriptor ? [params.descriptor] : []);
+  if (Array.isArray(descriptors) && descriptors.length > 32) {
+    return rpcError(message.id, -32602, "descriptor_count_out_of_range");
+  }
+  if (pending.has(message.id)) {
+    return rpcError(message.id, -32600, "duplicate_request_id");
+  }
+  if (message.method === "ps.preview.export" && params.dry_run !== true) {
+    if (params.confirm_write !== true) {
+      return rpcError(message.id, -32010, "confirm_write=true_required");
+    }
+    const outputPath = normalizeSandboxOutput(params.output_path);
+    if (!outputPath) {
+      return rpcError(message.id, -32602, "output_path_outside_sandbox");
+    }
+    params.output_path = outputPath;
+    params.sandbox_verified = true;
+  }
+  if (message.method === "ps.batchplay.execute_confirmed") {
+    if (params.confirm_write !== true) {
+      return rpcError(message.id, -32010, "confirm_write=true_required");
+    }
+    if (!Array.isArray(descriptors) || descriptors.length < 1) {
+      return rpcError(message.id, -32602, "descriptors_required");
+    }
+    if (params.output_path) {
+      const outputPath = normalizeSandboxOutput(params.output_path);
+      if (!outputPath) {
+        return rpcError(message.id, -32602, "output_path_outside_sandbox");
+      }
+      params.output_path = outputPath;
+    }
+    params.sandbox_verified = true;
+  }
+  if (message.method === "ps.camera_raw.tune" && params.dry_run === false) {
+    if (params.confirm_apply !== true) {
+      return rpcError(message.id, -32011, "confirm_apply=true_required");
+    }
+    if (params.output?.export_after_apply === true && params.confirm_export !== true) {
+      return rpcError(message.id, -32012, "confirm_export=true_required");
+    }
   }
   return null;
 }
@@ -125,8 +214,21 @@ const server = http.createServer(async (request, response) => {
   }
   if (request.method === "POST" && url.pathname === "/rpc") {
     const chunks = [];
+    let bodyBytes = 0;
+    let bodyTooLarge = false;
     for await (const chunk of request) {
+      bodyBytes += chunk.length;
+      if (bodyBytes > MAX_RPC_BYTES) {
+        bodyTooLarge = true;
+        break;
+      }
       chunks.push(chunk);
+    }
+    if (bodyTooLarge) {
+      state.last_error = "rpc_payload_too_large";
+      recordEvent("rpc_payload_rejected", { reason: "payload_too_large" });
+      sendJson(response, 200, rpcError(null, -32013, "payload_too_large"));
+      return;
     }
     let message;
     try {
@@ -159,7 +261,7 @@ const server = http.createServer(async (request, response) => {
 if (WebSocketServer) {
   const wss = new WebSocketServer({ noServer: true });
   server.on("upgrade", (request, socket, head) => {
-    if (!request.url?.startsWith("/uxp")) {
+    if (request.url !== "/uxp") {
       socket.destroy();
       return;
     }
@@ -183,16 +285,16 @@ if (WebSocketServer) {
         state.photoshop_host_seen = true;
         state.last_client_registered_at = new Date().toISOString();
         state.last_ping_at = new Date().toISOString();
-        state.photoshop_host = message.photoshop_host || state.photoshop_host || {};
+        state.photoshop_host = safeHostInfo(message.photoshop_host);
         recordEvent("uxp_registered", { photoshop_host: state.photoshop_host });
         return;
       }
       if (message.result?.photoshop_host) {
-        state.photoshop_host = message.result.photoshop_host;
+        state.photoshop_host = safeHostInfo(message.result.photoshop_host);
         state.photoshop_host_seen = true;
       }
       if (message.error?.message) {
-        state.last_error = message.error.message;
+        state.last_error = "uxp_rpc_error";
       }
       const resolver = pending.get(message.id);
       if (resolver) {
@@ -205,8 +307,8 @@ if (WebSocketServer) {
     ws.on("close", () => {
       if (currentClient === ws) {
         currentClient = null;
+        state.uxp_client_connected = false;
       }
-      state.uxp_client_connected = false;
       recordEvent("uxp_disconnected");
     });
   });

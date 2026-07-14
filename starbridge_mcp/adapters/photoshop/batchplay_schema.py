@@ -10,13 +10,6 @@ ALLOWLIST: dict[str, dict[str, Any]] = {
         "dry_run_only": False,
         "sandbox_only": False,
     },
-    "duplicate": {
-        "descriptor_id": "duplicate_current_document_to_sandbox",
-        "risk_level": "guarded_local_write",
-        "requires_confirmation": True,
-        "dry_run_only": False,
-        "sandbox_only": True,
-    },
     "save": {
         "descriptor_id": "export_preview_from_sandbox_copy",
         "risk_level": "guarded_local_write",
@@ -49,6 +42,7 @@ ALLOWLIST: dict[str, dict[str, Any]] = {
 
 DENYLIST = {
     "delete",
+    "duplicate",
     "mergeLayersNew",
     "flattenImage",
     "rasterizeLayer",
@@ -58,6 +52,43 @@ DENYLIST = {
     "batchPlay",
     "javascript",
 }
+
+PATH_FIELD_NAMES = {
+    "file",
+    "filepath",
+    "fullname",
+    "nativepath",
+    "path",
+    "sourcepath",
+    "targetpath",
+    "url",
+}
+
+
+def _unsafe_payload_reason(value: Any) -> str | None:
+    if isinstance(value, list):
+        for item in value:
+            reason = _unsafe_payload_reason(item)
+            if reason:
+                return reason
+        return None
+    if not isinstance(value, dict):
+        return None
+
+    reference = str(value.get("_ref") or "").lower()
+    if reference in {"document", "layer"} and any(
+        key in value for key in ("_id", "_index", "_name")
+    ):
+        return f"explicit_target:{reference}"
+
+    for key, item in value.items():
+        normalized = str(key).replace("_", "").lower()
+        if normalized in PATH_FIELD_NAMES or normalized.endswith("path"):
+            return f"path_field:{key}"
+        reason = _unsafe_payload_reason(item)
+        if reason:
+            return reason
+    return None
 
 
 def validate_descriptor(descriptor: dict[str, Any]) -> dict[str, Any]:
@@ -84,6 +115,19 @@ def validate_descriptor(descriptor: dict[str, Any]) -> dict[str, Any]:
             "dry_run_only": True,
             "sandbox_only": True,
             "reason": f"Descriptor action {action} is explicitly denied.",
+        }
+
+    unsafe_reason = _unsafe_payload_reason(descriptor)
+    if unsafe_reason:
+        return {
+            "allowed": False,
+            "action": action,
+            "descriptor_id": f"unsafe_{action}",
+            "risk_level": "guarded_local_write",
+            "requires_confirmation": True,
+            "dry_run_only": True,
+            "sandbox_only": True,
+            "reason": unsafe_reason,
         }
 
     allowed = ALLOWLIST.get(action)

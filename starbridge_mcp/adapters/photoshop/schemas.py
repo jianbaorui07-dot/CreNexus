@@ -275,7 +275,12 @@ def batchplay_validate_schema() -> dict[str, Any]:
                 touches_user_psd=False,
                 default_output_dir="sandbox/evidence",
             ),
-            "descriptors": {"type": "array", "items": {"type": "object"}, "default": []},
+            "descriptors": {
+                "type": "array",
+                "maxItems": 32,
+                "items": {"type": "object"},
+                "default": [],
+            },
             "descriptor": {"type": "object"},
         }
     )

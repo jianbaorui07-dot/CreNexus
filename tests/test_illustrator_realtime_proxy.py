@@ -22,6 +22,79 @@ def request(url, data=None, headers=None):
         return response.status, json.loads(response.read().decode())
 
 
+def push_state(port: int, state: dict) -> None:
+    script = """
+import WebSocket from 'ws';
+const ws = new WebSocket(process.argv[1]);
+ws.on('open', () => { ws.send(process.argv[2]); setTimeout(() => ws.close(), 30); });
+ws.on('error', error => { console.error(error.message); process.exit(1); });
+setTimeout(() => process.exit(0), 100);
+"""
+    completed = subprocess.run(
+        [
+            shutil.which("node"),
+            "--input-type=module",
+            "-e",
+            script,
+            f"ws://127.0.0.1:{port}/illustrator",
+            json.dumps(state),
+        ],
+        cwd=SERVER.parent,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if completed.returncode != 0:
+        raise RuntimeError(completed.stderr)
+
+
+def push_states(port: int, states: list[dict]) -> None:
+    script = """
+import WebSocket from 'ws';
+const ws = new WebSocket(process.argv[1]);
+const states = JSON.parse(process.argv[2]);
+ws.on('open', () => { for (const state of states) ws.send(JSON.stringify(state)); setTimeout(() => ws.close(), 30); });
+ws.on('error', error => { console.error(error.message); process.exit(1); });
+setTimeout(() => process.exit(0), 100);
+"""
+    completed = subprocess.run(
+        [
+            shutil.which("node"),
+            "--input-type=module",
+            "-e",
+            script,
+            f"ws://127.0.0.1:{port}/illustrator",
+            json.dumps(states),
+        ],
+        cwd=SERVER.parent,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if completed.returncode != 0:
+        raise RuntimeError(completed.stderr)
+
+
+def minimal_state(sequence: int = 1) -> dict:
+    return {
+        "type": "state",
+        "protocol_version": 2,
+        "sequence": sequence,
+        "host": {
+            "app": "Adobe Illustrator",
+            "version": "30.0",
+            "adapter": "custom_uxp_v2",
+        },
+        "document": None,
+        "selection": [],
+        "layers": [],
+        "artboards": [],
+        "zoom": None,
+        "tool": None,
+        "captured_at": "2026-07-14T00:00:00.000Z",
+    }
+
+
 @unittest.skipUnless(SERVER.exists(), "illustrator realtime proxy missing")
 class IllustratorRealtimeProxyTests(unittest.TestCase):
     @classmethod
@@ -96,6 +169,25 @@ class IllustratorRealtimeProxyTests(unittest.TestCase):
         )
         self.assertEqual(-32010, payload["error"]["code"])
 
+    def test_write_rejects_non_session_object_id(self):
+        msg = {
+            "jsonrpc": "2.0",
+            "id": 3,
+            "method": "illustrator.move_object",
+            "params": {
+                "object_id": "external-object",
+                "dx": 1,
+                "dy": 1,
+                "confirm_write": True,
+            },
+        }
+        _, payload = request(
+            "http://127.0.0.1:8976/rpc",
+            json.dumps(msg).encode(),
+            {"Content-Type": "application/json"},
+        )
+        self.assertEqual(-32602, payload["error"]["code"])
+
     def test_unlisted_method_rejected(self):
         msg = {"jsonrpc": "2.0", "id": 2, "method": "illustrator.run_jsx", "params": {}}
         _, payload = request(
@@ -113,6 +205,90 @@ class IllustratorRealtimeProxyTests(unittest.TestCase):
                 {"Content-Type": "image/jpeg", "X-StarBridge-Capture-Target": "desktop"},
             )
         self.assertEqual(400, caught.exception.code)
+
+    def test_state_is_redacted_and_reports_freshness(self):
+        push_state(
+            8976,
+            {
+                "type": "state",
+                "protocol_version": 2,
+                "sequence": 7,
+                "host": {
+                    "app": "Adobe Illustrator",
+                    "version": "30.0",
+                    "adapter": "custom_uxp_v2",
+                },
+                "document": {
+                    "name": "client-project.ai",
+                    "page_items": 2,
+                    "layer_count": 1,
+                    "artboard_count": 1,
+                    "color_space": "RGB",
+                    "full_path": "C:/private/client-project.ai",
+                },
+                "selection": [
+                    {
+                        "object_id": "item:1",
+                        "name": "Customer Logo",
+                        "type": "PathItem",
+                        "selected": True,
+                        "locked": False,
+                        "hidden": False,
+                    }
+                ],
+                "layers": [
+                    {
+                        "layer_id": "layer:1",
+                        "name": "Customer Identity",
+                        "visible": True,
+                        "locked": False,
+                    }
+                ],
+                "artboards": [
+                    {
+                        "artboard_id": "artboard:1",
+                        "name": "Campaign",
+                        "rect": [0, 100, 100, 0],
+                    }
+                ],
+                "zoom": 1,
+                "tool": "selection",
+                "captured_at": "2026-07-14T00:00:00.000Z",
+            },
+        )
+        _, payload = request("http://127.0.0.1:8976/state?max_age_ms=2000")
+        serialized = json.dumps(payload)
+        self.assertTrue(payload["ok"])
+        self.assertFalse(payload["stale"])
+        self.assertGreaterEqual(payload["revision"], 1)
+        self.assertGreaterEqual(payload["age_ms"], 0)
+        self.assertEqual(2000, request("http://127.0.0.1:8976/state")[1]["max_age_ms"])
+        self.assertNotIn("client-project", serialized)
+        self.assertNotIn("Customer", serialized)
+        self.assertNotIn("full_path", serialized)
+
+    def test_state_age_limit_marks_old_state_stale(self):
+        push_state(8976, minimal_state(8))
+        time.sleep(0.12)
+        _, payload = request("http://127.0.0.1:8976/state?max_age_ms=100")
+        self.assertTrue(payload["ok"])
+        self.assertTrue(payload["stale"])
+
+    def test_invalid_state_does_not_replace_last_valid_state(self):
+        push_state(8976, minimal_state(9))
+        _, before = request("http://127.0.0.1:8976/state")
+        push_state(8976, {"type": "state", "protocol_version": 1})
+        _, after = request("http://127.0.0.1:8976/state")
+        self.assertEqual(before["revision"], after["revision"])
+        _, health = request("http://127.0.0.1:8976/health")
+        self.assertGreaterEqual(health["rejected_states"], 1)
+
+    def test_non_monotonic_sequence_is_rejected(self):
+        _, before = request("http://127.0.0.1:8976/health")
+        push_states(8976, [minimal_state(10), minimal_state(10)])
+        _, after = request("http://127.0.0.1:8976/health")
+        self.assertEqual(before["state_revision"] + 1, after["state_revision"])
+        self.assertGreaterEqual(after["rejected_states"], before["rejected_states"] + 1)
 
 
 if __name__ == "__main__":

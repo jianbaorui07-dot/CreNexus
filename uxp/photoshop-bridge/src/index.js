@@ -302,6 +302,16 @@ function toFileUrl(absoluteFolder) {
   return "file://" + absoluteFolder;
 }
 
+function assertSandboxOutputPath(params) {
+  const normalized = String(params?.output_path || "").replaceAll("\\", "/");
+  const absolute = /^[A-Za-z]:\//.test(normalized) || normalized.startsWith("/");
+  const allowedMarker = ["/sandbox/", "/output/", "/examples/output/photoshop/"].some(marker => normalized.includes(marker));
+  if (params?.sandbox_verified !== true || !absolute || !allowedMarker || !normalized.toLowerCase().endsWith(".png") || normalized.includes("/../")) {
+    throw new Error("output_path_outside_sandbox");
+  }
+  return normalized;
+}
+
 async function resolveOutputEntry(absolutePath) {
   const { folderUrl, filename } = splitOutputPath(absolutePath);
   if (!folderUrl || !filename) {
@@ -349,6 +359,7 @@ async function previewExport(params) {
   if (!absolutePath) {
     return { ok: false, message: "output_path is required for real preview export." };
   }
+  assertSandboxOutputPath(params);
   return runModalJob("ps.preview.export", { commandName: "StarBridge Preview Export" }, async () => {
     const fileEntry = await saveActiveDocumentAsPng(document, absolutePath);
     return {

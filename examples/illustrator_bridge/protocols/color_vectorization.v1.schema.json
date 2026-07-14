@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://starbridge.local/schemas/color_vectorization.v1.schema.json",
+  "title": "StarBridge Color Vectorization Plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok",
+    "bridge",
+    "action",
+    "verdict",
+    "schema_version",
+    "reference_id",
+    "reference_authorized",
+    "source",
+    "strategy",
+    "application_matrix",
+    "trace",
+    "quality_gates",
+    "outputs",
+    "safety",
+    "dry_run",
+    "confirm_write",
+    "confirm_export"
+  ],
+  "properties": {
+    "ok": { "const": true },
+    "bridge": { "const": "illustrator" },
+    "action": { "const": "color_vectorize_plan" },
+    "verdict": { "const": "planned" },
+    "schema_version": { "const": "starbridge.color-vectorization.v1" },
+    "reference_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+    },
+    "reference_authorized": { "const": true },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["media_type", "width", "height", "pixels_read_by_plan"],
+      "properties": {
+        "media_type": { "enum": ["image/png", "image/jpeg"] },
+        "width": { "type": ["integer", "null"], "minimum": 1, "maximum": 32768 },
+        "height": { "type": ["integer", "null"], "minimum": 1, "maximum": 32768 },
+        "pixels_read_by_plan": { "const": false }
+      }
+    },
+    "strategy": {
+      "enum": ["local_illustrator_trace", "semantic_reconstruction", "hybrid"]
+    },
+    "application_matrix": {
+      "type": "array",
+      "minItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["app", "role", "enabled", "operations"],
+        "properties": {
+          "app": { "enum": ["starbridge", "photoshop", "illustrator"] },
+          "role": { "type": "string", "minLength": 1 },
+          "enabled": { "type": "boolean" },
+          "operations": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "trace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "fills",
+        "strokes",
+        "max_colors",
+        "path_fitting",
+        "min_area",
+        "preprocess_blur",
+        "ignore_white",
+        "output_to_swatches"
+      ],
+      "properties": {
+        "mode": { "const": "color" },
+        "fills": { "const": true },
+        "strokes": { "const": false },
+        "max_colors": { "type": "integer", "minimum": 2, "maximum": 256 },
+        "path_fitting": { "type": "number", "minimum": 0, "maximum": 10 },
+        "min_area": { "type": "integer", "minimum": 1, "maximum": 1000 },
+        "preprocess_blur": { "type": "number", "minimum": 0, "maximum": 2 },
+        "ignore_white": { "type": "boolean", "default": false },
+        "output_to_swatches": { "type": "boolean", "default": true }
+      }
+    },
+    "quality_gates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "silhouette_iou_min",
+        "mean_delta_e_max",
+        "p95_delta_e_max",
+        "perceptual_similarity_min",
+        "max_anchor_count"
+      ],
+      "properties": {
+        "silhouette_iou_min": { "type": "number", "minimum": 0, "maximum": 1 },
+        "mean_delta_e_max": { "type": "number", "minimum": 0, "maximum": 100 },
+        "p95_delta_e_max": { "type": "number", "minimum": 0, "maximum": 100 },
+        "perceptual_similarity_min": { "type": "number", "minimum": 0, "maximum": 1 },
+        "max_anchor_count": { "type": "integer", "minimum": 1, "maximum": 1000000 }
+      }
+    },
+    "outputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["output_dir", "svg", "illustrator_document", "preview_png"],
+      "properties": {
+        "output_dir": {
+          "type": "string",
+          "pattern": "^examples/output/illustrator(?:/[a-z0-9][a-z0-9_-]{0,63})*$"
+        },
+        "svg": { "const": true },
+        "illustrator_document": { "const": true },
+        "preview_png": { "const": true }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "input_policy",
+        "recursive_scan",
+        "cloud_upload",
+        "arbitrary_script",
+        "visual_review_required"
+      ],
+      "properties": {
+        "input_policy": { "const": "single_explicit_user_file" },
+        "recursive_scan": { "const": false },
+        "cloud_upload": { "const": false },
+        "arbitrary_script": { "const": false },
+        "visual_review_required": { "const": true }
+      }
+    },
+    "dry_run": { "const": true },
+    "confirm_write": { "const": false },
+    "confirm_export": { "const": false }
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://starbridge.local/schemas/illustrator/realtime_state.v2.json",
+  "title": "IllustratorRealtimeStateV2",
+  "type": "object",
+  "required": [
+    "type", "protocol_version", "sequence", "host", "document",
+    "selection", "layers", "artboards", "zoom", "tool", "captured_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "type": {"const": "state"},
+    "protocol_version": {"const": 2},
+    "sequence": {"type": "integer", "minimum": 1},
+    "host": {
+      "type": "object",
+      "required": ["app", "version", "adapter"],
+      "additionalProperties": false,
+      "properties": {
+        "app": {"const": "Adobe Illustrator"},
+        "version": {"type": "string", "maxLength": 32},
+        "adapter": {"const": "custom_uxp_v2"}
+      }
+    },
+    "document": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "required": ["page_items", "layer_count", "artboard_count", "color_space"],
+          "additionalProperties": false,
+          "properties": {
+            "page_items": {"type": "integer", "minimum": 0, "maximum": 1000000},
+            "layer_count": {"type": "integer", "minimum": 0, "maximum": 512},
+            "artboard_count": {"type": "integer", "minimum": 0, "maximum": 128},
+            "color_space": {"type": "string", "maxLength": 32}
+          }
+        }
+      ]
+    },
+    "selection": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {"$ref": "#/$defs/item"}
+    },
+    "layers": {
+      "type": "array",
+      "maxItems": 512,
+      "items": {
+        "type": "object",
+        "required": ["layer_id", "visible", "locked"],
+        "additionalProperties": false,
+        "properties": {
+          "layer_id": {"type": "string", "pattern": "^layer:[1-9][0-9]*$"},
+          "visible": {"type": "boolean"},
+          "locked": {"type": "boolean"}
+        }
+      }
+    },
+    "artboards": {
+      "type": "array",
+      "maxItems": 128,
+      "items": {
+        "type": "object",
+        "required": ["artboard_id", "rect"],
+        "additionalProperties": false,
+        "properties": {
+          "artboard_id": {"type": "string", "pattern": "^artboard:[1-9][0-9]*$"},
+          "rect": {
+            "type": "array",
+            "minItems": 4,
+            "maxItems": 4,
+            "items": {"type": "number", "minimum": -10000000, "maximum": 10000000}
+          }
+        }
+      }
+    },
+    "zoom": {"type": ["number", "null"], "minimum": 0.01, "maximum": 640},
+    "tool": {"type": ["string", "null"], "maxLength": 64},
+    "captured_at": {"type": "string", "format": "date-time"}
+  },
+  "$defs": {
+    "item": {
+      "type": "object",
+      "required": ["object_id", "type", "selected", "locked", "hidden"],
+      "additionalProperties": false,
+      "properties": {
+        "object_id": {"type": "string", "pattern": "^item:[1-9][0-9]*$"},
+        "type": {"type": "string", "maxLength": 64},
+        "selected": {"type": "boolean"},
+        "locked": {"type": "boolean"},
+        "hidden": {"type": "boolean"}
+      }
+    }
+  }
+}

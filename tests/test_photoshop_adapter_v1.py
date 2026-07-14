@@ -315,6 +315,44 @@ class PhotoshopAdapterV1Tests(unittest.TestCase):
         self.assertTrue(payload["warnings"])
         self.assertFalse(payload["details"]["validation_result"]["ok"])
 
+    def test_batchplay_validate_rejects_explicit_document_target(self) -> None:
+        response = request(
+            81,
+            "tools/call",
+            {
+                "name": "ps.batchplay.validate",
+                "arguments": {
+                    "descriptor": {
+                        "_obj": "set",
+                        "_target": [{"_ref": "document", "_id": 42}],
+                    }
+                },
+            },
+        )
+        payload = response["result"]["structuredContent"]
+        validation = payload["details"]["validation_result"]
+        self.assertFalse(validation["ok"])
+        self.assertIn("explicit_target", json.dumps(validation))
+
+    def test_batchplay_validate_rejects_path_payload(self) -> None:
+        response = request(
+            82,
+            "tools/call",
+            {
+                "name": "ps.batchplay.validate",
+                "arguments": {
+                    "descriptor": {
+                        "_obj": "make",
+                        "filePath": "C:/outside/private-input",
+                    }
+                },
+            },
+        )
+        payload = response["result"]["structuredContent"]
+        validation = payload["details"]["validation_result"]
+        self.assertFalse(validation["ok"])
+        self.assertIn("path_field", json.dumps(validation))
+
 
 if __name__ == "__main__":
     unittest.main()

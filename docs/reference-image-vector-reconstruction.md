@@ -91,13 +91,10 @@ Evidence 只保存：
 
 ## 当前实现边界
 
-本阶段只提供公开质量报告 schema 和纯离线评分器：
+本协议描述的是“语义结构重建”路线；目前仍只提供公开质量报告 schema、确定性 Scene Graph 编译和纯离线评分器，本身不读取图片、不打开 Illustrator，也不声称已完成语义自动重建。
 
-- 不读取图片。
-- 不打开 Illustrator。
-- 不写入 SVG、PDF、PNG 或 Illustrator 工程。
-- 不声称已实现参考图自动重建。
+另有独立的[彩色参考图矢量化协议](color-faithful-vectorization.md)，已提供默认 dry-run 的本地 Illustrator Image Trace 原型。它负责固定参数描摹与 sandbox 导出，不等同于本协议的语义分层重建；输出仍需视觉比较，未通过前保持 `needs_visual_review`。
 
-后续 MCP tool 必须在 Scene Graph、VectorPatch schema、视觉验证和 sandbox 确认链完整后再接入。
+后续语义重建 MCP tool 必须在 Scene Graph、VectorPatch schema、视觉验证和 sandbox 确认链完整后再接入。
 
 短华语词汇、默认值和冲突规则见 [矢量短华语指令协议](vector-command-language.md)。

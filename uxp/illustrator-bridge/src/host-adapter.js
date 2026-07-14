@@ -14,10 +14,11 @@ export class IllustratorHostAdapter {
     this.module = loadHostModule();
     this.app = this.module?.app || this.module?.application || globalThis.app || null;
     this.objectMap = new Map();
+    this.sequence = 0;
   }
 
   hostInfo() {
-    return {app: "Adobe Illustrator", version: text(this.app?.version, "unknown"), adapter: "custom_uxp_v1"};
+    return {app: "Adobe Illustrator", version: text(this.app?.version, "unknown"), adapter: "custom_uxp_v2"};
   }
 
   activeDocument() { return this.app?.activeDocument || list(this.app?.documents)[0] || null; }
@@ -29,7 +30,6 @@ export class IllustratorHostAdapter {
     this.objectMap.set(objectId, item);
     return {
       object_id: objectId,
-      name: text(item?.name),
       type: text(item?.typename || item?.constructor?.name, "PageItem"),
       selected: Boolean(item?.selected),
       locked: Boolean(item?.locked),
@@ -40,18 +40,20 @@ export class IllustratorHostAdapter {
   state() {
     const document = this.activeDocument();
     this.objectMap.clear();
-    if (!document) return {type: "state", host: this.hostInfo(), document: null, selection: [], layers: [], artboards: [], zoom: null, tool: null, at: new Date().toISOString()};
+    this.sequence += 1;
+    const capturedAt = new Date().toISOString();
+    if (!document) return {type: "state", protocol_version: 2, sequence: this.sequence, host: this.hostInfo(), document: null, selection: [], layers: [], artboards: [], zoom: null, tool: null, captured_at: capturedAt};
     const items = this.pageItems(document).slice(0, 512).map((item, index) => this.itemSummary(item, index));
     const selectedIds = new Set(list(document.selection || this.app?.selection).map(item => item));
     const selection = items.filter((summary) => summary.selected || selectedIds.has(this.objectMap.get(summary.object_id))).slice(0, 256);
-    const layers = list(document.layers).slice(0, 512).map((layer, index) => ({layer_id: `layer:${index + 1}`, name: text(layer?.name), visible: layer?.visible !== false, locked: Boolean(layer?.locked)}));
-    const artboards = list(document.artboards).slice(0, 128).map((board, index) => ({artboard_id: `artboard:${index + 1}`, name: text(board?.name, `Artboard ${index + 1}`), rect: list(board?.artboardRect || board?.rect).map(value => number(value))}));
+    const layers = list(document.layers).slice(0, 512).map((layer, index) => ({layer_id: `layer:${index + 1}`, visible: layer?.visible !== false, locked: Boolean(layer?.locked)}));
+    const artboards = list(document.artboards).slice(0, 128).map((board, index) => ({artboard_id: `artboard:${index + 1}`, rect: list(board?.artboardRect || board?.rect).slice(0, 4).map(value => number(value))}));
     const view = list(document.views)[0] || document.activeView || null;
     return {
-      type: "state", host: this.hostInfo(),
-      document: {name: text(document.name || document.title), page_items: this.pageItems(document).length, layer_count: layers.length, artboard_count: artboards.length, color_space: text(document.documentColorSpace || document.colorSpace)},
+      type: "state", protocol_version: 2, sequence: this.sequence, host: this.hostInfo(),
+      document: {page_items: this.pageItems(document).length, layer_count: layers.length, artboard_count: artboards.length, color_space: text(document.documentColorSpace || document.colorSpace)},
       selection, layers, artboards, zoom: view ? number(view.zoom, null) : null,
-      tool: text(this.app?.currentTool, "") || null, at: new Date().toISOString(),
+      tool: text(this.app?.currentTool, "") || null, captured_at: capturedAt,
     };
   }
 

@@ -19,7 +19,7 @@
     "params": {
       "type": "object",
       "properties": {
-        "object_id": {"type": "string", "maxLength": 128},
+        "object_id": {"type": "string", "pattern": "^item:[1-9][0-9]*$", "maxLength": 128},
         "confirm_write": {"type": "boolean"},
         "color": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$"},
         "dx": {"type": "number", "minimum": -10000, "maximum": 10000},

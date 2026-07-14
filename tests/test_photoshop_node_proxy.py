@@ -18,6 +18,19 @@ def read_json(url: str) -> dict:
         return json.loads(response.read().decode("utf-8"))
 
 
+def post_rpc(port: str, method: str, params: dict, request_id: int = 1) -> dict:
+    request = urllib.request.Request(
+        f"http://127.0.0.1:{port}/rpc",
+        data=json.dumps(
+            {"jsonrpc": "2.0", "id": request_id, "method": method, "params": params}
+        ).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(request, timeout=5) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
 @unittest.skipUnless(SERVER_JS.exists(), "node proxy source not present")
 class PhotoshopNodeProxyTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -111,6 +124,82 @@ class PhotoshopNodeProxyTests(unittest.TestCase):
             payload = json.loads(response.read().decode("utf-8"))
         self.assertEqual(-32600, payload["error"]["code"])
         self.assertEqual("jsonrpc_must_be_2_0", payload["error"]["message"])
+
+    def test_rpc_rejects_unlisted_method_before_forwarding(self) -> None:
+        payload = post_rpc(self.port, "ps.run_jsx", {})
+        self.assertEqual(-32601, payload["error"]["code"])
+        self.assertEqual("method_not_allowed", payload["error"]["message"])
+
+    def test_preview_export_requires_explicit_confirmation(self) -> None:
+        payload = post_rpc(
+            self.port,
+            "ps.preview.export",
+            {"dry_run": False, "output_path": "preview.png"},
+        )
+        self.assertEqual(-32010, payload["error"]["code"])
+        self.assertEqual("confirm_write=true_required", payload["error"]["message"])
+
+    def test_preview_export_rejects_path_outside_repo_sandbox(self) -> None:
+        payload = post_rpc(
+            self.port,
+            "ps.preview.export",
+            {
+                "dry_run": False,
+                "confirm_write": True,
+                "output_path": "C:/outside/preview.png",
+            },
+        )
+        self.assertEqual(-32602, payload["error"]["code"])
+        self.assertEqual("output_path_outside_sandbox", payload["error"]["message"])
+
+    def test_preview_export_accepts_sandbox_path_before_connection_check(self) -> None:
+        output_path = REPO_ROOT / "sandbox" / "ps_preview_safe.png"
+        payload = post_rpc(
+            self.port,
+            "ps.preview.export",
+            {
+                "dry_run": False,
+                "confirm_write": True,
+                "output_path": output_path.as_posix(),
+            },
+        )
+        self.assertEqual(-32001, payload["error"]["code"])
+        self.assertEqual("uxp_client_not_connected", payload["error"]["message"])
+
+    def test_batchplay_execute_requires_confirmation(self) -> None:
+        payload = post_rpc(
+            self.port,
+            "ps.batchplay.execute_confirmed",
+            {"descriptors": [{"_obj": "make"}]},
+        )
+        self.assertEqual(-32010, payload["error"]["code"])
+
+    def test_protocol_schema_lists_same_public_methods(self) -> None:
+        schema = json.loads(
+            (
+                REPO_ROOT
+                / "examples"
+                / "photoshop_bridge"
+                / "protocols"
+                / "node_proxy_rpc.v1.schema.json"
+            ).read_text(encoding="utf-8")
+        )
+        methods = set(schema["properties"]["method"]["enum"])
+        self.assertNotIn("ps.run_jsx", methods)
+        self.assertIn("ps.preview.export", methods)
+        self.assertIn("ps.batchplay.execute_confirmed", methods)
+
+    def test_uxp_bridge_declares_runtime_sandbox_guards(self) -> None:
+        index_source = (
+            REPO_ROOT / "uxp" / "photoshop-bridge" / "src" / "index.js"
+        ).read_text(encoding="utf-8")
+        runner_source = (
+            REPO_ROOT / "uxp" / "photoshop-bridge" / "src" / "batchplay-runner.js"
+        ).read_text(encoding="utf-8")
+        self.assertIn("assertSandboxOutputPath", index_source)
+        self.assertIn("document.duplicate", runner_source)
+        self.assertIn("registerAutoCloseDocument", runner_source)
+        self.assertIn("unregisterAutoCloseDocument", runner_source)
 
 
 if __name__ == "__main__":

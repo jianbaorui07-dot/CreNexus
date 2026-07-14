@@ -16,6 +16,7 @@ Prefer read-only environment checks, redacted document summaries, preflight, and
 Read only what is needed:
 
 - `docs/05-codex-illustrator.md`
+- `docs/color-faithful-vectorization.md`
 - `examples/illustrator_bridge/`
 - `examples/illustrator_bridge/scripts/preflight_plan.py`
 - `starbridge_mcp/bridges/illustrator_preflight.py`
@@ -31,6 +32,8 @@ If changing shared MCP behavior, also read `.codex/skills/starbridge-mcp/SKILL.m
 npm.cmd run illustrator:preflight:plan
 npm.cmd run illustrator:info
 python examples\illustrator_bridge\scripts\preflight_plan.py --json
+python -m unittest tests.test_color_vectorization
+powershell -ExecutionPolicy Bypass -File examples\illustrator_bridge\scripts\color_vectorize.ps1
 python -m starbridge_mcp.server tools --json --safe-only
 python examples\bridge_status.py --json --redact-paths --soft-exit
 python scripts\security_check.py
@@ -45,8 +48,10 @@ Do not hardcode local Illustrator install paths in docs, tests, or examples.
 | Check availability | `illustrator.document_info` or bridge status probe | Read-only, no private `.ai` open |
 | Review document risk | `illustrator.preflight` | Use redacted summaries |
 | Inspect artboards/layers | future `document_info` expansion | Active session summary only |
-| Trace/vectorize | future white-listed plan tool | No source-image default paths, no image trace without explicit public input |
-| Export | future recipe/preflight path | Confirmed sandbox export only |
+| Trace/vectorize plan | `illustrator.color_vectorize_plan` | Explicit authorization; no pixel read, path, cloud upload, or app launch |
+| Validate trace quality | `illustrator.color_vectorize_validate` | Sanitized metrics only; no reference/preview file read |
+| Execute color trace | `illustrator.color_vectorize_execute` | Default dry-run; fixed JSX, explicit single image, dual confirmation, sandbox only |
+| Export | color trace executor or demo export | Confirmed sandbox export only |
 
 ## Forbidden Work
 

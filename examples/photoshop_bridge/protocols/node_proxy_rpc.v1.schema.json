@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://starbridge.local/protocols/photoshop/node_proxy_rpc.v1.schema.json",
+  "title": "StarBridge Photoshop Node Proxy RPC v1",
+  "type": "object",
+  "required": ["jsonrpc", "id", "method", "params"],
+  "additionalProperties": false,
+  "properties": {
+    "jsonrpc": {"const": "2.0"},
+    "id": {"type": ["string", "integer"], "maxLength": 128},
+    "method": {
+      "enum": [
+        "starbridge.ping",
+        "ps.document.info",
+        "ps.layers.list",
+        "ps.preview.export",
+        "ps.camera_raw.tune",
+        "ps.batchplay.validate.local",
+        "ps.batchplay.execute_confirmed"
+      ]
+    },
+    "params": {
+      "type": "object",
+      "maxProperties": 32,
+      "properties": {
+        "job_id": {"type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$"},
+        "dry_run": {"type": "boolean", "default": true},
+        "confirm_write": {"type": "boolean", "default": false},
+        "confirm_apply": {"type": "boolean", "default": false},
+        "confirm_export": {"type": "boolean", "default": false},
+        "output_path": {"type": "string", "maxLength": 1024},
+        "descriptor": {"type": "object"},
+        "descriptors": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {"type": "object"}
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

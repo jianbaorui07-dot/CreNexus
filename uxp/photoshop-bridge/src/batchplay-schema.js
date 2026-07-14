@@ -5,18 +5,6 @@ export const ALLOWLIST = {
     requiresConfirmation: false,
     sandboxOnly: false,
   },
-  duplicate: {
-    descriptorId: "duplicate_current_document_to_sandbox",
-    riskLevel: "guarded_local_write",
-    requiresConfirmation: true,
-    sandboxOnly: true,
-  },
-  save: {
-    descriptorId: "export_preview_from_sandbox_copy",
-    riskLevel: "guarded_local_write",
-    requiresConfirmation: true,
-    sandboxOnly: true,
-  },
   make: {
     descriptorId: "create_test_adjustment_layer_in_sandbox",
     riskLevel: "guarded_local_write",
@@ -39,13 +27,39 @@ export const ALLOWLIST = {
 
 export const DENYLIST = new Set([
   "delete",
+  "duplicate",
   "mergeLayersNew",
   "flattenImage",
   "rasterizeLayer",
   "placedLayerEditContents",
+  "save",
   "javascript",
   "batchPlay",
 ]);
+
+const PATH_FIELDS = new Set(["file", "filepath", "fullname", "nativepath", "path", "sourcepath", "targetpath", "url"]);
+
+function unsafePayloadReason(value) {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const reason = unsafePayloadReason(item);
+      if (reason) return reason;
+    }
+    return null;
+  }
+  if (!value || typeof value !== "object") return null;
+  const reference = String(value._ref || "").toLowerCase();
+  if (["document", "layer"].includes(reference) && ["_id", "_index", "_name"].some(key => key in value)) {
+    return `explicit_target:${reference}`;
+  }
+  for (const [key, item] of Object.entries(value)) {
+    const normalized = key.replaceAll("_", "").toLowerCase();
+    if (PATH_FIELDS.has(normalized) || normalized.endsWith("path")) return `path_field:${key}`;
+    const reason = unsafePayloadReason(item);
+    if (reason) return reason;
+  }
+  return null;
+}
 
 export function validateDescriptor(descriptor) {
   const action = String(descriptor?._obj || descriptor?.method || "").trim();
@@ -68,6 +82,18 @@ export function validateDescriptor(descriptor) {
       requiresConfirmation: true,
       sandboxOnly: true,
       reason: `Descriptor action ${action} is explicitly denied.`,
+    };
+  }
+  const unsafeReason = unsafePayloadReason(descriptor);
+  if (unsafeReason) {
+    return {
+      allowed: false,
+      action,
+      descriptorId: `unsafe_${action}`,
+      riskLevel: "guarded_local_write",
+      requiresConfirmation: true,
+      sandboxOnly: true,
+      reason: unsafeReason,
     };
   }
   const allowed = ALLOWLIST[action];

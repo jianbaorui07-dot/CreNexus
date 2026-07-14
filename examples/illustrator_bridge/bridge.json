@@ -12,6 +12,7 @@
   ],
   "entrypoints": {
     "probe": "powershell -ExecutionPolicy Bypass -File examples/illustrator_bridge/probe.ps1",
+    "color_vectorize_plan": "powershell -ExecutionPolicy Bypass -File examples/illustrator_bridge/scripts/color_vectorize.ps1",
     "vector_line_extract": "python examples/illustrator_bridge/vector_rebuild/extract_vector_lines.py --input <source.ai|source.pdf|source.svg> --out <local-output-dir>",
     "closed_contour_reduce": "python examples/illustrator_bridge/vector_rebuild/reduce_closed_contours.py --lines-json <local-output-dir>/lines.json --out <local-output-dir> --mode fine"
   },
@@ -20,12 +21,15 @@
     "COM availability check",
     "PDF-compatible AI/PDF/SVG vector line extraction",
     "local rebuilt SVG export",
-    "local closed-contour simplification"
+    "local closed-contour simplification",
+    "dry-run color vectorization planning",
+    "confirmed local Illustrator color trace to sandbox AI/SVG/PNG"
   ],
   "unsupported_tasks": [
-    "Image Trace automation",
-    "PNG export",
-    "automatic desktop Illustrator writes",
+    "unconfirmed desktop Illustrator writes",
+    "cloud Image Trace upload",
+    "automatic Photoshop preprocessing execution",
+    "automatic pixel comparison and VectorPatch repair",
     "committing private .ai project outputs"
   ],
   "safety_notes": [

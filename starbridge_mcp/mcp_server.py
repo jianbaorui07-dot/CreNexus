@@ -17,6 +17,10 @@ from starbridge_mcp.bridges.blender_safe_scene import (
 )
 from starbridge_mcp.bridges.capcut_draft_structure import draft_structure_summary
 from starbridge_mcp.bridges.illustrator_preflight import preflight_summary
+from starbridge_mcp.core.color_vectorization import (
+    build_color_vectorization_plan,
+    validate_color_vectorization_metrics,
+)
 from starbridge_mcp.core.control_planner import build_control_plan
 from starbridge_mcp.core.evidence import (
     DEFAULT_MANIFEST_FILENAME,
@@ -900,6 +904,227 @@ TOOL_DEFINITIONS: list[JsonObject] = [
                 }
             }
         ),
+    ),
+    _standard_tool(
+        name="illustrator.color_vectorize_plan",
+        title="Plan Color-Faithful Illustrator Vectorization",
+        description=(
+            "为用户明确授权的单张 PNG/JPEG 生成 Photoshop + Illustrator 彩色矢量化 dry-run 计划；"
+            "不读取图片、不启动 Adobe 软件、不上传云端。"
+        ),
+        input_schema=_object_schema(
+            {
+                "reference_id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+                },
+                "reference_authorized": {"type": "boolean"},
+                "source_media_type": {
+                    "type": "string",
+                    "enum": ["image/png", "image/jpeg"],
+                    "default": "image/png",
+                },
+                "source_width": {
+                    "type": ["integer", "null"],
+                    "minimum": 1,
+                    "maximum": 32768,
+                    "default": None,
+                },
+                "source_height": {
+                    "type": ["integer", "null"],
+                    "minimum": 1,
+                    "maximum": 32768,
+                    "default": None,
+                },
+                "strategy": {
+                    "type": "string",
+                    "enum": [
+                        "local_illustrator_trace",
+                        "semantic_reconstruction",
+                        "hybrid",
+                    ],
+                    "default": "hybrid",
+                },
+                "photoshop_preprocess": {"type": "boolean", "default": False},
+                "max_colors": {
+                    "type": "integer",
+                    "minimum": 2,
+                    "maximum": 256,
+                    "default": 64,
+                },
+                "path_fitting": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 10,
+                    "default": 1.5,
+                },
+                "min_area": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1000,
+                    "default": 2,
+                },
+                "preprocess_blur": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 2,
+                    "default": 0,
+                },
+                "ignore_white": {"type": "boolean", "default": False},
+                "output_to_swatches": {"type": "boolean", "default": True},
+            },
+            required=["reference_id", "reference_authorized"],
+        ),
+    ),
+    _standard_tool(
+        name="illustrator.color_vectorize_validate",
+        title="Validate Color Vectorization Evidence",
+        description=(
+            "校验调用方传入的脱敏轮廓、色差、感知相似度和节点统计；"
+            "不读取参考图或预览文件。"
+        ),
+        input_schema=_object_schema(
+            {
+                "metrics": _object_schema(
+                    {
+                        "silhouette_iou": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                        },
+                        "mean_delta_e": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 100,
+                        },
+                        "p95_delta_e": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 100,
+                        },
+                        "perceptual_similarity": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                        },
+                        "anchor_count": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000000,
+                        },
+                        "used_color_count": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 256,
+                        },
+                    },
+                    required=[
+                        "silhouette_iou",
+                        "mean_delta_e",
+                        "p95_delta_e",
+                        "perceptual_similarity",
+                        "anchor_count",
+                        "used_color_count",
+                    ],
+                ),
+                "hard_gates": _object_schema(
+                    {
+                        "reference_authorized": {"type": "boolean"},
+                        "primary_silhouette_present": {"type": "boolean"},
+                        "topology_valid": {"type": "boolean"},
+                        "editable_vector_present": {"type": "boolean"},
+                        "safe_output_scope": {"type": "boolean"},
+                    },
+                    required=[
+                        "reference_authorized",
+                        "primary_silhouette_present",
+                        "topology_valid",
+                        "editable_vector_present",
+                        "safe_output_scope",
+                    ],
+                ),
+            },
+            required=["metrics", "hard_gates"],
+        ),
+    ),
+    _standard_tool(
+        name="illustrator.color_vectorize_execute",
+        title="Execute Guarded Illustrator Color Trace",
+        description=(
+            "对用户明确传入的单张 PNG/JPEG 执行固定、可审计的 Illustrator 彩色 Image Trace；"
+            "默认 dry-run，真实 SVG/AI/PNG 输出需同时确认写入与导出。"
+        ),
+        input_schema=_object_schema(
+            {
+                "reference_id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+                },
+                "reference_authorized": {"type": "boolean"},
+                "input_path": {
+                    "type": "string",
+                    "description": "仅在真实执行时提供的单个用户授权 PNG/JPEG 路径；不会回显。",
+                },
+                "source_media_type": {
+                    "type": "string",
+                    "enum": ["image/png", "image/jpeg"],
+                    "default": "image/png",
+                },
+                "source_width": {
+                    "type": ["integer", "null"],
+                    "minimum": 1,
+                    "maximum": 32768,
+                    "default": None,
+                },
+                "source_height": {
+                    "type": ["integer", "null"],
+                    "minimum": 1,
+                    "maximum": 32768,
+                    "default": None,
+                },
+                "strategy": {
+                    "type": "string",
+                    "enum": ["local_illustrator_trace", "hybrid"],
+                    "default": "hybrid",
+                },
+                "photoshop_preprocess": {"type": "boolean", "default": False},
+                "output_dir": {
+                    "type": "string",
+                    "default": "examples/output/illustrator",
+                },
+                "max_colors": {
+                    "type": "integer",
+                    "minimum": 2,
+                    "maximum": 256,
+                    "default": 64,
+                },
+                "path_fitting": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 10,
+                    "default": 1.5,
+                },
+                "min_area": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1000,
+                    "default": 2,
+                },
+                "preprocess_blur": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 2,
+                    "default": 0,
+                },
+                "ignore_white": {"type": "boolean", "default": False},
+                "output_to_swatches": {"type": "boolean", "default": True},
+                "dry_run": {"type": "boolean", "default": True},
+                "confirm_write": {"type": "boolean", "default": False},
+                "confirm_export": {"type": "boolean", "default": False},
+            },
+            required=["reference_id", "reference_authorized"],
+        ),
+        read_only=False,
     ),
     _standard_tool(
         name="jianying_capcut.draft_probe",
@@ -2184,6 +2409,76 @@ def _handle_illustrator_run(arguments: JsonObject) -> JsonObject:
     return _run_powershell_json("examples/illustrator_bridge/scripts/run_demo.ps1")
 
 
+def _handle_illustrator_color_vectorize_execute(arguments: JsonObject) -> JsonObject:
+    output_dir = _sandbox_output_dir(arguments, "illustrator")
+    plan = build_color_vectorization_plan(arguments)
+    if plan.get("ok") and isinstance(plan.get("outputs"), dict):
+        plan["outputs"]["output_dir"] = output_dir
+
+    dry_run = arguments.get("dry_run", True) is not False
+    if dry_run or not plan.get("ok"):
+        return sanitize(plan)
+
+    if arguments.get("photoshop_preprocess", False) is True:
+        raise ValueError(
+            "photoshop_preprocess real execution is not available; provide an explicit prepared copy or set it to false"
+        )
+    if arguments.get("confirm_write", False) is not True:
+        return _adobe_refusal(
+            bridge="illustrator", task="color_vectorize", confirm_key="confirm_write"
+        )
+    if arguments.get("confirm_export", False) is not True:
+        return _adobe_refusal(
+            bridge="illustrator", task="color_vectorize", confirm_key="confirm_export"
+        )
+
+    input_path = arguments.get("input_path")
+    if not isinstance(input_path, str) or not input_path.strip():
+        raise ValueError("input_path is required for confirmed color vectorization")
+    input_file = Path(input_path).expanduser()
+    if not input_file.is_absolute():
+        input_file = REPO_ROOT / input_file
+    input_file = input_file.resolve()
+    if not input_file.is_file():
+        raise ValueError("the explicitly supplied input file was not found")
+
+    extension = input_file.suffix.lower()
+    media_type = str(arguments.get("source_media_type") or "image/png")
+    if extension == ".png" and media_type != "image/png":
+        raise ValueError("source_media_type does not match the explicit input file")
+    if extension in {".jpg", ".jpeg"} and media_type != "image/jpeg":
+        raise ValueError("source_media_type does not match the explicit input file")
+    if extension not in {".png", ".jpg", ".jpeg"}:
+        raise ValueError("input_path must identify one PNG or JPEG file")
+
+    trace = plan["trace"]
+    extra_args = [
+        "-ReferenceId",
+        str(plan["reference_id"]),
+        "-InputPath",
+        str(input_file),
+        "-OutputDir",
+        output_dir,
+        "-MaxColors",
+        str(trace["max_colors"]),
+        "-PathFitting",
+        str(trace["path_fitting"]),
+        "-MinArea",
+        str(trace["min_area"]),
+        "-PreprocessBlur",
+        str(trace["preprocess_blur"]),
+        "-ConfirmWrite",
+        "-ConfirmExport",
+    ]
+    if trace["ignore_white"]:
+        extra_args.append("-IgnoreWhite")
+    if not trace["output_to_swatches"]:
+        extra_args.append("-DisableOutputToSwatches")
+    return _run_powershell_json(
+        "examples/illustrator_bridge/scripts/color_vectorize.ps1", extra_args
+    )
+
+
 def _handle_photoshop_create(arguments: JsonObject) -> JsonObject:
     output_dir = _sandbox_output_dir(arguments, "photoshop")
     width = int(arguments.get("width") or 1080)
@@ -2383,6 +2678,13 @@ TOOL_HANDLERS: dict[str, ToolHandler] = {
     "illustrator.preflight": lambda arguments: preflight_summary(
         arguments.get("document_summary") or {}
     ),
+    "illustrator.color_vectorize_plan": build_color_vectorization_plan,
+    "illustrator.color_vectorize_validate": lambda arguments: validate_color_vectorization_metrics(
+        metrics=arguments.get("metrics") or {},
+        hard_gates=arguments.get("hard_gates") or {},
+        quality_gates=arguments.get("quality_gates"),
+    ),
+    "illustrator.color_vectorize_execute": _handle_illustrator_color_vectorize_execute,
     "jianying_capcut.draft_probe": lambda _arguments: _handle_python_probe(
         bridge="jianying_capcut",
         action="draft_probe",
