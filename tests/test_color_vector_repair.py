@@ -50,6 +50,8 @@ def base_arguments() -> dict:
     return {
         "reference_id": "public-repair-01",
         "reference_authorized": True,
+        "source_media_type": "image/png",
+        "strategy": "hybrid",
         "repair_round": 1,
         "max_repair_rounds": 2,
         "comparison": {
@@ -108,6 +110,15 @@ class ColorVectorRepairTests(unittest.TestCase):
         self.assertFalse(safety["arbitrary_script"]["const"])
         self.assertFalse(safety["quality_gates_relaxed"]["const"])
         self.assertTrue(safety["bounded_repair"]["const"])
+        required = set(schema["required"])
+        self.assertTrue(
+            {"next_execute_template", "runtime_requirements", "iteration_control"} <= required
+        )
+        template = schema["$defs"]["execute_template"]
+        self.assertFalse(template["additionalProperties"])
+        self.assertTrue(template["properties"]["dry_run"]["const"])
+        self.assertFalse(template["properties"]["confirm_write"]["const"])
+        self.assertFalse(template["properties"]["confirm_export"]["const"])
         self.assert_no_path_or_script(schema)
 
     def test_fidelity_and_color_findings_get_bounded_deterministic_changes(self) -> None:
@@ -129,7 +140,57 @@ class ColorVectorRepairTests(unittest.TestCase):
             {"silhouette_iou_low", "mean_delta_e_high"},
             set(first["addressed_findings"]),
         )
+        template = first["next_execute_template"]
+        self.assertEqual("public-repair-01", template["reference_id"])
+        self.assertEqual("image/png", template["source_media_type"])
+        self.assertEqual("hybrid", template["strategy"])
+        self.assertEqual(first["next_settings"]["trace"]["max_colors"], template["max_colors"])
+        self.assertEqual(
+            first["next_settings"]["preprocess"]["median_radius"],
+            template["median_radius"],
+        )
+        self.assertTrue(template["dry_run"])
+        self.assertFalse(template["confirm_write"])
+        self.assertFalse(template["confirm_export"])
+        self.assertEqual(
+            ["authorized_source_file", "write_confirmation", "export_confirmation"],
+            first["runtime_requirements"],
+        )
+        self.assertEqual(
+            {
+                "executing_round": 1,
+                "max_repair_rounds": 2,
+                "remaining_rounds_after_execute": 1,
+                "compare_after_execute": True,
+                "next_repair_round": 2,
+                "stop_after_compare_if_failed": False,
+            },
+            first["iteration_control"],
+        )
         self.assert_no_path_or_script(first)
+
+    def test_execute_template_is_directly_callable_as_dry_run(self) -> None:
+        repair = build_color_vector_repair_plan(base_arguments())
+
+        with patch(
+            "starbridge_mcp.mcp_server.subprocess.run",
+            side_effect=AssertionError("execute template must remain dry-run"),
+        ):
+            result = call_tool(
+                "illustrator.color_vectorize_execute",
+                repair["next_execute_template"],
+            )
+
+        structured = result["structuredContent"]
+        self.assertTrue(structured["ok"])
+        self.assertTrue(structured["dry_run"])
+        for key, value in repair["next_settings"]["trace"].items():
+            self.assertEqual(value, structured["trace"][key])
+        self.assertEqual(
+            repair["next_settings"]["preprocess"]["median_radius"],
+            structured["preprocess"]["median_radius"],
+        )
+        self.assert_no_path_or_script(structured)
 
     def test_anchor_only_repair_reduces_complexity_without_more_colors(self) -> None:
         arguments = base_arguments()
@@ -178,6 +239,9 @@ class ColorVectorRepairTests(unittest.TestCase):
         self.assertFalse(structured["requires_execute"])
         self.assertEqual([], structured["changes"])
         self.assertIsNone(structured["suggested_next_tool"])
+        self.assertIsNone(structured["next_execute_template"])
+        self.assertEqual([], structured["runtime_requirements"])
+        self.assertFalse(structured["iteration_control"]["compare_after_execute"])
 
     def test_failed_hard_gate_never_relaxes_quality_or_suggests_execution(self) -> None:
         arguments = base_arguments()
@@ -193,7 +257,20 @@ class ColorVectorRepairTests(unittest.TestCase):
         self.assertFalse(plan["requires_execute"])
         self.assertTrue(plan["requires_user_review"])
         self.assertIsNone(plan["suggested_next_tool"])
+        self.assertIsNone(plan["next_execute_template"])
+        self.assertEqual([], plan["runtime_requirements"])
         self.assertFalse(plan["safety"]["quality_gates_relaxed"])
+
+    def test_last_planned_round_requires_stop_after_failed_compare(self) -> None:
+        arguments = base_arguments()
+        arguments.update({"repair_round": 2, "max_repair_rounds": 2})
+
+        plan = build_color_vector_repair_plan(arguments)
+
+        self.assertEqual("planned", plan["verdict"])
+        self.assertEqual(0, plan["iteration_control"]["remaining_rounds_after_execute"])
+        self.assertIsNone(plan["iteration_control"]["next_repair_round"])
+        self.assertTrue(plan["iteration_control"]["stop_after_compare_if_failed"])
 
     def test_exhausted_budget_stops_without_repair(self) -> None:
         arguments = base_arguments()
@@ -233,6 +310,16 @@ class ColorVectorRepairTests(unittest.TestCase):
         self.assertEqual("blocked", plan["verdict"])
         self.assertNotIn("private", json.dumps(plan).lower())
 
+    def test_invalid_execute_context_is_rejected_without_file_access(self) -> None:
+        for key, value in (
+            ("source_media_type", "image/tiff"),
+            ("strategy", "semantic_reconstruction"),
+        ):
+            arguments = base_arguments()
+            arguments[key] = value
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                build_color_vector_repair_plan(arguments)
+
     def test_tool_and_registry_expose_safe_read_only_route(self) -> None:
         response = handle_request({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
         assert response is not None
@@ -241,7 +328,16 @@ class ColorVectorRepairTests(unittest.TestCase):
         name = "illustrator.color_vectorize_repair_plan"
         self.assertIn(name, tools)
         self.assertTrue(tools[name]["annotations"]["readOnlyHint"])
-        schema_text = json.dumps(tools[name]["inputSchema"]).lower()
+        input_schema = tools[name]["inputSchema"]
+        self.assertEqual(
+            ["image/png", "image/jpeg"],
+            input_schema["properties"]["source_media_type"]["enum"],
+        )
+        self.assertEqual(
+            ["local_illustrator_trace", "hybrid"],
+            input_schema["properties"]["strategy"]["enum"],
+        )
+        schema_text = json.dumps(input_schema).lower()
         for forbidden in (
             "input_path",
             "output_path",

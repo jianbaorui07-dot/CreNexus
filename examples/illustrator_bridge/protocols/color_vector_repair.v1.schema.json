@@ -22,6 +22,9 @@
     "requires_execute",
     "requires_user_review",
     "suggested_next_tool",
+    "next_execute_template",
+    "runtime_requirements",
+    "iteration_control",
     "warnings",
     "safety",
     "dry_run",
@@ -90,6 +93,51 @@
         { "type": "null" }
       ]
     },
+    "next_execute_template": {
+      "oneOf": [
+        { "$ref": "#/$defs/execute_template" },
+        { "type": "null" }
+      ]
+    },
+    "runtime_requirements": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "authorized_source_file",
+          "write_confirmation",
+          "export_confirmation"
+        ]
+      }
+    },
+    "iteration_control": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "executing_round",
+        "max_repair_rounds",
+        "remaining_rounds_after_execute",
+        "compare_after_execute",
+        "next_repair_round",
+        "stop_after_compare_if_failed"
+      ],
+      "properties": {
+        "executing_round": { "type": "integer", "minimum": 1, "maximum": 3 },
+        "max_repair_rounds": { "type": "integer", "minimum": 1, "maximum": 3 },
+        "remaining_rounds_after_execute": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "compare_after_execute": { "type": "boolean" },
+        "next_repair_round": {
+          "type": ["integer", "null"],
+          "minimum": 2,
+          "maximum": 3
+        },
+        "stop_after_compare_if_failed": { "type": "boolean" }
+      }
+    },
     "warnings": {
       "type": "array",
       "items": { "type": "string", "minLength": 1, "maxLength": 512 }
@@ -125,6 +173,51 @@
     "finding_code": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9_]{0,63}$"
+    },
+    "execute_template": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reference_id",
+        "reference_authorized",
+        "source_media_type",
+        "strategy",
+        "photoshop_preprocess",
+        "normalize_srgb",
+        "max_dimension",
+        "median_radius",
+        "max_colors",
+        "path_fitting",
+        "min_area",
+        "preprocess_blur",
+        "ignore_white",
+        "output_to_swatches",
+        "dry_run",
+        "confirm_write",
+        "confirm_export"
+      ],
+      "properties": {
+        "reference_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+        },
+        "reference_authorized": { "const": true },
+        "source_media_type": { "enum": ["image/png", "image/jpeg"] },
+        "strategy": { "enum": ["local_illustrator_trace", "hybrid"] },
+        "photoshop_preprocess": { "type": "boolean" },
+        "normalize_srgb": { "type": "boolean" },
+        "max_dimension": { "type": "integer", "minimum": 256, "maximum": 8192 },
+        "median_radius": { "type": "integer", "minimum": 0, "maximum": 5 },
+        "max_colors": { "type": "integer", "minimum": 2, "maximum": 256 },
+        "path_fitting": { "type": "number", "minimum": 0, "maximum": 10 },
+        "min_area": { "type": "integer", "minimum": 1, "maximum": 1000 },
+        "preprocess_blur": { "type": "number", "minimum": 0, "maximum": 2 },
+        "ignore_white": { "type": "boolean" },
+        "output_to_swatches": { "type": "boolean" },
+        "dry_run": { "const": true },
+        "confirm_write": { "const": false },
+        "confirm_export": { "const": false }
+      }
     },
     "settings": {
       "type": "object",

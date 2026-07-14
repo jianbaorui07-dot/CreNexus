@@ -1341,6 +1341,16 @@ TOOL_DEFINITIONS: list[JsonObject] = [
                     "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
                 },
                 "reference_authorized": {"type": "boolean"},
+                "source_media_type": {
+                    "type": "string",
+                    "enum": ["image/png", "image/jpeg"],
+                    "default": "image/png",
+                },
+                "strategy": {
+                    "type": "string",
+                    "enum": ["local_illustrator_trace", "hybrid"],
+                    "default": "hybrid",
+                },
                 "repair_round": {
                     "type": "integer",
                     "minimum": 1,

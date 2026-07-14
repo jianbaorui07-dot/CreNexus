@@ -1127,7 +1127,10 @@ CAPABILITIES: tuple[ToolCapability, ...] = (
         action="color_vectorize_repair_plan",
         maturity="implemented",
         risk_level="safe_read_only",
-        description="把脱敏比较 findings 编译成最多三轮的确定性 Image Trace 参数修复计划。",
+        description=(
+            "把脱敏比较 findings 编译成最多三轮的确定性 Image Trace 参数修复计划，"
+            "并生成无路径、强制 dry-run 的下一次 execute 参数模板。"
+        ),
         side_effects="纯内存 dry-run；不读取图片、不启动 Adobe、不写文件、不执行脚本。",
         safe_default=True,
         requires_confirmation=False,
@@ -1137,7 +1140,10 @@ CAPABILITIES: tuple[ToolCapability, ...] = (
             "visioncortex/vtracer",
         ),
         invocation="python -m starbridge_mcp.mcp_server",
-        next_step="显式确认后执行下一轮 sandbox trace，再重新比较；最多三轮。",
+        next_step=(
+            "先用 next_execute_template 复核下一轮 dry-run；运行时绑定明确源文件与双确认后"
+            "执行 sandbox trace，再按 iteration_control 重新比较或停止。"
+        ),
     ),
     ToolCapability(
         name="illustrator.color_vectorize_execute",
