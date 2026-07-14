@@ -429,7 +429,7 @@ CAPABILITIES: tuple[ToolCapability, ...] = (
         action="agent_run",
         maturity="implemented",
         risk_level="guarded_local_process",
-        description="执行 build/validate/repair/submit/status 一体化 ComfyUI agent 流程，默认 dry-run。",
+        description="执行 build/validate/repair/submit/status 一体化 ComfyUI agent 流程，区分已提交与完成、失败、取消终态，默认 dry-run。",
         side_effects="confirm_run=true 时会访问本机 ComfyUI API，并可能触发其输出目录写入。",
         safe_default=False,
         requires_confirmation=True,

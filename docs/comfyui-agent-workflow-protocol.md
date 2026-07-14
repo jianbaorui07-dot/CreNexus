@@ -121,6 +121,29 @@ With confirmation, it may call:
 
 The returned `output_manifest` is sanitized and contains only ComfyUI output metadata such as `filename`, `subfolder`, `type`, and `node_id`. It must not include absolute local paths.
 
+### 终态与失败恢复契约
+
+`POST /prompt` 返回 `prompt_id` 只表示 ComfyUI 已接受提交，不等于已经生成成功。轮询到对应 history 后，`comfyui.agent_run` 必须继续读取脱敏后的终态信号：
+
+| ComfyUI history 信号 | `job_status.state` | `ok` | `submitted` |
+| --- | --- | --- | --- |
+| `status.status_str=success` 或 `execution_success` | `completed` | `true` | `true` |
+| `status.status_str=error` 或 `execution_error` | `failed` | `false` | `true` |
+| `execution_interrupted` | `cancelled` | `false` | `true` |
+| 已取得 `prompt_id`，但 history 查询失败或缺少可验证终态 | `status_unavailable` | `false` | `true` |
+| 等待窗口结束但任务尚未进入 history | `submitted` 或 `queued_or_running` | `false` | `true` |
+
+history 中出现任务记录本身不能作为成功证据；只有规范化终态为 `completed` 时才允许 `ok=true`。失败或取消后必须立即停止轮询，不得继续等待到超时，也不得把已经成功入队的任务改写成 `submitted=false`。任务仍在排队或运行时，必须保留同一个 `prompt_id` 继续监控，不能自动重复提交。
+
+失败响应只允许返回标准化状态、`terminal_event`、脱敏产物清单和通用恢复建议。不得返回 ComfyUI 的异常正文、traceback、模型名、prompt、workflow 或本机路径。恢复建议应要求调用方先在本机检查失败节点或中断原因，再重新 review dry-run；再次提交仍需显式 `confirm_run=true`。
+
+如果提交后的 history 查询断线或缺少可验证终态，必须保留 `prompt_id` 和 `submitted=true`，并返回 `status_unavailable`。调用方应先用同一个 `prompt_id` 恢复查询，确认本机 queue/history 后再决定是否重试，避免重复生成。
+
+实现依据：ComfyUI 官方执行器把 `execution_success`、`execution_error` 与 `execution_interrupted` 写入 history 状态消息；官方 jobs 归一化逻辑先读取 `status_str`，再在 error 状态下用 `execution_interrupted` 区分 `cancelled` 与 `failed`。StarBridge 对缺少可验证终态的旧 payload 有意采用更保守的 `status_unavailable`，避免仅凭 history 存在就宣称成功。
+
+- [ComfyUI `execution.py` 终态事件](https://github.com/Comfy-Org/ComfyUI/blob/0aecac867d7840b56ad790aa76c5e76e33c74c3d/execution.py#L674-L820)
+- [ComfyUI `comfy_execution/jobs.py` 状态归一化](https://github.com/Comfy-Org/ComfyUI/blob/0aecac867d7840b56ad790aa76c5e76e33c74c3d/comfy_execution/jobs.py#L191-L243)
+
 ## Safety Rules
 
 - Default path is dry-run.

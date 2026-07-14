@@ -52,6 +52,15 @@ class McpToolSchemasTest(unittest.TestCase):
                 self.assertTrue(annotations["requiresConfirmation"])
                 self.assertFalse(annotations["safeDefault"])
 
+    def test_comfyui_agent_run_schema_documents_terminal_outcomes(self) -> None:
+        by_name = {tool["name"]: tool for tool in TOOL_DEFINITIONS}
+        tool = by_name["comfyui.agent_run"]
+        properties = tool["inputSchema"]["properties"]
+
+        self.assertIn("completed, failed, or cancelled", properties["wait_seconds"]["description"])
+        self.assertIn("submitted=true", properties["confirm_run"]["description"])
+        self.assertIn("failed, or cancelled execution", tool["description"])
+
     def test_safe_only_evidence_tools_are_declared(self) -> None:
         by_name = {tool["name"]: tool for tool in TOOL_DEFINITIONS}
         for name in (

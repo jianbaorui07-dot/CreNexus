@@ -1311,9 +1311,21 @@ def post_json(base_url: str, path: str, payload: dict[str, Any], timeout: int) -
 
 def output_manifest_from_history(prompt_id: str, history: dict[str, Any]) -> dict[str, Any]:
     prompt_history = history.get(prompt_id, {}) if isinstance(history, dict) else {}
+    if not isinstance(prompt_history, dict):
+        prompt_history = {}
+    node_outputs = prompt_history.get("outputs", {})
+    if not isinstance(node_outputs, dict):
+        node_outputs = {}
     outputs = []
-    for node_id, node_output in prompt_history.get("outputs", {}).items():
-        for image in node_output.get("images", []):
+    for node_id, node_output in node_outputs.items():
+        if not isinstance(node_output, dict):
+            continue
+        images = node_output.get("images", [])
+        if not isinstance(images, list):
+            continue
+        for image in images:
+            if not isinstance(image, dict):
+                continue
             outputs.append(
                 {
                     "node_id": str(node_id),
@@ -1325,14 +1337,76 @@ def output_manifest_from_history(prompt_id: str, history: dict[str, Any]) -> dic
     return sanitize({"prompt_id": prompt_id, "image_count": len(outputs), "images": outputs})
 
 
+def _history_terminal_state(prompt_history: Any) -> tuple[str, str | None]:
+    if not isinstance(prompt_history, dict):
+        return "status_unavailable", None
+
+    status = prompt_history.get("status", {})
+    if not isinstance(status, dict):
+        return "status_unavailable", None
+
+    terminal_events = set()
+    messages = status.get("messages", [])
+    if isinstance(messages, list):
+        for message in messages:
+            if not isinstance(message, (list, tuple)) or not message:
+                continue
+            event = message[0]
+            if isinstance(event, str) and event in {
+                "execution_success",
+                "execution_error",
+                "execution_interrupted",
+            }:
+                terminal_events.add(event)
+
+    status_str = str(status.get("status_str") or "").strip().lower()
+    if status_str in {"success", "completed"}:
+        terminal_event = "execution_success" if "execution_success" in terminal_events else None
+        return "completed", terminal_event
+    if status_str in {"error", "failed", "failure"}:
+        if "execution_interrupted" in terminal_events:
+            return "cancelled", "execution_interrupted"
+        terminal_event = "execution_error" if "execution_error" in terminal_events else None
+        return "failed", terminal_event
+    if status_str in {"cancelled", "canceled", "interrupted"}:
+        terminal_event = (
+            "execution_interrupted" if "execution_interrupted" in terminal_events else None
+        )
+        return "cancelled", terminal_event
+
+    if status.get("completed") is True:
+        terminal_event = "execution_success" if "execution_success" in terminal_events else None
+        return "completed", terminal_event
+    if status.get("completed") is False:
+        if "execution_interrupted" in terminal_events:
+            return "cancelled", "execution_interrupted"
+        terminal_event = "execution_error" if "execution_error" in terminal_events else None
+        return "failed", terminal_event
+
+    for terminal_event, state in (
+        ("execution_interrupted", "cancelled"),
+        ("execution_error", "failed"),
+        ("execution_success", "completed"),
+    ):
+        if terminal_event in terminal_events:
+            return state, terminal_event
+
+    # History presence alone is not proof that generation completed successfully.
+    return "status_unavailable", None
+
+
 def query_job_status(base_url: str, prompt_id: str, timeout: int) -> dict[str, Any]:
     history = get_json(base_url, f"/history/{prompt_id}", timeout)
-    if prompt_id in history:
-        return {
-            "state": "completed",
+    if isinstance(history, dict) and prompt_id in history:
+        state, terminal_event = _history_terminal_state(history[prompt_id])
+        result = {
+            "state": state,
             "history_available": True,
             "output_manifest": output_manifest_from_history(prompt_id, history),
         }
+        if terminal_event is not None:
+            result["terminal_event"] = terminal_event
+        return result
     return {
         "state": "queued_or_running",
         "history_available": False,
@@ -1350,7 +1424,12 @@ def submit_workflow(
     response = post_json(base_url, "/prompt", {"prompt": workflow}, timeout)
     prompt_id = str(response.get("prompt_id") or "")
     if not prompt_id:
-        return {"ok": False, "error": "missing_prompt_id", "response": response}
+        return {
+            "ok": False,
+            "submitted": False,
+            "error": "missing_prompt_id",
+            "response": response,
+        }
 
     status = {
         "state": "submitted",
@@ -1359,13 +1438,52 @@ def submit_workflow(
     }
     deadline = time.time() + max(0, wait_seconds)
     while time.time() <= deadline:
-        status = query_job_status(base_url, prompt_id, timeout)
-        if status["state"] == "completed":
+        try:
+            status = query_job_status(base_url, prompt_id, timeout)
+        except (
+            urllib.error.HTTPError,
+            urllib.error.URLError,
+            TimeoutError,
+            OSError,
+            json.JSONDecodeError,
+            UnicodeDecodeError,
+        ):
+            return {
+                "ok": False,
+                "submitted": True,
+                "prompt_id": prompt_id,
+                "error": "comfyui_status_unavailable",
+                "job_status": {
+                    "state": "status_unavailable",
+                    "history_available": False,
+                    "output_manifest": {
+                        "prompt_id": prompt_id,
+                        "image_count": 0,
+                        "images": [],
+                    },
+                },
+            }
+        if status["state"] in {"completed", "failed", "cancelled", "status_unavailable"}:
             break
         if wait_seconds <= 0:
             break
         time.sleep(1)
-    return {"ok": True, "prompt_id": prompt_id, "job_status": status}
+
+    state = str(status.get("state") or "")
+    error_codes = {
+        "failed": "comfyui_execution_failed",
+        "cancelled": "comfyui_execution_cancelled",
+        "status_unavailable": "comfyui_status_unavailable",
+    }
+    result = {
+        "ok": state == "completed",
+        "submitted": True,
+        "prompt_id": prompt_id,
+        "job_status": status,
+    }
+    if state in error_codes:
+        result["error"] = error_codes[state]
+    return result
 
 
 def agent_run(arguments: dict[str, Any]) -> dict[str, Any]:
@@ -1483,14 +1601,52 @@ def agent_run(arguments: dict[str, Any]) -> dict[str, Any]:
         )
 
     job_status = submission.get("job_status", {})
+    submission_ok = bool(submission.get("ok"))
+    submitted = bool(submission.get("submitted", submission.get("prompt_id")))
+    state = str(job_status.get("state") or "")
+    if state == "failed":
+        warnings = [
+            "ComfyUI accepted the workflow, but execution failed; no successful result is claimed."
+        ]
+        next_steps = [
+            "Inspect the failing node in local ComfyUI, repair the workflow or runtime issue, then review a new dry-run before retrying with confirm_run=true."
+        ]
+    elif state == "cancelled":
+        warnings = [
+            "ComfyUI accepted the workflow, but execution was cancelled or interrupted; no successful result is claimed."
+        ]
+        next_steps = [
+            "Confirm the interruption was expected, then review a new dry-run before retrying with confirm_run=true."
+        ]
+    elif state == "status_unavailable":
+        warnings = [
+            "ComfyUI accepted the workflow, but the post-submit status check was unavailable; completion is unverified."
+        ]
+        next_steps = [
+            "Recover status with the same prompt_id via comfyui.job_snapshot or local queue/history before deciding whether to retry."
+        ]
+    elif state in {"submitted", "queued_or_running"}:
+        warnings = [
+            "ComfyUI accepted the workflow, but it did not reach verified completion within the wait window; no successful result is claimed."
+        ]
+        next_steps = [
+            "Continue monitoring the same prompt_id via comfyui.progress_monitor or comfyui.job_snapshot; do not resubmit automatically."
+        ]
+    elif submission_ok:
+        warnings = []
+        next_steps = []
+    else:
+        warnings = [str(submission.get("error") or "ComfyUI submission failed.")]
+        next_steps = ["Inspect the ComfyUI response and local console."]
+
     return sanitize(
         {
-            "ok": bool(submission.get("ok")),
+            "ok": submission_ok,
             "bridge": BRIDGE_ID,
             "action": "agent_run",
             "mode": "confirmed",
             "workflow_type": _workflow_type(arguments),
-            "submitted": bool(submission.get("ok")),
+            "submitted": submitted,
             "prompt_id": submission.get("prompt_id"),
             "workflow_hash": workflow_hash(workflow),
             "node_summary": workflow_summary(workflow),
@@ -1499,11 +1655,7 @@ def agent_run(arguments: dict[str, Any]) -> dict[str, Any]:
                 key: value for key, value in job_status.items() if key != "output_manifest"
             },
             "output_manifest": job_status.get("output_manifest", {"image_count": 0, "images": []}),
-            "warnings": []
-            if submission.get("ok")
-            else [str(submission.get("error") or "ComfyUI submission failed.")],
-            "next_steps": []
-            if submission.get("ok")
-            else ["Inspect the ComfyUI response and local console."],
+            "warnings": warnings,
+            "next_steps": next_steps,
         }
     )

@@ -503,7 +503,7 @@ TOOL_DEFINITIONS: list[JsonObject] = [
     _standard_tool(
         name="comfyui.agent_run",
         title="ComfyUI Agent Run",
-        description="Run the guarded ComfyUI agent flow. Defaults to dry-run; real queue submission requires confirm_run=true.",
+        description="Run the guarded ComfyUI agent flow. Defaults to dry-run; confirmed runs distinguish accepted submission from completed, failed, or cancelled execution.",
         input_schema=_object_schema(
             {
                 "goal": {"type": "string", "default": ""},
@@ -525,8 +525,18 @@ TOOL_DEFINITIONS: list[JsonObject] = [
                 "checkpoint": {"type": "string", "default": "__checkpoint_placeholder__"},
                 "comfy_url": {"type": "string"},
                 "timeout": {"type": "integer", "default": 30, "minimum": 1, "maximum": 300},
-                "wait_seconds": {"type": "integer", "default": 10, "minimum": 0, "maximum": 600},
-                "confirm_run": {"type": "boolean", "default": False},
+                "wait_seconds": {
+                    "type": "integer",
+                    "default": 10,
+                    "minimum": 0,
+                    "maximum": 600,
+                    "description": "History polling window; returns early on completed, failed, or cancelled execution.",
+                },
+                "confirm_run": {
+                    "type": "boolean",
+                    "default": False,
+                    "description": "Explicitly confirms queue submission; execution failure still reports submitted=true.",
+                },
             }
         ),
         read_only=False,
