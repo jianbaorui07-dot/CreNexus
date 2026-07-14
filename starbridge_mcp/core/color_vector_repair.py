@@ -12,6 +12,8 @@ SCHEMA_VERSION = "starbridge.color-vector-repair.v1"
 FINDING_CODE_PATTERN = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 VALID_SEVERITIES = {"info", "warn", "critical"}
 VALID_VERDICTS = {"pass", "repair_needed", "blocked"}
+VALID_MEDIA_TYPES = {"image/png", "image/jpeg"}
+VALID_STRATEGIES = {"local_illustrator_trace", "hybrid"}
 COLOR_FINDINGS = {"mean_delta_e_high", "p95_delta_e_high"}
 FIDELITY_FINDINGS = {"silhouette_iou_low", "perceptual_similarity_low"}
 COMPLEXITY_FINDINGS = {"anchor_count_high"}
@@ -55,6 +57,16 @@ def _boolean(value: Any, *, name: str) -> bool:
     if not isinstance(value, bool):
         raise ValueError(f"{name} must be a boolean")
     return value
+
+
+def _execute_context(arguments: dict[str, Any]) -> tuple[str, str]:
+    media_type = str(arguments.get("source_media_type") or "image/png")
+    if media_type not in VALID_MEDIA_TYPES:
+        raise ValueError("source_media_type must be image/png or image/jpeg")
+    strategy = str(arguments.get("strategy") or "hybrid")
+    if strategy not in VALID_STRATEGIES:
+        raise ValueError("strategy must be local_illustrator_trace or hybrid")
+    return media_type, strategy
 
 
 def _settings(arguments: dict[str, Any]) -> dict[str, Any]:
@@ -155,9 +167,42 @@ def _result(
     addressed_findings: list[str],
     unresolved_findings: list[str],
     warnings: list[str],
+    source_media_type: str,
+    strategy: str,
 ) -> dict[str, Any]:
     planned = verdict == "planned"
     pass_through = verdict == "pass_through"
+    execute_template = None
+    runtime_requirements: list[str] = []
+    if planned:
+        trace = next_settings["trace"]
+        preprocess = next_settings["preprocess"]
+        execute_template = {
+            "reference_id": reference_id,
+            "reference_authorized": True,
+            "source_media_type": source_media_type,
+            "strategy": strategy,
+            "photoshop_preprocess": preprocess["photoshop_preprocess"],
+            "normalize_srgb": preprocess["normalize_srgb"],
+            "max_dimension": preprocess["max_dimension"],
+            "median_radius": preprocess["median_radius"],
+            "max_colors": trace["max_colors"],
+            "path_fitting": trace["path_fitting"],
+            "min_area": trace["min_area"],
+            "preprocess_blur": trace["preprocess_blur"],
+            "ignore_white": trace["ignore_white"],
+            "output_to_swatches": trace["output_to_swatches"],
+            "dry_run": True,
+            "confirm_write": False,
+            "confirm_export": False,
+        }
+        runtime_requirements = [
+            "authorized_source_file",
+            "write_confirmation",
+            "export_confirmation",
+        ]
+    remaining_rounds = max(0, max_repair_rounds - repair_round) if planned else 0
+    next_repair_round = repair_round + 1 if planned and repair_round < max_repair_rounds else None
     return sanitize(
         {
             "ok": planned or pass_through,
@@ -178,6 +223,16 @@ def _result(
             "requires_user_review": verdict in {"needs_user", "blocked"}
             or bool(unresolved_findings),
             "suggested_next_tool": ("illustrator.color_vectorize_execute" if planned else None),
+            "next_execute_template": execute_template,
+            "runtime_requirements": runtime_requirements,
+            "iteration_control": {
+                "executing_round": repair_round,
+                "max_repair_rounds": max_repair_rounds,
+                "remaining_rounds_after_execute": remaining_rounds,
+                "compare_after_execute": planned,
+                "next_repair_round": next_repair_round,
+                "stop_after_compare_if_failed": planned and repair_round >= max_repair_rounds,
+            },
             "warnings": warnings,
             "safety": {
                 "inputs_sanitized": True,
@@ -216,6 +271,8 @@ def build_color_vector_repair_plan(arguments: dict[str, Any]) -> dict[str, Any]:
             addressed_findings=[],
             unresolved_findings=["authorization_required"],
             warnings=["reference_authorized=true is required before repair planning."],
+            source_media_type="image/png",
+            strategy="hybrid",
         )
 
     repair_round = _integer(
@@ -230,6 +287,7 @@ def build_color_vector_repair_plan(arguments: dict[str, Any]) -> dict[str, Any]:
         minimum=1,
         maximum=3,
     )
+    source_media_type, strategy = _execute_context(arguments)
     current = _settings(arguments)
     next_settings = copy.deepcopy(current)
     comparison_verdict, gates, findings = _comparison(arguments)
@@ -256,6 +314,8 @@ def build_color_vector_repair_plan(arguments: dict[str, Any]) -> dict[str, Any]:
             addressed_findings=addressed or [],
             unresolved_findings=unresolved or [],
             warnings=warnings or [],
+            source_media_type=source_media_type,
+            strategy=strategy,
         )
 
     if failed_gates or comparison_verdict == "blocked":
