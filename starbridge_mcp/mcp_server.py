@@ -17,6 +17,7 @@ from starbridge_mcp.bridges.blender_safe_scene import (
 )
 from starbridge_mcp.bridges.capcut_draft_structure import draft_structure_summary
 from starbridge_mcp.bridges.illustrator_preflight import preflight_summary
+from starbridge_mcp.core.color_preprocess import build_color_preprocess_plan
 from starbridge_mcp.core.color_vector_compare import compare_color_vectorization_files
 from starbridge_mcp.core.color_vectorization import (
     build_color_vectorization_plan,
@@ -31,6 +32,7 @@ from starbridge_mcp.core.evidence import (
     load_manifest,
     manifest_validation_result,
     repo_relative,
+    save_manifest,
 )
 from starbridge_mcp.core.job_snapshot import build_job_snapshot, job_snapshot_contract
 from starbridge_mcp.core.job_snapshot_schema import (
@@ -796,6 +798,41 @@ TOOL_DEFINITIONS: list[JsonObject] = [
         input_schema=_object_schema(
             {
                 "recipe_id": {"type": "string", "default": "sandbox_demo_preview"},
+                "reference_id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+                },
+                "reference_authorized": {"type": "boolean", "default": False},
+                "source_media_type": {
+                    "type": "string",
+                    "enum": ["image/png", "image/jpeg"],
+                    "default": "image/png",
+                },
+                "source_width": {
+                    "type": ["integer", "null"],
+                    "minimum": 1,
+                    "maximum": 32768,
+                    "default": None,
+                },
+                "source_height": {
+                    "type": ["integer", "null"],
+                    "minimum": 1,
+                    "maximum": 32768,
+                    "default": None,
+                },
+                "max_dimension": {
+                    "type": "integer",
+                    "minimum": 256,
+                    "maximum": 8192,
+                    "default": 4096,
+                },
+                "median_radius": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 5,
+                    "default": 0,
+                },
+                "normalize_srgb": {"type": "boolean", "default": True},
                 "output_dir": {"type": "string", "default": "examples/output/photoshop"},
                 "dry_run": {"type": "boolean", "default": True},
             }
@@ -808,6 +845,41 @@ TOOL_DEFINITIONS: list[JsonObject] = [
         input_schema=_object_schema(
             {
                 "recipe_id": {"type": "string", "default": "sandbox_demo_preview"},
+                "reference_id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+                },
+                "reference_authorized": {"type": "boolean", "default": False},
+                "source_media_type": {
+                    "type": "string",
+                    "enum": ["image/png", "image/jpeg"],
+                    "default": "image/png",
+                },
+                "source_width": {
+                    "type": ["integer", "null"],
+                    "minimum": 1,
+                    "maximum": 32768,
+                    "default": None,
+                },
+                "source_height": {
+                    "type": ["integer", "null"],
+                    "minimum": 1,
+                    "maximum": 32768,
+                    "default": None,
+                },
+                "max_dimension": {
+                    "type": "integer",
+                    "minimum": 256,
+                    "maximum": 8192,
+                    "default": 4096,
+                },
+                "median_radius": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 5,
+                    "default": 0,
+                },
+                "normalize_srgb": {"type": "boolean", "default": True},
                 "output_dir": {"type": "string", "default": "examples/output/photoshop"},
                 "dry_run": {"type": "boolean", "default": True},
             }
@@ -820,9 +892,49 @@ TOOL_DEFINITIONS: list[JsonObject] = [
         input_schema=_object_schema(
             {
                 "recipe_id": {"type": "string", "default": "sandbox_demo_preview"},
+                "reference_id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+                },
+                "reference_authorized": {"type": "boolean", "default": False},
+                "input_path": {
+                    "type": "string",
+                    "description": "Only the explicitly authorized PNG/JPEG used by the fixed preprocess recipe.",
+                },
+                "source_media_type": {
+                    "type": "string",
+                    "enum": ["image/png", "image/jpeg"],
+                    "default": "image/png",
+                },
+                "source_width": {
+                    "type": ["integer", "null"],
+                    "minimum": 1,
+                    "maximum": 32768,
+                    "default": None,
+                },
+                "source_height": {
+                    "type": ["integer", "null"],
+                    "minimum": 1,
+                    "maximum": 32768,
+                    "default": None,
+                },
+                "max_dimension": {
+                    "type": "integer",
+                    "minimum": 256,
+                    "maximum": 8192,
+                    "default": 4096,
+                },
+                "median_radius": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 5,
+                    "default": 0,
+                },
+                "normalize_srgb": {"type": "boolean", "default": True},
                 "output_dir": {"type": "string", "default": "examples/output/photoshop"},
                 "dry_run": {"type": "boolean", "default": True},
                 "confirm_write": {"type": "boolean", "default": False},
+                "confirm_export": {"type": "boolean", "default": False},
             }
         ),
         read_only=False,
@@ -947,6 +1059,19 @@ TOOL_DEFINITIONS: list[JsonObject] = [
                     "default": "hybrid",
                 },
                 "photoshop_preprocess": {"type": "boolean", "default": False},
+                "max_dimension": {
+                    "type": "integer",
+                    "minimum": 256,
+                    "maximum": 8192,
+                    "default": 4096,
+                },
+                "median_radius": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 5,
+                    "default": 0,
+                },
+                "normalize_srgb": {"type": "boolean", "default": True},
                 "max_colors": {
                     "type": "integer",
                     "minimum": 2,
@@ -1169,6 +1294,19 @@ TOOL_DEFINITIONS: list[JsonObject] = [
                     "default": "hybrid",
                 },
                 "photoshop_preprocess": {"type": "boolean", "default": False},
+                "max_dimension": {
+                    "type": "integer",
+                    "minimum": 256,
+                    "maximum": 8192,
+                    "default": 4096,
+                },
+                "median_radius": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 5,
+                    "default": 0,
+                },
+                "normalize_srgb": {"type": "boolean", "default": True},
                 "output_dir": {
                     "type": "string",
                     "default": "examples/output/illustrator",
@@ -1983,6 +2121,24 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 PHOTOSHOP_RECIPE_ID = "sandbox_demo_preview"
 
 CORE_RECIPES = {
+    "prepare_vector_trace": {
+        "goal": "Prepare one explicitly authorized PNG/JPEG for color-faithful Illustrator tracing.",
+        "steps": [
+            "validate the explicit reference authorization and bounded settings",
+            "copy the source into examples/output/photoshop before opening Photoshop",
+            "use the fixed JSX to normalize RGB, sRGB, 8-bit depth, size, and optional median filtering",
+            "export an alpha-preserving PNG and redacted EvidenceManifest",
+            "hand the sandbox PNG to the fixed Illustrator color trace",
+        ],
+        "tools": [
+            "photoshop.recipe_plan",
+            "photoshop.recipe_run",
+            "illustrator.color_vectorize_execute",
+            "starbridge.evidence_validate",
+        ],
+        "safety": "One explicit authorized PNG/JPEG only; copy-first sandbox processing; fixed JSX only; real copy and export require separate confirmations.",
+        "example_execution": "Plan with recipe_id=prepare_vector_trace, then run with explicit input_path, reference_authorized=true, dry_run=false, confirm_write=true, and confirm_export=true.",
+    },
     "remove_background": {
         "goal": "Remove background using select subject, feather mask, apply layer mask. All in sandbox.",
         "steps": [
@@ -2090,14 +2246,39 @@ def _recipe_definition(output_dir: str, recipe_id: str = None) -> JsonObject:
     recipe_id = recipe_id or PHOTOSHOP_RECIPE_ID
     if recipe_id in CORE_RECIPES:
         recipe = CORE_RECIPES[recipe_id]
+        if recipe_id == "prepare_vector_trace":
+            allowed_inputs = [
+                "recipe_id",
+                "reference_id",
+                "reference_authorized",
+                "input_path",
+                "source_media_type",
+                "source_width",
+                "source_height",
+                "max_dimension",
+                "median_radius",
+                "normalize_srgb",
+                "dry_run",
+                "confirm_write",
+                "confirm_export",
+                "output_dir",
+            ]
+            allowed_outputs = [
+                f"{output_dir}/<reference_id>_source.<png|jpg|jpeg>",
+                f"{output_dir}/<reference_id>_vector_source.png",
+                "examples/output/evidence/<reference_id>.color_preprocess.json",
+            ]
+        else:
+            allowed_inputs = ["recipe_id", "dry_run", "confirm_write", "output_dir"]
+            allowed_outputs = [
+                f"{output_dir}/result_{recipe_id}.psd",
+                f"{output_dir}/preview_{recipe_id}.png",
+            ]
         return {
             "recipe_id": recipe_id,
             "goal": recipe["goal"],
-            "allowed_inputs": ["recipe_id", "dry_run", "confirm_write", "output_dir"],
-            "allowed_outputs": [
-                f"{output_dir}/result_{recipe_id}.psd",
-                f"{output_dir}/preview_{recipe_id}.png",
-            ],
+            "allowed_inputs": allowed_inputs,
+            "allowed_outputs": allowed_outputs,
             "steps": recipe["steps"],
             "tools": recipe["tools"],
             "validations": [item["name"] for item in _recipe_validations(output_dir)],
@@ -2161,6 +2342,21 @@ def _handle_photoshop_recipe_list(_arguments: JsonObject) -> JsonObject:
 def _handle_photoshop_recipe_plan(arguments: JsonObject) -> JsonObject:
     recipe_id = str(arguments.get("recipe_id") or PHOTOSHOP_RECIPE_ID)
     output_dir = _recipe_output_dir(arguments)
+    if recipe_id == "prepare_vector_trace":
+        preprocess_arguments = dict(arguments)
+        preprocess_arguments["output_dir"] = output_dir
+        preprocess_plan = build_color_preprocess_plan(preprocess_arguments)
+        return sanitize(
+            {
+                "ok": bool(preprocess_plan.get("ok")),
+                "bridge": "photoshop",
+                "action": "recipe_plan",
+                "dry_run": True,
+                "recipe_id": recipe_id,
+                "preprocess_plan": preprocess_plan,
+                "quality_gates": [item["name"] for item in _recipe_validations(output_dir)],
+            }
+        )
     plan_def = _recipe_definition(output_dir, recipe_id) | {"recipe_id": recipe_id}
     # Action Plan mode support: if "action_plan" requested, return executable steps
     if arguments.get("action_plan"):
@@ -2185,6 +2381,21 @@ def _handle_photoshop_recipe_plan(arguments: JsonObject) -> JsonObject:
 def _handle_photoshop_recipe_validate(arguments: JsonObject) -> JsonObject:
     output_dir = _recipe_output_dir(arguments)
     recipe_id = str(arguments.get("recipe_id") or PHOTOSHOP_RECIPE_ID)
+    if recipe_id == "prepare_vector_trace":
+        preprocess_arguments = dict(arguments)
+        preprocess_arguments["output_dir"] = output_dir
+        preprocess_plan = build_color_preprocess_plan(preprocess_arguments)
+        return sanitize(
+            {
+                "ok": bool(preprocess_plan.get("ok")),
+                "bridge": "photoshop",
+                "action": "recipe_validate",
+                "dry_run": True,
+                "recipe_id": recipe_id,
+                "preprocess_plan": preprocess_plan,
+                "validation": _recipe_validations(output_dir),
+            }
+        )
     return sanitize(
         {
             "ok": True,
@@ -2200,6 +2411,22 @@ def _handle_photoshop_recipe_validate(arguments: JsonObject) -> JsonObject:
 def _handle_photoshop_recipe_run(arguments: JsonObject) -> JsonObject:
     output_dir = _recipe_output_dir(arguments)
     recipe_id = str(arguments.get("recipe_id") or PHOTOSHOP_RECIPE_ID)
+    if recipe_id == "prepare_vector_trace":
+        preprocess_arguments = dict(arguments)
+        preprocess_arguments["output_dir"] = output_dir
+        preprocess_result = _execute_photoshop_color_preprocess(preprocess_arguments)
+        if arguments.get("dry_run", True) is not False:
+            return sanitize(
+                {
+                    "ok": bool(preprocess_result.get("ok")),
+                    "bridge": "photoshop",
+                    "action": "recipe_run",
+                    "dry_run": True,
+                    "recipe_id": recipe_id,
+                    "preprocess_plan": preprocess_result,
+                }
+            )
+        return sanitize(preprocess_result | {"recipe_id": recipe_id})
     dry_run = bool(arguments.get("dry_run", True))
     if dry_run:
         commands = ["npm.cmd run photoshop:demo:plan"]
@@ -2340,6 +2567,159 @@ def _run_powershell_json(script_relative: str, extra_args: list[str] | None = No
                 "next_steps": ["Run the matching npm.cmd script locally and check stdout."],
             }
         )
+
+
+def _execute_photoshop_color_preprocess(arguments: JsonObject) -> JsonObject:
+    output_dir = _sandbox_output_dir(arguments, "photoshop")
+    preprocess_arguments = dict(arguments)
+    preprocess_arguments["output_dir"] = output_dir
+    plan = build_color_preprocess_plan(preprocess_arguments)
+    if not plan.get("ok"):
+        return sanitize(plan)
+    if arguments.get("dry_run", True) is not False:
+        return sanitize(plan)
+
+    if arguments.get("confirm_write") is not True:
+        return _adobe_refusal(
+            bridge="photoshop", task="color_preprocess", confirm_key="confirm_write"
+        )
+    if arguments.get("confirm_export") is not True:
+        return _adobe_refusal(
+            bridge="photoshop", task="color_preprocess", confirm_key="confirm_export"
+        )
+
+    input_path = arguments.get("input_path")
+    if not isinstance(input_path, str) or not input_path.strip():
+        raise ValueError("input_path is required for confirmed color preprocessing")
+    input_file = Path(input_path).expanduser()
+    if not input_file.is_absolute():
+        input_file = REPO_ROOT / input_file
+    input_file = input_file.resolve()
+    if not input_file.is_file():
+        raise ValueError("the explicitly supplied input file was not found")
+
+    extension = input_file.suffix.lower()
+    media_type = str(arguments.get("source_media_type") or "image/png")
+    if extension == ".png" and media_type != "image/png":
+        raise ValueError("source_media_type does not match the explicit input file")
+    if extension in {".jpg", ".jpeg"} and media_type != "image/jpeg":
+        raise ValueError("source_media_type does not match the explicit input file")
+    if extension not in {".png", ".jpg", ".jpeg"}:
+        raise ValueError("input_path must identify one PNG or JPEG file")
+
+    settings = plan["settings"]
+    extra_args = [
+        "-ReferenceId",
+        str(plan["reference_id"]),
+        "-InputPath",
+        str(input_file),
+        "-OutputDir",
+        output_dir,
+        "-MaxDimension",
+        str(settings["max_dimension"]),
+        "-MedianRadius",
+        str(settings["median_radius"]),
+        "-ConfirmAuthorization",
+        "-ConfirmWrite",
+        "-ConfirmExport",
+    ]
+    if not settings["normalize_srgb"]:
+        extra_args.append("-DisableSrgbNormalization")
+
+    result = dict(
+        _run_powershell_json(
+            "examples/photoshop_bridge/scripts/color_vector_preprocess.ps1",
+            extra_args,
+        )
+    )
+    succeeded = result.get("ok") is True
+    outputs = result.get("outputs") if isinstance(result.get("outputs"), dict) else {}
+    safety = result.get("safety") if isinstance(result.get("safety"), dict) else {}
+    manifest = create_manifest(
+        bridge="photoshop",
+        action="color_preprocess",
+        status="completed" if succeeded else "failed",
+        dry_run=False,
+        confirm_write=True,
+        plan_id=f"color-preprocess::{plan['reference_id']}",
+        job_id=f"photoshop::{plan['reference_id']}::vector-source",
+        input_summary={
+            "reference_id": plan["reference_id"],
+            "reference_authorized": True,
+            "media_type": media_type,
+            "settings": settings,
+            "input_sha256": result.get("input_sha256"),
+            "paths_returned": False,
+        },
+        notes=[
+            "The original image was not modified.",
+            "Only a sandbox copy was opened by the fixed Photoshop script.",
+            "Desktop execution still requires visual review before acceptance.",
+        ],
+    )
+    for key, label in (
+        ("source_copy", "sandbox_source_copy"),
+        ("prepared_png", "illustrator_trace_source"),
+    ):
+        value = outputs.get(key)
+        if isinstance(value, str) and value.startswith("examples/output/photoshop/"):
+            manifest.add_output_file(value, label=label)
+    manifest.add_validation(
+        ValidationResult(
+            name="source_copy_verified",
+            ok=safety.get("source_copy_verified") is True,
+            message=(
+                "sandbox source copy hash matched"
+                if safety.get("source_copy_verified") is True
+                else "sandbox source copy was not verified"
+            ),
+            details={"paths_returned": False},
+        )
+    )
+    manifest.add_validation(
+        ValidationResult(
+            name="prepared_png_created",
+            ok=succeeded and isinstance(outputs.get("prepared_png"), str),
+            message=(
+                "prepared PNG was created"
+                if succeeded and isinstance(outputs.get("prepared_png"), str)
+                else "prepared PNG was not created"
+            ),
+            details={"output_sha256": result.get("output_sha256")},
+        )
+    )
+    manifest.add_quality_gate(
+        ValidationResult(
+            name="photoshop_preprocess_ready_for_visual_review",
+            ok=succeeded,
+            message=(
+                "fixed preprocessing completed"
+                if succeeded
+                else "fixed preprocessing did not complete"
+            ),
+            details={"visual_review_required": True},
+        )
+    )
+    manifest.safety_decision = {
+        "single_explicit_user_file": True,
+        "sandbox_copy_before_photoshop": True,
+        "original_modified": False,
+        "output_sandboxed": safety.get("output_sandboxed") is True,
+        "arbitrary_script": False,
+        "cloud_upload": False,
+        "visual_review_required": True,
+    }
+    manifest.add_validation(manifest_validation_result(manifest.to_dict()))
+    evidence_file = save_manifest(
+        manifest,
+        f"examples/output/evidence/{plan['reference_id']}.color_preprocess.json",
+    )
+    evidence_path = repo_relative(evidence_file)
+    result.setdefault("bridge", "photoshop")
+    result.setdefault("action", "color_preprocess")
+    result["evidence_manifest"] = evidence_path
+    result["evidence_path"] = evidence_path
+    return sanitize(result)
 
 
 def _adobe_refusal(*, bridge: str, task: str, confirm_key: str) -> JsonObject:
@@ -2500,10 +2880,6 @@ def _handle_illustrator_color_vectorize_execute(arguments: JsonObject) -> JsonOb
     if dry_run or not plan.get("ok"):
         return sanitize(plan)
 
-    if arguments.get("photoshop_preprocess", False) is True:
-        raise ValueError(
-            "photoshop_preprocess real execution is not available; provide an explicit prepared copy or set it to false"
-        )
     if arguments.get("confirm_write", False) is not True:
         return _adobe_refusal(
             bridge="illustrator", task="color_vectorize", confirm_key="confirm_write"
@@ -2513,24 +2889,82 @@ def _handle_illustrator_color_vectorize_execute(arguments: JsonObject) -> JsonOb
             bridge="illustrator", task="color_vectorize", confirm_key="confirm_export"
         )
 
-    input_path = arguments.get("input_path")
-    if not isinstance(input_path, str) or not input_path.strip():
-        raise ValueError("input_path is required for confirmed color vectorization")
-    input_file = Path(input_path).expanduser()
-    if not input_file.is_absolute():
-        input_file = REPO_ROOT / input_file
-    input_file = input_file.resolve()
-    if not input_file.is_file():
-        raise ValueError("the explicitly supplied input file was not found")
+    application_chain = "illustrator_only"
+    preprocess_summary: JsonObject | None = None
+    if arguments.get("photoshop_preprocess", False) is True:
+        preprocess_arguments = dict(arguments)
+        preprocess_arguments["output_dir"] = "examples/output/photoshop"
+        preprocess_result = _execute_photoshop_color_preprocess(preprocess_arguments)
+        if preprocess_result.get("ok") is not True:
+            return sanitize(
+                {
+                    "ok": False,
+                    "bridge": "illustrator",
+                    "task": "color_vectorize",
+                    "verdict": "blocked",
+                    "application_chain": "photoshop_to_illustrator",
+                    "preprocess": {
+                        "ok": False,
+                        "action": preprocess_result.get("action"),
+                        "error_code": preprocess_result.get("error_code"),
+                        "evidence_path": preprocess_result.get("evidence_path"),
+                    },
+                    "warnings": preprocess_result.get("warnings")
+                    or ["Photoshop preprocessing did not produce a trace source."],
+                    "next_steps": preprocess_result.get("next_steps") or [],
+                }
+            )
+        outputs = (
+            preprocess_result.get("outputs")
+            if isinstance(preprocess_result.get("outputs"), dict)
+            else {}
+        )
+        prepared_path = outputs.get("prepared_png")
+        if not isinstance(prepared_path, str) or not prepared_path:
+            raise ValueError("Photoshop preprocessing returned no prepared sandbox PNG")
+        prepared_file = Path(prepared_path)
+        if not prepared_file.is_absolute():
+            prepared_file = REPO_ROOT / prepared_file
+        input_file = prepared_file.resolve()
+        photoshop_root = (REPO_ROOT / "examples/output/photoshop").resolve()
+        try:
+            input_file.relative_to(photoshop_root)
+        except ValueError as exc:
+            raise ValueError(
+                "prepared Photoshop output must stay inside examples/output/photoshop"
+            ) from exc
+        if input_file.suffix.lower() != ".png":
+            raise ValueError("prepared Photoshop output must be one PNG file")
+        application_chain = "photoshop_to_illustrator"
+        preprocess_summary = {
+            "ok": True,
+            "action": preprocess_result.get("action"),
+            "reference_id": preprocess_result.get("reference_id"),
+            "input_sha256": preprocess_result.get("input_sha256"),
+            "output_sha256": preprocess_result.get("output_sha256"),
+            "operations": preprocess_result.get("operations"),
+            "outputs": {"prepared_png": prepared_path},
+            "evidence_path": preprocess_result.get("evidence_path"),
+        }
+    else:
+        input_path = arguments.get("input_path")
+        if not isinstance(input_path, str) or not input_path.strip():
+            raise ValueError("input_path is required for confirmed color vectorization")
+        input_file = Path(input_path).expanduser()
+        if not input_file.is_absolute():
+            input_file = REPO_ROOT / input_file
+        input_file = input_file.resolve()
+        if not input_file.is_file():
+            raise ValueError("the explicitly supplied input file was not found")
 
-    extension = input_file.suffix.lower()
-    media_type = str(arguments.get("source_media_type") or "image/png")
-    if extension == ".png" and media_type != "image/png":
-        raise ValueError("source_media_type does not match the explicit input file")
-    if extension in {".jpg", ".jpeg"} and media_type != "image/jpeg":
-        raise ValueError("source_media_type does not match the explicit input file")
-    if extension not in {".png", ".jpg", ".jpeg"}:
-        raise ValueError("input_path must identify one PNG or JPEG file")
+        extension = input_file.suffix.lower()
+        media_type = str(arguments.get("source_media_type") or "image/png")
+        if extension == ".png" and media_type != "image/png":
+            raise ValueError("source_media_type does not match the explicit input file")
+        if extension in {".jpg", ".jpeg"} and media_type != "image/jpeg":
+            raise ValueError("source_media_type does not match the explicit input file")
+        if extension not in {".png", ".jpg", ".jpeg"}:
+            raise ValueError("input_path must identify one PNG or JPEG file")
 
     trace = plan["trace"]
     extra_args = [
@@ -2555,9 +2989,13 @@ def _handle_illustrator_color_vectorize_execute(arguments: JsonObject) -> JsonOb
         extra_args.append("-IgnoreWhite")
     if not trace["output_to_swatches"]:
         extra_args.append("-DisableOutputToSwatches")
-    return _run_powershell_json(
-        "examples/illustrator_bridge/scripts/color_vectorize.ps1", extra_args
+    result = dict(
+        _run_powershell_json("examples/illustrator_bridge/scripts/color_vectorize.ps1", extra_args)
     )
+    result["application_chain"] = application_chain
+    if preprocess_summary is not None:
+        result["preprocess"] = preprocess_summary
+    return sanitize(result)
 
 
 def _handle_illustrator_color_vectorize_compare(arguments: JsonObject) -> JsonObject:

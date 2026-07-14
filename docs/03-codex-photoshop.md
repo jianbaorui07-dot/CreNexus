@@ -14,6 +14,7 @@
 | sandbox PSD demo | `examples/photoshop_bridge/scripts/create_demo_document.ps1` | 默认 dry-run；确认后创建公开安全测试 PSD 和命名图层 |
 | sandbox preview export | `examples/photoshop_bridge/scripts/export_demo_preview.ps1` | 确认后只从 demo PSD 导出 PNG / JPG preview |
 | Camera Raw tuning plan | `ps.camera_raw.tune` / `examples/photoshop_bridge/plans/camera_raw_tune_blue_artwork.example.json` | 默认 dry-run，只验证蓝色织物/蓝晒类作品照片的调色参数计划 |
+| 矢量描摹预处理 | `photoshop.recipe_run` + `prepare_vector_trace` | 默认 dry-run；双确认后只在 sandbox 副本上做 sRGB、限尺寸和可选中值降噪，再交给 Illustrator |
 | demo manifest | `examples/photoshop_bridge/write_demo_manifest.py` | 汇总本地 demo 输出，manifest 本身不提交 |
 | COM 探针 | `examples/photoshop_bridge/scripts/com_probe.ps1` | 创建测试文档并导出 PNG |
 | 主体抠图实验 | `examples/photoshop_bridge/scripts/extract_subject_to_png.ps1` | 输入和输出路径都由参数传入 |
@@ -134,7 +135,7 @@ powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\experiments\4
 ## 下一步
 
 1. 稳定只读 `document_info`。
-2. 把 `extract_subject` 和 `export_png` 封装成更小的参数化动作。
+2. 用公开测试图实测 `prepare_vector_trace` 的 sRGB、透明度与 JPEG 降噪结果，并继续用自动色差门验收。
 3. 增加二次蒙版、最大主体保留、边缘羽化和人工确认流程。
 4. 评估 UXP 面板和本地 MCP 工具层。
 5. 保持输入和输出路径都由参数传入，不写默认个人路径。

@@ -200,3 +200,16 @@ powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\camer
 ```
 
 这个脚本会先把用户显式传入的 RAW 复制到 `examples/output/photoshop`，在同目录写同名 XMP，然后通过已授权的本机 Photoshop COM 打开安全副本并导出 JPG。它不写桌面，不修改原始 RAW 所在目录。
+
+## 区域十二：为 Illustrator 彩色描摹准备 sandbox PNG
+
+`prepare_vector_trace` recipe 用固定 Photoshop JSX 把单张授权 PNG/JPEG 复制到 sandbox 后再处理：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\color_vector_preprocess.ps1 `
+  -ReferenceId public-sample-01 -InputPath "<source-image>" `
+  -MaxDimension 4096 -MedianRadius 0 `
+  -ConfirmAuthorization -ConfirmWrite -ConfirmExport
+```
+
+默认不执行；缺少任一确认只返回计划或拒绝。脚本只连接已经运行的 Photoshop，不自动启动应用；输出为 `examples/output/photoshop/` 内的源图副本和 8-bit RGB PNG。中值降噪默认关闭，防止为了减少路径而无意改变原图颜色或细节。

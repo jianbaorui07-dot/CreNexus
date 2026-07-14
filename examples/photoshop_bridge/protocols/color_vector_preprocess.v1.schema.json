@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://starbridge.local/schemas/color_vector_preprocess.v1.schema.json",
+  "title": "StarBridge Photoshop Color Vector Preprocess Plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok",
+    "bridge",
+    "action",
+    "verdict",
+    "schema_version",
+    "reference_id",
+    "reference_authorized",
+    "source",
+    "settings",
+    "operations",
+    "outputs",
+    "safety",
+    "dry_run",
+    "confirm_write",
+    "confirm_export"
+  ],
+  "properties": {
+    "ok": { "const": true },
+    "bridge": { "const": "photoshop" },
+    "action": { "const": "color_preprocess_plan" },
+    "verdict": { "const": "planned" },
+    "schema_version": { "const": "starbridge.color-vector-preprocess.v1" },
+    "reference_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+    },
+    "reference_authorized": { "const": true },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["media_type", "width", "height", "pixels_read_by_plan"],
+      "properties": {
+        "media_type": { "enum": ["image/png", "image/jpeg"] },
+        "width": { "type": ["integer", "null"], "minimum": 1, "maximum": 32768 },
+        "height": { "type": ["integer", "null"], "minimum": 1, "maximum": 32768 },
+        "pixels_read_by_plan": { "const": false }
+      }
+    },
+    "settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "normalize_srgb",
+        "max_dimension",
+        "median_radius",
+        "output_bit_depth",
+        "preserve_alpha",
+        "no_upscale"
+      ],
+      "properties": {
+        "normalize_srgb": { "type": "boolean", "default": true },
+        "max_dimension": { "type": "integer", "minimum": 256, "maximum": 8192 },
+        "median_radius": { "type": "integer", "minimum": 0, "maximum": 5 },
+        "output_bit_depth": { "const": 8 },
+        "preserve_alpha": { "const": true },
+        "no_upscale": { "const": true }
+      }
+    },
+    "operations": {
+      "type": "array",
+      "minItems": 5,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "outputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["output_dir", "source_copy", "prepared_png", "evidence_manifest"],
+      "properties": {
+        "output_dir": {
+          "type": "string",
+          "pattern": "^examples/output/photoshop(?:/[a-z0-9][a-z0-9_-]{0,63})*$"
+        },
+        "source_copy": { "const": true },
+        "prepared_png": { "const": true },
+        "evidence_manifest": { "const": true }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "input_policy",
+        "sandbox_copy_before_photoshop",
+        "original_modified",
+        "recursive_scan",
+        "cloud_upload",
+        "arbitrary_script",
+        "photoshop_started_by_plan",
+        "visual_review_required"
+      ],
+      "properties": {
+        "input_policy": { "const": "single_explicit_user_file" },
+        "sandbox_copy_before_photoshop": { "const": true },
+        "original_modified": { "const": false },
+        "recursive_scan": { "const": false },
+        "cloud_upload": { "const": false },
+        "arbitrary_script": { "const": false },
+        "photoshop_started_by_plan": { "const": false },
+        "visual_review_required": { "const": true }
+      }
+    },
+    "dry_run": { "const": true },
+    "confirm_write": { "const": false },
+    "confirm_export": { "const": false }
+  }
+}

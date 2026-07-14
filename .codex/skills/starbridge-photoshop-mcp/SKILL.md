@@ -47,6 +47,7 @@ Use `npm.cmd`, not bare `npm`, on Windows PowerShell.
 | Inspect layers | `ps.layers.list` | Layer tree summary only |
 | Validate BatchPlay | `ps.batchplay.validate` | Validate descriptors, never execute arbitrary BatchPlay |
 | Plan actions | `photoshop.recipe_list`, `photoshop.recipe_plan` | Dry-run first |
+| Prepare Illustrator trace source | `photoshop.recipe_run` + `prepare_vector_trace` | One authorized PNG/JPEG; copy first; write/export confirmations |
 | Validate recipe | `photoshop.recipe_validate` | Check manifest and sandbox paths |
 | Debug recipe | `photoshop.recipe_debug` | Return guidance only |
 
@@ -62,6 +63,8 @@ Any real Photoshop write/export must require:
 - no absolute user path in returned text
 
 Never add a raw "execute script" tool. Add audited recipe-level actions instead.
+
+For `prepare_vector_trace`, keep the fixed flow: validate authorization → copy the explicit source into `examples/output/photoshop` → run only the repository JSX → save a redacted EvidenceManifest → pass only the prepared sandbox PNG to Illustrator.
 
 ## Validation
 

@@ -145,6 +145,27 @@ def build_color_vectorization_plan(arguments: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("unsupported color vectorization strategy")
 
     photoshop_enabled = _boolean(arguments, "photoshop_preprocess", False)
+    preprocess = {
+        "enabled": photoshop_enabled,
+        "app": "photoshop",
+        "normalize_srgb": _boolean(arguments, "normalize_srgb", True),
+        "max_dimension": _number(
+            arguments.get("max_dimension", 4096),
+            name="max_dimension",
+            minimum=256,
+            maximum=8192,
+            integer=True,
+        ),
+        "median_radius": _number(
+            arguments.get("median_radius", 0),
+            name="median_radius",
+            minimum=0,
+            maximum=5,
+            integer=True,
+        ),
+        "output_dir": "examples/output/photoshop",
+        "sandbox_copy_before_photoshop": True,
+    }
     trace = _trace_options(arguments)
     plan = {
         "ok": True,
@@ -176,9 +197,12 @@ def build_color_vectorization_plan(arguments: dict[str, Any]) -> dict[str, Any]:
                 "role": "optional_preprocess_copy",
                 "enabled": photoshop_enabled,
                 "operations": [
-                    "preserve appearance",
-                    "normalize color profile only when explicitly requested",
-                    "write a sandbox copy",
+                    "copy the explicit source into the Photoshop sandbox before opening it",
+                    "normalize the sandbox copy to sRGB when enabled",
+                    "convert the sandbox copy to 8-bit channels",
+                    "downscale only when the longest edge exceeds max_dimension",
+                    "apply an optional bounded median filter",
+                    "export an alpha-preserving sandbox PNG and evidence manifest",
                 ],
             },
             {
@@ -202,6 +226,7 @@ def build_color_vectorization_plan(arguments: dict[str, Any]) -> dict[str, Any]:
                 ],
             },
         ],
+        "preprocess": preprocess,
         "trace": trace,
         "quality_gates": dict(DEFAULT_QUALITY_GATES),
         "outputs": {
