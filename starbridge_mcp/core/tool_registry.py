@@ -1065,6 +1065,31 @@ CAPABILITIES: tuple[ToolCapability, ...] = (
         invocation="python -m starbridge_mcp.mcp_server",
     ),
     ToolCapability(
+        name="illustrator.color_vectorize_compare",
+        bridge="illustrator",
+        action="color_vectorize_compare",
+        maturity="implemented",
+        risk_level="safe_read_only",
+        description=(
+            "比较一张明确授权的 PNG/JPEG 与 Illustrator sandbox PNG，自动计算轮廓、"
+            "CIE76 D65 色差、8x8 block SSIM 和矢量可编辑性证据。"
+        ),
+        side_effects=(
+            "只读取两个明确文件；候选图必须位于 examples/output/illustrator，"
+            "不递归扫描、不返回路径、像素或元数据。"
+        ),
+        safe_default=True,
+        requires_confirmation=False,
+        requires_local_software=False,
+        source_projects=(
+            "python-pillow/Pillow",
+            "w3c/csswg-drafts",
+            "AdobeDocs/illustrator-scripting-guide",
+        ),
+        invocation="python -m starbridge_mcp.mcp_server",
+        next_step="未通过时按 findings 调整 Image Trace 参数，再生成新的 sandbox PNG 比较。",
+    ),
+    ToolCapability(
         name="illustrator.color_vectorize_execute",
         bridge="illustrator",
         action="color_vectorize_execute",
@@ -1219,6 +1244,7 @@ BRIDGE_PROFILES: dict[str, dict[str, Any]] = {
             "probe",
             "color_vectorize_plan",
             "color_vectorize_validate",
+            "color_vectorize_compare",
             "color_vectorize_execute",
         ],
     },

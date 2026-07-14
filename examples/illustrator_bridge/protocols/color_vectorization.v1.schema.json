@@ -96,6 +96,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "aspect_ratio_error_max",
         "silhouette_iou_min",
         "mean_delta_e_max",
         "p95_delta_e_max",
@@ -103,6 +104,7 @@
         "max_anchor_count"
       ],
       "properties": {
+        "aspect_ratio_error_max": { "type": "number", "minimum": 0, "maximum": 1 },
         "silhouette_iou_min": { "type": "number", "minimum": 0, "maximum": 1 },
         "mean_delta_e_max": { "type": "number", "minimum": 0, "maximum": 100 },
         "p95_delta_e_max": { "type": "number", "minimum": 0, "maximum": 100 },

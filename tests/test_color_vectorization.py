@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import json
+import tempfile
 import unittest
 from pathlib import Path
 
+from PIL import Image, ImageDraw, PngImagePlugin
+
+from starbridge_mcp.core.color_vector_compare import compare_color_vectorization_files
 from starbridge_mcp.core.color_vectorization import (
     build_color_vectorization_plan,
     validate_color_vectorization_metrics,
@@ -15,6 +19,14 @@ ROOT = Path(__file__).resolve().parents[1]
 SCHEMA = (
     ROOT / "examples" / "illustrator_bridge" / "protocols" / "color_vectorization.v1.schema.json"
 )
+COMPARISON_SCHEMA = (
+    ROOT
+    / "examples"
+    / "illustrator_bridge"
+    / "protocols"
+    / "color_vector_comparison.v1.schema.json"
+)
+SANDBOX = ROOT / "examples" / "output" / "illustrator"
 SCRIPT = ROOT / "examples" / "illustrator_bridge" / "scripts" / "color_vectorize.ps1"
 JSX = ROOT / "examples" / "illustrator_bridge" / "jsx" / "color_vectorize.jsx"
 
@@ -44,6 +56,7 @@ def base_plan_arguments() -> dict:
 
 def passing_metrics() -> dict:
     return {
+        "aspect_ratio_error": 0.005,
         "silhouette_iou": 0.98,
         "mean_delta_e": 2.5,
         "p95_delta_e": 7.0,
@@ -63,7 +76,35 @@ def passing_hard_gates() -> dict:
     }
 
 
+def trace_evidence() -> dict:
+    return {
+        "anchor_count": 12000,
+        "used_color_count": 48,
+        "open_path_count": 0,
+        "embedded_raster_count": 0,
+    }
+
+
+def write_fixture(
+    path: Path,
+    *,
+    fill: str = "#d94841",
+    offset: int = 0,
+    metadata: str = "reference",
+) -> None:
+    image = Image.new("RGB", (64, 64), "white")
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((12 + offset, 10, 50 + offset, 54), fill=fill)
+    pnginfo = PngImagePlugin.PngInfo()
+    pnginfo.add_text("fixture", metadata)
+    image.save(path, pnginfo=pnginfo)
+
+
 class ColorVectorizationTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        SANDBOX.mkdir(parents=True, exist_ok=True)
+
     def test_protocol_schema_is_closed_and_local_first(self) -> None:
         schema = json.loads(SCHEMA.read_text(encoding="utf-8"))
         self.assertFalse(schema["additionalProperties"])
@@ -79,6 +120,20 @@ class ColorVectorizationTests(unittest.TestCase):
         self.assertEqual(2, trace["max_colors"]["minimum"])
         self.assertEqual(256, trace["max_colors"]["maximum"])
         self.assertFalse(trace["ignore_white"]["default"])
+        quality_gates = schema["properties"]["quality_gates"]
+        self.assertIn("aspect_ratio_error_max", quality_gates["required"])
+
+    def test_comparison_schema_is_closed_and_never_returns_paths_or_pixels(self) -> None:
+        schema = json.loads(COMPARISON_SCHEMA.read_text(encoding="utf-8"))
+        self.assertFalse(schema["additionalProperties"])
+        safety = schema["properties"]["safety"]["properties"]
+        self.assertFalse(safety["recursive_scan"]["const"])
+        self.assertFalse(safety["paths_returned"]["const"])
+        self.assertFalse(safety["pixels_retained"]["const"])
+        self.assertFalse(safety["metadata_returned"]["const"])
+        serialized = json.dumps(schema)
+        self.assertNotIn("reference_path", serialized)
+        self.assertNotIn("candidate_preview_path", serialized)
 
     def test_plan_preserves_color_and_does_not_read_pixels(self) -> None:
         plan = build_color_vectorization_plan(base_plan_arguments())
@@ -89,6 +144,7 @@ class ColorVectorizationTests(unittest.TestCase):
         self.assertEqual("color", plan["trace"]["mode"])
         self.assertFalse(plan["trace"]["ignore_white"])
         self.assertTrue(plan["trace"]["output_to_swatches"])
+        self.assertEqual(0.02, plan["quality_gates"]["aspect_ratio_error_max"])
         self.assertFalse(plan["safety"]["cloud_upload"])
         apps = [item["app"] for item in plan["application_matrix"]]
         self.assertIn("photoshop", apps)
@@ -113,7 +169,7 @@ class ColorVectorizationTests(unittest.TestCase):
 
     def test_metric_validator_requests_repair_for_color_or_complexity(self) -> None:
         metrics = passing_metrics()
-        metrics.update({"mean_delta_e": 9.0, "anchor_count": 300000})
+        metrics.update({"aspect_ratio_error": 0.2, "mean_delta_e": 9.0, "anchor_count": 300000})
 
         result = validate_color_vectorization_metrics(
             metrics=metrics, hard_gates=passing_hard_gates()
@@ -122,6 +178,7 @@ class ColorVectorizationTests(unittest.TestCase):
         self.assertTrue(result["ok"])
         self.assertEqual("repair_needed", result["verdict"])
         codes = {finding["code"] for finding in result["findings"]}
+        self.assertIn("aspect_ratio_error_high", codes)
         self.assertIn("mean_delta_e_high", codes)
         self.assertIn("anchor_count_high", codes)
 
@@ -145,12 +202,14 @@ class ColorVectorizationTests(unittest.TestCase):
             "illustrator.color_vectorize_plan",
             "illustrator.color_vectorize_validate",
             "illustrator.color_vectorize_execute",
+            "illustrator.color_vectorize_compare",
         ):
             self.assertIn(name, tools)
         self.assertTrue(tools["illustrator.color_vectorize_plan"]["annotations"]["readOnlyHint"])
         self.assertTrue(
             tools["illustrator.color_vectorize_validate"]["annotations"]["readOnlyHint"]
         )
+        self.assertTrue(tools["illustrator.color_vectorize_compare"]["annotations"]["readOnlyHint"])
         execute = tools["illustrator.color_vectorize_execute"]
         self.assertFalse(execute["annotations"]["readOnlyHint"])
         self.assertIn("confirm_write", execute["inputSchema"]["properties"])
@@ -211,7 +270,131 @@ class ColorVectorizationTests(unittest.TestCase):
         self.assertIn("TRACINGMODECOLOR", jsx)
         self.assertIn("expandTracing(false)", jsx)
         self.assertIn("app.redraw()", jsx)
+        self.assertIn("open_path_count", jsx)
+        self.assertIn("editable_vector_present", jsx)
         self.assertNotIn("eval(", jsx)
+
+    def test_compare_identical_pixels_with_distinct_artifacts_passes(self) -> None:
+        with (
+            tempfile.TemporaryDirectory() as reference_dir,
+            tempfile.TemporaryDirectory(prefix="compare-test-", dir=SANDBOX) as candidate_dir,
+        ):
+            reference = Path(reference_dir) / "reference.png"
+            candidate = Path(candidate_dir) / "candidate.png"
+            write_fixture(reference, metadata="reference")
+            write_fixture(candidate, metadata="candidate")
+
+            result = compare_color_vectorization_files(
+                {
+                    "reference_id": "public-sample-01",
+                    "reference_authorized": True,
+                    "reference_path": str(reference),
+                    "candidate_preview_path": str(candidate),
+                    "trace_evidence": trace_evidence(),
+                    "max_dimension": 256,
+                },
+                repo_root=ROOT,
+            )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual("pass", result["verdict"])
+        self.assertEqual(1.0, result["metrics"]["silhouette_iou"])
+        self.assertEqual(0.0, result["metrics"]["mean_delta_e"])
+        self.assertEqual(1.0, result["metrics"]["perceptual_similarity"])
+        self.assertTrue(result["artifacts"]["candidate_distinct"])
+        serialized = json.dumps(result)
+        self.assertNotIn("reference.png", serialized)
+        self.assertNotIn("candidate.png", serialized)
+        self.assertNotIn(reference_dir, serialized)
+
+    def test_compare_color_and_geometry_mismatch_requests_repair(self) -> None:
+        with (
+            tempfile.TemporaryDirectory() as reference_dir,
+            tempfile.TemporaryDirectory(prefix="compare-test-", dir=SANDBOX) as candidate_dir,
+        ):
+            reference = Path(reference_dir) / "reference.png"
+            candidate = Path(candidate_dir) / "candidate.png"
+            write_fixture(reference, fill="#d94841", metadata="reference")
+            write_fixture(candidate, fill="#2864d7", offset=5, metadata="candidate")
+
+            result = compare_color_vectorization_files(
+                {
+                    "reference_id": "public-sample-02",
+                    "reference_authorized": True,
+                    "reference_path": str(reference),
+                    "candidate_preview_path": str(candidate),
+                    "trace_evidence": trace_evidence(),
+                },
+                repo_root=ROOT,
+            )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual("repair_needed", result["verdict"])
+        codes = {finding["code"] for finding in result["findings"]}
+        self.assertTrue({"silhouette_iou_low", "mean_delta_e_high"} & codes)
+
+    def test_compare_blocks_identical_file_hashes(self) -> None:
+        with (
+            tempfile.TemporaryDirectory() as reference_dir,
+            tempfile.TemporaryDirectory(prefix="compare-test-", dir=SANDBOX) as candidate_dir,
+        ):
+            reference = Path(reference_dir) / "reference.png"
+            candidate = Path(candidate_dir) / "candidate.png"
+            write_fixture(reference)
+            candidate.write_bytes(reference.read_bytes())
+
+            result = compare_color_vectorization_files(
+                {
+                    "reference_id": "public-sample-03",
+                    "reference_authorized": True,
+                    "reference_path": str(reference),
+                    "candidate_preview_path": str(candidate),
+                    "trace_evidence": trace_evidence(),
+                },
+                repo_root=ROOT,
+            )
+
+        self.assertFalse(result["ok"])
+        self.assertEqual("blocked", result["verdict"])
+        self.assertFalse(result["artifacts"]["candidate_distinct"])
+
+    def test_compare_requires_authorization_before_reading_paths(self) -> None:
+        result = call_tool(
+            "illustrator.color_vectorize_compare",
+            {
+                "reference_id": "public-sample-04",
+                "reference_authorized": False,
+                "reference_path": "does-not-exist.png",
+                "candidate_preview_path": "also-does-not-exist.png",
+                "trace_evidence": trace_evidence(),
+            },
+        )
+        structured = result["structuredContent"]
+        self.assertFalse(result["isError"])
+        self.assertFalse(structured["ok"])
+        self.assertEqual("authorization_required", structured["error_code"])
+        self.assertNotIn("does-not-exist", json.dumps(structured))
+
+    def test_compare_rejects_candidate_outside_sandbox(self) -> None:
+        with tempfile.TemporaryDirectory() as outside_dir:
+            reference = Path(outside_dir) / "reference.png"
+            candidate = Path(outside_dir) / "candidate.png"
+            write_fixture(reference, metadata="reference")
+            result = call_tool(
+                "illustrator.color_vectorize_compare",
+                {
+                    "reference_id": "public-sample-05",
+                    "reference_authorized": True,
+                    "reference_path": str(reference),
+                    "candidate_preview_path": str(candidate),
+                    "trace_evidence": trace_evidence(),
+                    "soft_exit": False,
+                },
+            )
+
+        self.assertTrue(result["isError"])
+        self.assertIn("candidate preview must stay inside", result["structuredContent"]["error"])
+        self.assertNotIn(outside_dir, json.dumps(result))
 
     def test_capability_registry_exposes_safe_and_guarded_routes(self) -> None:
         capabilities = {
@@ -220,6 +403,7 @@ class ColorVectorizationTests(unittest.TestCase):
         }
         self.assertTrue(capabilities["illustrator.color_vectorize_plan"]["safe_default"])
         self.assertTrue(capabilities["illustrator.color_vectorize_validate"]["safe_default"])
+        self.assertTrue(capabilities["illustrator.color_vectorize_compare"]["safe_default"])
         self.assertFalse(capabilities["illustrator.color_vectorize_execute"]["safe_default"])
         self.assertTrue(
             capabilities["illustrator.color_vectorize_execute"]["requires_confirmation"]

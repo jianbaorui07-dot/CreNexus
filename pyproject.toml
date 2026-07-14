@@ -33,6 +33,7 @@ Documentation = "https://github.com/jianbaorui07-dot/Codex-Integration-with-Crea
 
 [project.optional-dependencies]
 dev = [
+  "Pillow>=10,<13",
   "pytest>=8",
   "ruff>=0.4.0",
   "mypy>=1.10",
@@ -47,6 +48,7 @@ comfy = [
   "websocket-client>=1.8,<2",
 ]
 adobe = [
+  "Pillow>=10,<13",
   "pywin32>=306; platform_system == 'Windows'",
 ]
 

@@ -17,6 +17,7 @@ from starbridge_mcp.bridges.blender_safe_scene import (
 )
 from starbridge_mcp.bridges.capcut_draft_structure import draft_structure_summary
 from starbridge_mcp.bridges.illustrator_preflight import preflight_summary
+from starbridge_mcp.core.color_vector_compare import compare_color_vectorization_files
 from starbridge_mcp.core.color_vectorization import (
     build_color_vectorization_plan,
     validate_color_vectorization_metrics,
@@ -986,6 +987,11 @@ TOOL_DEFINITIONS: list[JsonObject] = [
             {
                 "metrics": _object_schema(
                     {
+                        "aspect_ratio_error": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 10,
+                        },
                         "silhouette_iou": {
                             "type": "number",
                             "minimum": 0,
@@ -994,12 +1000,12 @@ TOOL_DEFINITIONS: list[JsonObject] = [
                         "mean_delta_e": {
                             "type": "number",
                             "minimum": 0,
-                            "maximum": 100,
+                            "maximum": 300,
                         },
                         "p95_delta_e": {
                             "type": "number",
                             "minimum": 0,
-                            "maximum": 100,
+                            "maximum": 300,
                         },
                         "perceptual_similarity": {
                             "type": "number",
@@ -1018,6 +1024,7 @@ TOOL_DEFINITIONS: list[JsonObject] = [
                         },
                     },
                     required=[
+                        "aspect_ratio_error",
                         "silhouette_iou",
                         "mean_delta_e",
                         "p95_delta_e",
@@ -1044,6 +1051,81 @@ TOOL_DEFINITIONS: list[JsonObject] = [
                 ),
             },
             required=["metrics", "hard_gates"],
+        ),
+    ),
+    _standard_tool(
+        name="illustrator.color_vectorize_compare",
+        title="Compare Authorized Reference and Illustrator Preview",
+        description=(
+            "读取用户明确授权的一张 PNG/JPEG 与 Illustrator sandbox 中的一张 PNG 预览，"
+            "计算脱敏的轮廓、色差、感知相似度和可编辑性证据；不返回路径、像素或图片元数据。"
+        ),
+        input_schema=_object_schema(
+            {
+                "reference_id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+                },
+                "reference_authorized": {"type": "boolean"},
+                "reference_path": {
+                    "type": "string",
+                    "description": "本次明确授权的单张 PNG/JPEG；路径不会回显。",
+                },
+                "candidate_preview_path": {
+                    "type": "string",
+                    "description": "仅允许 examples/output/illustrator 内的单张 PNG。",
+                },
+                "trace_evidence": _object_schema(
+                    {
+                        "anchor_count": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000000,
+                        },
+                        "used_color_count": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 256,
+                        },
+                        "open_path_count": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000000,
+                        },
+                        "embedded_raster_count": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000000,
+                        },
+                    },
+                    required=[
+                        "anchor_count",
+                        "used_color_count",
+                        "open_path_count",
+                        "embedded_raster_count",
+                    ],
+                ),
+                "max_dimension": {
+                    "type": "integer",
+                    "minimum": 64,
+                    "maximum": 1024,
+                    "default": 512,
+                },
+                "background_threshold": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 128,
+                    "default": 24,
+                },
+                "soft_exit": {"type": "boolean", "default": True},
+            },
+            required=[
+                "reference_id",
+                "reference_authorized",
+                "reference_path",
+                "candidate_preview_path",
+                "trace_evidence",
+            ],
         ),
     ),
     _standard_tool(
@@ -2478,6 +2560,30 @@ def _handle_illustrator_color_vectorize_execute(arguments: JsonObject) -> JsonOb
     )
 
 
+def _handle_illustrator_color_vectorize_compare(arguments: JsonObject) -> JsonObject:
+    try:
+        return compare_color_vectorization_files(arguments, repo_root=REPO_ROOT)
+    except (OSError, RuntimeError, ValueError) as error:
+        if arguments.get("soft_exit", True) is False:
+            raise
+        return sanitize(
+            {
+                "ok": False,
+                "bridge": "illustrator",
+                "action": "color_vectorize_compare",
+                "verdict": "blocked",
+                "error_code": "comparison_unavailable",
+                "warnings": [str(error)],
+                "safety": {
+                    "paths_returned": False,
+                    "pixels_retained": False,
+                    "metadata_returned": False,
+                    "recursive_scan": False,
+                },
+            }
+        )
+
+
 def _handle_photoshop_create(arguments: JsonObject) -> JsonObject:
     output_dir = _sandbox_output_dir(arguments, "photoshop")
     width = int(arguments.get("width") or 1080)
@@ -2683,6 +2789,7 @@ TOOL_HANDLERS: dict[str, ToolHandler] = {
         hard_gates=arguments.get("hard_gates") or {},
         quality_gates=arguments.get("quality_gates"),
     ),
+    "illustrator.color_vectorize_compare": _handle_illustrator_color_vectorize_compare,
     "illustrator.color_vectorize_execute": _handle_illustrator_color_vectorize_execute,
     "jianying_capcut.draft_probe": lambda _arguments: _handle_python_probe(
         bridge="jianying_capcut",

@@ -27,6 +27,7 @@ DEFAULT_TRACE: dict[str, Any] = {
 }
 
 DEFAULT_QUALITY_GATES: dict[str, Any] = {
+    "aspect_ratio_error_max": 0.02,
     "silhouette_iou_min": 0.96,
     "mean_delta_e_max": 4.0,
     "p95_delta_e_max": 10.0,
@@ -257,6 +258,12 @@ def validate_color_vectorization_metrics(
     if quality_gates:
         gates.update(quality_gates)
     validated_gates = {
+        "aspect_ratio_error_max": _number(
+            gates["aspect_ratio_error_max"],
+            name="aspect_ratio_error_max",
+            minimum=0,
+            maximum=1,
+        ),
         "silhouette_iou_min": _number(
             gates["silhouette_iou_min"],
             name="silhouette_iou_min",
@@ -290,9 +297,10 @@ def validate_color_vectorization_metrics(
         ),
     }
     measured = {
+        "aspect_ratio_error": _metric(metrics, "aspect_ratio_error", minimum=0, maximum=10),
         "silhouette_iou": _metric(metrics, "silhouette_iou", minimum=0, maximum=1),
-        "mean_delta_e": _metric(metrics, "mean_delta_e", minimum=0, maximum=100),
-        "p95_delta_e": _metric(metrics, "p95_delta_e", minimum=0, maximum=100),
+        "mean_delta_e": _metric(metrics, "mean_delta_e", minimum=0, maximum=300),
+        "p95_delta_e": _metric(metrics, "p95_delta_e", minimum=0, maximum=300),
         "perceptual_similarity": _metric(metrics, "perceptual_similarity", minimum=0, maximum=1),
         "anchor_count": _metric(
             metrics,
@@ -322,6 +330,11 @@ def validate_color_vectorization_metrics(
         )
 
     checks = (
+        (
+            measured["aspect_ratio_error"] > validated_gates["aspect_ratio_error_max"],
+            "aspect_ratio_error_high",
+            "Aspect ratio error is above the configured maximum.",
+        ),
         (
             measured["silhouette_iou"] < validated_gates["silhouette_iou_min"],
             "silhouette_iou_low",

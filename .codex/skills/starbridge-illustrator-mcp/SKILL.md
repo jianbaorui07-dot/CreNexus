@@ -50,6 +50,7 @@ Do not hardcode local Illustrator install paths in docs, tests, or examples.
 | Inspect artboards/layers | future `document_info` expansion | Active session summary only |
 | Trace/vectorize plan | `illustrator.color_vectorize_plan` | Explicit authorization; no pixel read, path, cloud upload, or app launch |
 | Validate trace quality | `illustrator.color_vectorize_validate` | Sanitized metrics only; no reference/preview file read |
+| Compare trace preview | `illustrator.color_vectorize_compare` | One authorized PNG/JPEG + one sandbox PNG; no path, pixel, or metadata returned |
 | Execute color trace | `illustrator.color_vectorize_execute` | Default dry-run; fixed JSX, explicit single image, dual confirmation, sandbox only |
 | Export | color trace executor or demo export | Confirmed sandbox export only |
 

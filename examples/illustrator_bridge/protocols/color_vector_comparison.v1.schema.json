@@ -1,0 +1,206 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://starbridge.local/schemas/color_vector_comparison.v1.schema.json",
+  "title": "StarBridge Color Vector Comparison Evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok",
+    "bridge",
+    "action",
+    "schema_version",
+    "reference_id",
+    "reference_authorized",
+    "verdict",
+    "artifacts",
+    "dimensions",
+    "color_management",
+    "methods",
+    "metrics",
+    "trace_evidence",
+    "hard_gates",
+    "quality_gates",
+    "findings",
+    "safety"
+  ],
+  "properties": {
+    "ok": { "type": "boolean" },
+    "bridge": { "const": "illustrator" },
+    "action": { "const": "color_vectorize_compare" },
+    "schema_version": { "const": "starbridge.color-vector-comparison.v1" },
+    "reference_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+    },
+    "reference_authorized": { "const": true },
+    "verdict": { "enum": ["pass", "repair_needed", "blocked"] },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reference_sha256", "candidate_sha256", "candidate_distinct"],
+      "properties": {
+        "reference_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "candidate_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "candidate_distinct": { "type": "boolean" }
+      }
+    },
+    "dimensions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reference", "candidate", "normalized", "aspect_ratio_error"],
+      "properties": {
+        "reference": { "$ref": "#/$defs/size" },
+        "candidate": { "$ref": "#/$defs/size" },
+        "normalized": { "$ref": "#/$defs/size" },
+        "aspect_ratio_error": { "type": "number", "minimum": 0 }
+      }
+    },
+    "color_management": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["working_space", "reference_icc", "candidate_icc"],
+      "properties": {
+        "working_space": { "const": "srgb_d65" },
+        "reference_icc": { "enum": ["applied", "absent", "fallback"] },
+        "candidate_icc": { "enum": ["applied", "absent", "fallback"] }
+      }
+    },
+    "methods": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["alignment", "silhouette", "color_delta", "perceptual"],
+      "properties": {
+        "alignment": { "const": "bounded_resize_to_reference" },
+        "silhouette": { "enum": ["alpha", "corner_background", "mixed"] },
+        "color_delta": { "const": "cie76_d65" },
+        "perceptual": { "const": "block_ssim_8x8" }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "aspect_ratio_error",
+        "silhouette_iou",
+        "mean_delta_e",
+        "p95_delta_e",
+        "perceptual_similarity",
+        "anchor_count",
+        "used_color_count",
+        "sampled_pixels",
+        "reference_foreground_ratio",
+        "candidate_foreground_ratio"
+      ],
+      "properties": {
+        "aspect_ratio_error": { "type": "number", "minimum": 0 },
+        "silhouette_iou": { "type": "number", "minimum": 0, "maximum": 1 },
+        "mean_delta_e": { "type": "number", "minimum": 0, "maximum": 300 },
+        "p95_delta_e": { "type": "number", "minimum": 0, "maximum": 300 },
+        "perceptual_similarity": { "type": "number", "minimum": 0, "maximum": 1 },
+        "anchor_count": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+        "used_color_count": { "type": "integer", "minimum": 0, "maximum": 256 },
+        "sampled_pixels": { "type": "integer", "minimum": 1 },
+        "reference_foreground_ratio": { "type": "number", "minimum": 0, "maximum": 1 },
+        "candidate_foreground_ratio": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "trace_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "anchor_count",
+        "used_color_count",
+        "open_path_count",
+        "embedded_raster_count"
+      ],
+      "properties": {
+        "anchor_count": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+        "used_color_count": { "type": "integer", "minimum": 0, "maximum": 256 },
+        "open_path_count": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+        "embedded_raster_count": { "type": "integer", "minimum": 0, "maximum": 1000000 }
+      }
+    },
+    "hard_gates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reference_authorized",
+        "primary_silhouette_present",
+        "topology_valid",
+        "editable_vector_present",
+        "safe_output_scope"
+      ],
+      "properties": {
+        "reference_authorized": { "type": "boolean" },
+        "primary_silhouette_present": { "type": "boolean" },
+        "topology_valid": { "type": "boolean" },
+        "editable_vector_present": { "type": "boolean" },
+        "safe_output_scope": { "type": "boolean" }
+      }
+    },
+    "quality_gates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "aspect_ratio_error_max",
+        "silhouette_iou_min",
+        "mean_delta_e_max",
+        "p95_delta_e_max",
+        "perceptual_similarity_min",
+        "max_anchor_count"
+      ],
+      "properties": {
+        "aspect_ratio_error_max": { "type": "number", "minimum": 0, "maximum": 1 },
+        "silhouette_iou_min": { "type": "number", "minimum": 0, "maximum": 1 },
+        "mean_delta_e_max": { "type": "number", "minimum": 0, "maximum": 100 },
+        "p95_delta_e_max": { "type": "number", "minimum": 0, "maximum": 100 },
+        "perceptual_similarity_min": { "type": "number", "minimum": 0, "maximum": 1 },
+        "max_anchor_count": { "type": "integer", "minimum": 1, "maximum": 1000000 }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "severity", "message"],
+        "properties": {
+          "code": { "type": "string", "minLength": 1 },
+          "severity": { "enum": ["info", "warn", "critical"] },
+          "message": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reference_explicit",
+        "candidate_sandboxed",
+        "recursive_scan",
+        "paths_returned",
+        "pixels_retained",
+        "metadata_returned"
+      ],
+      "properties": {
+        "reference_explicit": { "const": true },
+        "candidate_sandboxed": { "const": true },
+        "recursive_scan": { "const": false },
+        "paths_returned": { "const": false },
+        "pixels_retained": { "const": false },
+        "metadata_returned": { "const": false }
+      }
+    }
+  },
+  "$defs": {
+    "size": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height"],
+      "properties": {
+        "width": { "type": "integer", "minimum": 1, "maximum": 32768 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 32768 }
+      }
+    }
+  }
+}

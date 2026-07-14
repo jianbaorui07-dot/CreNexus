@@ -25,6 +25,7 @@
 | sandbox 画板 demo | `examples/illustrator_bridge/scripts/create_demo_artboard.ps1` | 默认 dry-run；确认后创建公开安全测试 `.ai` |
 | sandbox 导出 demo | `examples/illustrator_bridge/scripts/export_demo_assets.ps1` | 确认后只从 demo 文档导出 SVG、PNG 和 PDF |
 | 彩色矢量化协议 | `protocols/color_vectorization.v1.schema.json` | 固定授权、彩色描摹参数、质量闸门和本地安全边界 |
+| 彩色验收证据协议 | `protocols/color_vector_comparison.v1.schema.json` | 固定脱敏哈希、尺寸、ICC 状态、轮廓、色差、SSIM 和矢量 hard gates |
 | 彩色 Image Trace | `scripts/color_vectorize.ps1` + `jsx/color_vectorize.jsx` | 默认 dry-run；双确认后只处理明确传入的单张 PNG/JPEG，输出 AI/SVG/PNG 到 sandbox |
 | demo manifest | `examples/illustrator_bridge/write_demo_manifest.py` | 汇总本地 demo 输出，manifest 本身不提交 |
 
@@ -34,6 +35,7 @@
 - Windows PowerShell。
 - 可用的 `Illustrator.Application` COM。
 - 如需 Python COM 探测，需要 pywin32。
+- 如需本地彩色预览验收，需要安装 Adobe extra：`python -m pip install -e ".[adobe]"`。
 
 真实路径只放本机环境变量：
 
@@ -66,11 +68,12 @@ powershell -ExecutionPolicy Bypass -File examples\illustrator_bridge\scripts\col
 | `illustrator.preflight` | 对脱敏文档摘要做只读 preflight，不打开 `.ai` | 已实现 metadata-only |
 | `illustrator.color_vectorize_plan` | 生成 Photoshop / Illustrator 应用矩阵、彩色描摹参数和质量闸门 | 已实现，纯内存 dry-run |
 | `illustrator.color_vectorize_validate` | 校验调用方提供的轮廓、色差、感知相似度和节点统计 | 已实现，不读取图片 |
+| `illustrator.color_vectorize_compare` | 比较明确授权参考图与 sandbox PNG，自动计算 ICC、轮廓、色差、SSIM 和矢量证据 | 已实现，只读两个明确文件，不返回路径、像素或元数据 |
 | `illustrator.color_vectorize_execute` | 对明确传入的 PNG/JPEG 执行固定 Image Trace，输出 AI/SVG/PNG | 已实现受控本地原型，默认 dry-run、双确认 |
 | `illustrator.export_demo_assets` | 从 sandbox demo 文档导出 SVG、PDF 和 PNG | 已有 sandbox demo，需显式确认 |
 | `illustrator.run_demo` | 创建测试画板、导出 demo 产物并生成 manifest | 已有一键流程，需显式确认 |
 
-旧规划名 `trace_image_to_vector` 已拆分为 plan / validate / execute 三个入口，避免把只读计划、质量验收和真实写入混在一个高风险工具里。
+旧规划名 `trace_image_to_vector` 已拆分为 plan / validate / compare / execute 四个入口，避免把只读计划、自动验收和真实写入混在一个高风险工具里。
 
 ## 不能做什么
 
@@ -86,6 +89,6 @@ powershell -ExecutionPolicy Bypass -File examples\illustrator_bridge\scripts\col
 1. 保留 `examples/bridge_status.py` 的 Illustrator 状态检查入口。
 2. 继续把 demo 输出保持在 `examples/output/illustrator/`，不提交真实生成物。
 3. 补 Photoshop sandbox 预处理执行器，并保持源图只由参数传入。
-4. 补参考图与 PNG 预览的本地像素比较器，再生成 VectorPatch 修复建议。
+4. 基于本地比较器 findings 生成受控 VectorPatch 修复建议。
 5. 扩展 preflight 检查，例如字体替换风险、颜色空间和链接资产风险。
 6. 所有真实写入继续要求 dry-run 之后显式确认。

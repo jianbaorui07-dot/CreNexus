@@ -84,6 +84,16 @@
         expanded.name = "starbridge_color_vector";
         app.redraw();
 
+        var expandedPathCount = Number(expanded.pathItems.length);
+        var openPathCount = 0;
+        for (var pathIndex = 0; pathIndex < expanded.pathItems.length; pathIndex += 1) {
+            if (!expanded.pathItems[pathIndex].closed) {
+                openPathCount += 1;
+            }
+        }
+        traceMetrics.expanded_path_count = expandedPathCount;
+        traceMetrics.open_path_count = openPathCount;
+
         var remainingRasterCount = Number(doc.placedItems.length) + Number(doc.rasterItems.length);
         if (remainingRasterCount !== 0) {
             return fail(
@@ -122,6 +132,8 @@
             },
             trace_metrics: traceMetrics,
             embedded_raster_count: remainingRasterCount,
+            topology_valid: openPathCount === 0,
+            editable_vector_present: expandedPathCount > 0 && remainingRasterCount === 0,
             outputs: {
                 illustrator_document: config.aiPathRelative,
                 svg: config.svgPathRelative,
@@ -132,7 +144,7 @@
             ],
             next_steps: [
                 "Compare the PNG preview with the authorized reference.",
-                "Call illustrator.color_vectorize_validate with sanitized comparison metrics."
+                "Call illustrator.color_vectorize_compare with the sandbox PNG and trace evidence."
             ]
         };
         closeWithoutSaving();
