@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://starbridge.local/schemas/color_vector_backend_plan.v1.schema.json",
+  "title": "StarBridge Color Vector Backend Plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok", "bridge", "action", "schema_version", "reference_id",
+    "reference_authorized", "state", "selected_backend", "reason_codes",
+    "next_action", "warnings", "safety", "dry_run", "side_effects"
+  ],
+  "properties": {
+    "ok": { "type": "boolean" },
+    "bridge": { "const": "illustrator" },
+    "action": { "const": "color_vectorize_backend_plan" },
+    "schema_version": { "const": "starbridge.color-vector-backend-plan.v1" },
+    "reference_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$" },
+    "reference_authorized": { "type": "boolean" },
+    "state": { "enum": ["planned", "needs_user", "blocked"] },
+    "selected_backend": { "type": ["string", "null"], "enum": ["native_illustrator", "headless_svg", null] },
+    "reason_codes": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$" }
+    },
+    "next_action": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "tool", "requires_explicit_file_binding", "requires_visual_review"],
+          "properties": {
+            "kind": { "enum": ["native_trace", "headless_trace_preview"] },
+            "tool": { "enum": ["illustrator.color_vectorize_execute", "standalone_headless_trace"] },
+            "requires_explicit_file_binding": { "const": true },
+            "requires_visual_review": { "const": true }
+          }
+        },
+        { "type": "null" }
+      ]
+    },
+    "warnings": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 512 } },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["inputs_sanitized", "reads_files", "writes_files", "starts_adobe", "arbitrary_script", "silent_quality_degradation"],
+      "properties": {
+        "inputs_sanitized": { "const": true },
+        "reads_files": { "const": false },
+        "writes_files": { "const": false },
+        "starts_adobe": { "const": false },
+        "arbitrary_script": { "const": false },
+        "silent_quality_degradation": { "const": false }
+      }
+    },
+    "dry_run": { "const": true },
+    "side_effects": { "const": false }
+  }
+}

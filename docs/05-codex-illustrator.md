@@ -84,6 +84,7 @@ python -m unittest tests.test_illustrator_color_trace -v
 | `illustrator.create_demo_artboard` | 创建公开安全测试画板和基础矢量对象 | 已有 sandbox demo，默认 dry-run |
 | `illustrator.preflight` | 对脱敏文档摘要做只读 preflight，不打开 `.ai` | 已实现 metadata-only |
 | `illustrator.color_vectorize_plan` | 生成 Photoshop / Illustrator 应用矩阵、彩色描摹参数和质量闸门 | 已实现，纯内存 dry-run |
+| `illustrator.color_vectorize_backend_plan` | 在原生 Illustrator 与 headless SVG fallback 间做保守选择 | 已实现，纯内存 dry-run；不探测环境、不执行 CLI |
 | `illustrator.color_vectorize_validate` | 校验调用方提供的轮廓、色差、感知相似度和节点统计 | 已实现，不读取图片 |
 | `illustrator.color_vectorize_compare` | 比较明确授权参考图与 sandbox PNG，自动计算 ICC、轮廓、色差、SSIM 和矢量证据 | 已实现，只读两个明确文件，不返回路径、像素或元数据 |
 | `illustrator.color_vectorize_repair_plan` | 把脱敏 compare findings 编译为最多三轮的确定性 Image Trace 参数修复计划 | 已实现纯内存计划；输出 execute dry-run 模板、post-execute compare 契约与明确停止条件 |

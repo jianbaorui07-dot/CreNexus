@@ -18,6 +18,7 @@ from starbridge_mcp.bridges.blender_safe_scene import (
 from starbridge_mcp.bridges.capcut_draft_structure import draft_structure_summary
 from starbridge_mcp.bridges.illustrator_preflight import preflight_summary
 from starbridge_mcp.core.color_preprocess import build_color_preprocess_plan
+from starbridge_mcp.core.color_vector_backend import build_color_vector_backend_plan
 from starbridge_mcp.core.color_vector_compare import compare_color_vectorization_files
 from starbridge_mcp.core.color_vector_repair import (
     advance_color_vector_iteration,
@@ -1111,6 +1112,36 @@ TOOL_DEFINITIONS: list[JsonObject] = [
                     "default": {},
                 }
             }
+        ),
+    ),
+    _standard_tool(
+        name="illustrator.color_vectorize_backend_plan",
+        title="Plan Color Vectorization Backend",
+        description=(
+            "根据脱敏素材特征保守选择 Illustrator 原生或 headless SVG fallback；"
+            "纯内存 dry-run，不读取图片、不探测环境、不执行软件或脚本。"
+        ),
+        input_schema=_object_schema(
+            {
+                "reference_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"},
+                "reference_authorized": {"type": "boolean"},
+                "backend_preference": {
+                    "type": "string",
+                    "enum": ["auto", "native_illustrator", "headless_svg"],
+                    "default": "auto",
+                },
+                "artwork_kind": {
+                    "type": "string",
+                    "enum": ["flat_artwork", "illustration", "photo", "mixed"],
+                    "default": "mixed",
+                },
+                "requires_gradient_fidelity": {"type": "boolean", "default": False},
+                "requires_transparency": {"type": "boolean", "default": False},
+                "requires_text_editability": {"type": "boolean", "default": False},
+                "illustrator_available": {"type": "boolean", "default": False},
+                "headless_dependencies_available": {"type": "boolean", "default": False},
+            },
+            required=["reference_id", "reference_authorized"],
         ),
     ),
     _standard_tool(
@@ -3579,6 +3610,7 @@ TOOL_HANDLERS: dict[str, ToolHandler] = {
         arguments.get("document_summary") or {}
     ),
     "illustrator.color_vectorize_plan": build_color_vectorization_plan,
+    "illustrator.color_vectorize_backend_plan": build_color_vector_backend_plan,
     "illustrator.color_vectorize_validate": lambda arguments: validate_color_vectorization_metrics(
         metrics=arguments.get("metrics") or {},
         hard_gates=arguments.get("hard_gates") or {},
