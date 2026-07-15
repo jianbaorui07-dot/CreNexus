@@ -7,20 +7,24 @@
     "Linux"
   ],
   "requires": [
-    "Python 3.10+ and optional .[illustrator-trace] for offline color tracing",
+    "Python 3.10+ and optional .[illustrator-vector] for exact pixel vector reconstruction",
+    "Optional .[illustrator-trace] only for the legacy quantized SVG experiment",
     "Adobe Illustrator desktop, PowerShell, and Illustrator.Application COM only for desktop flows"
   ],
   "entrypoints": {
     "probe": "powershell -ExecutionPolicy Bypass -File examples/illustrator_bridge/probe.ps1",
     "color_vectorize_plan": "powershell -ExecutionPolicy Bypass -File examples/illustrator_bridge/scripts/color_vectorize.ps1",
-    "color_raster_to_svg": "python examples/illustrator_bridge/scripts/trace_photo_preview.py --input <explicit-image.png> --commit-preset flat_16",
+    "exact_pixel_raster_to_svg": "python examples/illustrator_bridge/scripts/exact_pixel_vector.py --input <explicit-image.png> --reference-id reference",
+    "legacy_quantized_raster_to_svg": "python examples/illustrator_bridge/scripts/trace_photo_preview.py --input <explicit-image.png> --commit-preset flat_16",
     "vector_line_extract": "python examples/illustrator_bridge/vector_rebuild/extract_vector_lines.py --input <source.ai|source.pdf|source.svg> --out <local-output-dir>",
     "closed_contour_reduce": "python examples/illustrator_bridge/vector_rebuild/reduce_closed_contours.py --lines-json <local-output-dir>/lines.json --out <local-output-dir> --mode fine"
   },
   "supported_tasks": [
     "environment probe",
     "COM availability check",
-    "offline color raster to verified editable SVG preview",
+    "exact RGBA pixel-grid reconstruction as verified raster-free SVG paths",
+    "Illustrator Save As AI handoff without Image Trace",
+    "legacy offline quantized raster to verified editable SVG preview",
     "PDF-compatible AI/PDF/SVG vector line extraction",
     "local rebuilt SVG export",
     "local closed-contour simplification",
@@ -33,13 +37,15 @@
   "unsupported_tasks": [
     "unconfirmed desktop Illustrator writes",
     "cloud Image Trace upload",
+    "automatic Image Trace fallback for ordinary image-to-vector delivery",
     "production photo, gradient, transparency, or text fidelity",
     "automatic VectorPatch repair",
     "committing private .ai project outputs"
   ],
   "safety_notes": [
     "Do not commit customer .ai files, source images, exported SVG/PDF/PNG files, commercial fonts, or brushes.",
-    "The offline color trace accepts one explicit input and writes only below ignored examples/output/illustrator/trace-practice.",
+    "The primary exact-vector route accepts one explicit input and writes only below ignored examples/output/illustrator/exact-pixel.",
+    "Ordinary image-to-vector delivery must not use Illustrator Image Trace.",
     "Input image and desktop export paths must be passed as parameters.",
     "Keep ILLUSTRATOR_EXE and local artwork paths outside the repository."
   ]

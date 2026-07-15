@@ -9,7 +9,7 @@
 - [Vector short-Chinese command language](vector-command-language.md)
 - [Color-faithful vectorization protocol](color-faithful-vectorization.md)
 
-这份文档说明 Adobe Illustrator 和 `.ai` 矢量文件桥的真实状态。这里的 **AI 文件** 指 Adobe Illustrator 的 `.ai` 矢量工程文件，不是“大模型 AI”。当前桥有两条互补的 experimental 路线：Windows + 已授权 Illustrator 的受控原生 Image Trace，以及无需 Illustrator 的 headless OpenCV fallback。前者已有默认 dry-run、固定 JSX、参数白名单、双确认、sandbox AI/SVG/PNG 和 compare 协议，但公开 CI 不声称真实桌面 E2E；后者在 CI 中真实生成并复读 SVG，但不声称视觉等价或原生 Image Trace parity。
+这份文档说明 Adobe Illustrator 和 `.ai` 矢量文件桥的真实状态。这里的 **AI 文件** 指 Adobe Illustrator 的 `.ai` 矢量工程文件，不是“大模型 AI”。当前主推路线是[精确像素矢量重建](exact-pixel-vectorization.md)：把原始 RGBA 像素确定性地重建为矩形复合路径，复读验证 SVG 后在 Illustrator 中存储为 AI；普通图片转矢量不使用 Image Trace。受控原生 Image Trace 协议和 headless OpenCV 量化 fallback 仍保留用于兼容、研究和既有 schema 测试。
 
 公开仓库只描述接入方式、参数化脚本方向和安全边界，不上传客户图稿、源图路径、导出结果或私有 `.ai` 工程。
 
@@ -17,6 +17,7 @@
 
 | 能力 | 入口 | 说明 |
 | --- | --- | --- |
+| 精确像素→SVG | `examples/illustrator_bridge/scripts/exact_pixel_vector.py` | 主推入口；不缩放、不量化、不嵌入位图、不使用 Image Trace；连续同色像素合并为矩形并按 RGBA paint 合并复合路径 |
 | manifest | `examples/illustrator_bridge/bridge.json` | 声明状态、入口、支持任务和安全说明 |
 | 环境探测 | `examples/illustrator_bridge/probe.ps1` | 检查 Illustrator 环境和 COM 线索 |
 | 总状态探测 | `examples/bridge_status.py` | 检查 `ILLUSTRATOR_EXE` 和 `Illustrator.Application` COM |
@@ -31,18 +32,26 @@
 | 彩色 Image Trace | `scripts/color_vectorize.ps1` + `jsx/color_vectorize.jsx` | 默认 dry-run；双确认后只处理明确传入的单张 PNG/JPEG，输出 AI/SVG/PNG 到 sandbox |
 | demo manifest | `examples/illustrator_bridge/write_demo_manifest.py` | 汇总本地 demo 输出，manifest 本身不提交 |
 
-## 彩色图如何直接变成矢量图
+## 图片如何直接变成矢量图（主推）
 
-离线转换不需要 Illustrator，只需要 Python 可选依赖：
+生成已验证 SVG 不需要 Illustrator，只需要 Pillow：
 
 ```powershell
-python -m pip install -e ".[illustrator-trace]"
-npm.cmd run illustrator:vectorize:offline -- --input "<input.png>" --commit-preset flat_16
+python -m pip install -e ".[illustrator-vector]"
+npm.cmd run illustrator:vectorize:offline -- --input "<input.png>" --reference-id "reference"
 ```
 
-默认生成 `flat_8`、`flat_16`、`line_color_16`、`nianhua_24` 四组候选。`--commit-preset` 会把选中的已验证 SVG 和预览复制为 `final_trace.svg` 与 `final_preview.png`。默认输出在被 Git 忽略的 `examples/output/illustrator/trace-practice/`；自定义输出也必须留在这个 headless 专用子树中，报告不写源图路径和文件名。
+默认输出在被 Git 忽略的 `examples/output/illustrator/exact-pixel/<reference-id>/`。每个 RGBA 像素都由矩形几何覆盖，连续同色像素按行合并，随后按 paint 合并为复合 path。报告不写源图路径和文件名。
 
-这条 CLI 适合扁平插画、图标和色块稿预处理。SVG 验证除证明“确实产生了可编辑路径且没有偷偷嵌入原图”，还会用受限本地 rasterizer 把最终 SVG 的纯色 `rect/path` 回栅格，并分开报告两组指标：`svg_raster_quality` 对比本轮内存量化目标，用于证明矢量几何没有额外丢色；`reference_svg_quality` 对比应用 EXIF 方向和尺寸限制后的显式输入工作 RGB，用于暴露调色、量化、轮廓简化和小区域丢弃造成的整体偏差。两组都只返回像素完全匹配率、平均绝对误差和归一化相似度，不返回像素、文件名或路径。相似度低于 `0.95` 时只标记 `review_required`，不得冒充视觉通过；复杂照片、渐变、透明度、文字、ICC 严格色差和细小拓扑仍需在 Illustrator 中人工复核。
+SVG 通过验证后，在 Illustrator 中打开 `exact_pixel_vector.svg` 并存储为 `.ai`。禁止点击“图像描摹”。复杂照片会产生数十万到数百万矩形子路径，保存 AI 时应等待 Illustrator 完成并核对文件存在。完整过程、上限和脱敏本机写入摘要见[精确像素矢量重建](exact-pixel-vectorization.md)。
+
+旧量化 SVG 命令保留为兼容实验，但不作为默认路线：
+
+```powershell
+npm.cmd run illustrator:vectorize:legacy-quantized -- --input "<input.png>" --commit-preset flat_16
+```
+
+旧量化 CLI 适合扁平插画、图标和色块稿预处理。SVG 验证除证明“确实产生了可编辑路径且没有偷偷嵌入原图”，还会用受限本地 rasterizer 把最终 SVG 的纯色 `rect/path` 回栅格，并分开报告两组指标：`svg_raster_quality` 对比本轮内存量化目标，用于证明矢量几何没有额外丢色；`reference_svg_quality` 对比应用 EXIF 方向和尺寸限制后的显式输入工作 RGB，用于暴露调色、量化、轮廓简化和小区域丢弃造成的整体偏差。两组都只返回像素完全匹配率、平均绝对误差和归一化相似度，不返回像素、文件名或路径。相似度低于 `0.95` 时只标记 `review_required`，不得冒充视觉通过；复杂照片、渐变、透明度、文字、ICC 严格色差和细小拓扑仍需在 Illustrator 中人工复核。
 
 ## Illustrator 桌面链路需要什么
 
@@ -84,11 +93,13 @@ python -m unittest tests.test_illustrator_color_trace -v
 | `illustrator.create_demo_artboard` | 创建公开安全测试画板和基础矢量对象 | 已有 sandbox demo，默认 dry-run |
 | `illustrator.preflight` | 对脱敏文档摘要做只读 preflight，不打开 `.ai` | 已实现 metadata-only |
 | `illustrator.color_vectorize_plan` | 生成 Photoshop / Illustrator 应用矩阵、彩色描摹参数和质量闸门 | 已实现，纯内存 dry-run |
+| `illustrator.color_vectorize_backend_plan` | 在原生 Illustrator 与 headless SVG fallback 间做保守选择 | 已实现，纯内存 dry-run；不探测环境、不执行 CLI |
 | `illustrator.color_vectorize_validate` | 校验调用方提供的轮廓、色差、感知相似度和节点统计 | 已实现，不读取图片 |
 | `illustrator.color_vectorize_compare` | 比较明确授权参考图与 sandbox PNG，自动计算 ICC、轮廓、色差、SSIM 和矢量证据 | 已实现，只读两个明确文件，不返回路径、像素或元数据 |
 | `illustrator.color_vectorize_repair_plan` | 把脱敏 compare findings 编译为最多三轮的确定性 Image Trace 参数修复计划 | 已实现纯内存计划；输出 execute dry-run 模板、post-execute compare 契约与明确停止条件 |
 | `illustrator.color_vectorize_execute` | 对明确传入的 PNG/JPEG 执行固定 Image Trace，输出 AI/SVG/PNG | 已实现受控本地原型，默认 dry-run、双确认 |
-| `trace_photo_preview.py` | headless 色彩量化与轮廓化，真实生成并复读无嵌入位图 SVG | 已有 standalone fallback CLI；不是 MCP tool |
+| `exact_pixel_vector.py` | 原始 RGBA 像素→矩形复合 path→已验证 SVG | 主推 standalone CLI；不是 MCP tool；后续由 Illustrator 存储为 AI |
+| `trace_photo_preview.py` | headless 色彩量化与轮廓化，真实生成并复读无嵌入位图 SVG | 旧兼容实验；不是默认图片转矢量入口 |
 | `illustrator.export_demo_assets` | 从 sandbox demo 文档导出 SVG、PDF 和 PNG | 已有 sandbox demo，需显式确认 |
 | `illustrator.run_demo` | 创建测试画板、导出 demo 产物并生成 manifest | 已有一键流程，需显式确认 |
 
@@ -96,7 +107,8 @@ python -m unittest tests.test_illustrator_color_trace -v
 
 ## 不能做什么
 
-- 不能把 Image Trace 生成结果直接声称为“原样通过”；真实输出必须先看 PNG 预览并通过外部质量指标。
+- 普通图片转矢量任务不能选择 Image Trace；必须使用精确像素矢量重建，超过安全上限时停止并交还用户。
+- 既有 Image Trace 协议结果不能直接声称为“原样通过”；真实输出必须先看 PNG 预览并通过外部质量指标。
 - headless CLI 只是实验性色彩量化与多边形轮廓，不承诺照片级曲线、渐变、透明度或文字保真，也不能替代原生 Image Trace。
 - 产物验证只证明文件结构、可编辑路径和非嵌入位图，不证明视觉等价或生产质量。
 - 不能提交 `.ai` 私有工程、客户图稿、商业字体、商业画笔、购买素材。

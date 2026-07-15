@@ -23,6 +23,7 @@ class PhotoshopUxpModalEnvelopeTests(unittest.TestCase):
         self.assertEqual(1, timeout["minimum"])
         self.assertEqual(30, timeout["maximum"])
         self.assertFalse(schema["properties"]["history"]["additionalProperties"])
+        self.assertIn("required_for_write", schema["properties"]["history"]["required"])
 
     def test_runner_uses_timeout_cancellation_and_explicit_history_outcome(self) -> None:
         source = RUNNER.read_text(encoding="utf-8")
@@ -102,6 +103,7 @@ process.stdout.write(JSON.stringify({{ success, failed, cancelled, calls }}));
 
         self.assertEqual("completed", payload["success"]["modal"]["status"])
         self.assertTrue(payload["success"]["modal"]["history"]["committed"])
+        self.assertTrue(payload["success"]["modal"]["history"]["required_for_write"])
         self.assertEqual(7, payload["success"]["modal"]["timeout_seconds"])
         self.assertEqual(7, payload["calls"]["options"][0]["timeOut"])
         self.assertIn("<redacted-path>", payload["success"]["warnings"][0])
@@ -110,6 +112,61 @@ process.stdout.write(JSON.stringify({{ success, failed, cancelled, calls }}));
         self.assertIn("<redacted-path>", payload["failed"]["errors"][0]["message"])
         self.assertEqual("cancelled", payload["cancelled"]["modal"]["status"])
         self.assertTrue(payload["cancelled"]["modal"]["cancelled"])
+
+    def test_required_history_fails_closed_before_handler_or_completion(self) -> None:
+        script = f"""
+import fs from "node:fs";
+let handlerCalledWithoutControl = false;
+const contexts = [
+  {{ isCancelled: false, hostControl: {{}} }},
+  {{
+    isCancelled: false,
+    hostControl: {{
+      suspendHistory: async (options) => ({{ id: "history-1", ...options }}),
+      resumeHistory: async () => {{}},
+    }},
+  }},
+];
+globalThis.require = () => ({{
+  action: {{ batchPlay: async () => [] }},
+  app: {{ activeDocument: {{ id: 42 }} }},
+  core: {{ executeAsModal: async (handler) => handler(contexts.shift()) }},
+}});
+let source = fs.readFileSync({json.dumps(str(RUNNER))}, "utf8");
+source = source.replace(
+  'import {{ validateDescriptor }} from "./batchplay-schema.js";',
+  'const validateDescriptor = () => ({{ allowed: true }});',
+);
+const runner = await import(`data:text/javascript;base64,${{Buffer.from(source).toString("base64")}}`);
+const unsupported = await runner.runModalJob(
+  "ps.test.write",
+  {{ historyTarget: "active_document" }},
+  async () => {{ handlerCalledWithoutControl = true; return {{}}; }},
+);
+const omitted = await runner.runModalJob(
+  "ps.test.write",
+  {{ historyTarget: "handler_document" }},
+  async () => ({{}}),
+);
+process.stdout.write(JSON.stringify({{ unsupported, omitted, handlerCalledWithoutControl }}));
+"""
+        process = subprocess.run(
+            ["node", "--input-type=module", "-e", script],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+        payload = json.loads(process.stdout)
+
+        self.assertFalse(payload["handlerCalledWithoutControl"])
+        for key in ("unsupported", "omitted"):
+            result = payload[key]
+            self.assertFalse(result["success"])
+            self.assertEqual("failed", result["modal"]["status"])
+            self.assertTrue(result["modal"]["history"]["required_for_write"])
+            self.assertEqual("history_control_failed", result["errors"][0]["code"])
 
     def test_runner_redacts_error_paths_and_keeps_batchplay_on_sandbox_copy(self) -> None:
         source = RUNNER.read_text(encoding="utf-8")

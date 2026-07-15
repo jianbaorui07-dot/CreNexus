@@ -38,9 +38,10 @@
     "history": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["target", "supported", "suspended", "committed", "rolled_back"],
+      "required": ["target", "required_for_write", "supported", "suspended", "committed", "rolled_back"],
       "properties": {
         "target": { "enum": ["active_document", "handler_document", "none"] },
+        "required_for_write": { "type": "boolean" },
         "supported": { "type": "boolean" },
         "suspended": { "type": "boolean" },
         "committed": { "type": "boolean" },
@@ -68,5 +69,12 @@
         }
       }
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "history": { "properties": { "target": { "const": "none" } } } } },
+      "then": { "properties": { "history": { "properties": { "required_for_write": { "const": false } } } } },
+      "else": { "properties": { "history": { "properties": { "required_for_write": { "const": true } } } } }
+    }
+  ]
 }

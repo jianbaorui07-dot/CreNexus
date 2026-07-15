@@ -2,6 +2,14 @@
 
 ## Unreleased / Optimizations
 
+### 2026-07-15 — Exact pixel-vector reconstruction becomes primary
+
+* Added `exact_pixel_vector.py`, which rebuilds one explicit PNG/JPEG RGBA grid as grouped rectangle compound paths, verifies a raster-free SVG, and hands it to Illustrator for Save As AI without Image Trace.
+* Switched `illustrator:vectorize:offline` to the exact route. The previous OpenCV quantized workflow remains available as `illustrator:vectorize:legacy-quantized` for compatibility and research.
+* Added deterministic RGBA, transparency, privacy, sandbox, complexity-limit, package-command, and SVG verifier coverage.
+* Repositioned README and Chinese Illustrator documentation around exact image-to-AI delivery while retaining Adobe protocols, ComfyUI, CAD/AutoCAD, Blender, CapCut/Jianying, MCP stdio, UXP, and local proxy capabilities.
+* Documented a sanitized local write with 742,922 rectangle subpaths and a successfully saved desktop AI; no source image, local path, SVG, AI, or report is committed.
+
 ### 2026-06-27 — MCP Prompts (complete the 3 primitives)
 
 * **MCP Prompts capability (new).** Added the third MCP primitive alongside tools

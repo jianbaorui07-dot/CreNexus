@@ -11,6 +11,7 @@ StarBridge 的 Photoshop 写入仍只允许 typed allowlist、明确确认和 sa
 3. 对选定文档调用 `suspendHistory`；成功时 `resumeHistory(..., true)`，失败或取消时 `resumeHistory(..., false)`。
 4. 返回符合 `starbridge.photoshop-modal.v1` 的脱敏 `modal` 字段，不返回文档名、文件路径、descriptor 内容或像素。
 5. 保留 `registerAutoCloseDocument`：BatchPlay 失败或取消时，Photoshop 在 modal 退出后关闭临时 sandbox 文档。
+6. 除 `historyTarget=none` 外，history 控制必须 fail-closed：缺少 `suspendHistory` / `resumeHistory`、缺少目标文档 ID，或 handler 返回前没有真正挂起 history 时，必须返回 `history_control_failed`，不得把写入报告为完成。
 
 ## 调用策略
 
@@ -19,6 +20,8 @@ StarBridge 的 Photoshop 写入仍只允许 typed allowlist、明确确认和 sa
 | Camera Raw / 活动文档写入 | `active_document` | 进入 handler 前挂起活动文档 history |
 | typed BatchPlay sandbox 副本 | `handler_document` | 复制后由 handler 指定 sandbox 文档 ID |
 | 只读或纯计划 | `none` | 不挂起 history |
+
+信封中的 `history.required_for_write` 明确声明本次任务是否必须具备回滚能力。值为 `true` 时，只有 `history.suspended=true` 且最终 `committed=true` 才能报告 `completed`；能力不可用时 handler 不应开始。`handler_document` 由 handler 在任何 BatchPlay 写入前挂起 sandbox 副本，返回前还会被统一检查，避免遗漏挂起步骤。
 
 真实写入仍必须同时满足原有的确认、allowlist 和 sandbox 规则。`modal.status=completed` 只证明 UXP modal 正常结束，不等于视觉质量通过；用于 Illustrator 的 PNG 仍要进入 `illustrator.color_vectorize_compare`。
 

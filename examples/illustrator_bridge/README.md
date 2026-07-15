@@ -1,6 +1,15 @@
 # Illustrator / AI 矢量文件桥
 
-这个 `prototype` 桥同时保留两条路线：Windows-first、受控的 Illustrator 原生 Image Trace，以及无需 Illustrator 的实验性 headless OpenCV fallback。原生路线默认只返回计划；真实执行只接受用户明确传入的单张 PNG/JPEG，运行固定 JSX，并把 AI/SVG/PNG 写入忽略目录 `examples/output/illustrator/`。headless 路线同样只接受一个显式 PNG/JPEG，不打开 `.ai`，并在发布前复读 SVG。
+这个 `prototype` 桥主推精确像素矢量重建：单张授权 PNG/JPEG 的原始 RGBA 像素被重建为矩形复合 path，验证 SVG 后再由 Illustrator 存储为 AI，不使用 Image Trace。既有原生 Image Trace 协议和 headless OpenCV 量化 fallback 继续保留用于兼容、研究和测试。
+
+## 默认：精确像素 SVG → Illustrator AI
+
+```powershell
+python -m pip install -e ".[illustrator-vector]"
+npm.cmd run illustrator:vectorize:offline -- --input "<input.png>" --reference-id reference
+```
+
+默认输出位于 `examples/output/illustrator/exact-pixel/<reference-id>/`。在 Illustrator 中打开已验证的 `exact_pixel_vector.svg` 并存储为 `.ai`；不要执行“图像描摹”。
 
 ## Headless 彩色图直接转 SVG
 
@@ -13,7 +22,7 @@ python -m pip install -e ".[illustrator-trace]"
 再显式传入本机图片；不要把源图或输出提交到仓库：
 
 ```powershell
-npm.cmd run illustrator:vectorize:offline -- --input "<input.png>" --commit-preset flat_16
+npm.cmd run illustrator:vectorize:legacy-quantized -- --input "<input.png>" --commit-preset flat_16
 ```
 
 脚本使用固定 K-means seed 做色彩量化，并用 `evenodd` 复合轮廓保留超过最小面积阈值的孔洞，输出：

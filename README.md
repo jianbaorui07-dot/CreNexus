@@ -1,4 +1,4 @@
-# StarBridge：Codex Skill + MCP + Adobe UXP
+# StarBridge：精确像素矢量重建 + Codex Skill + MCP
 
 [![CI](https://github.com/jianbaorui07-dot/Codex-Integration-with-Creative-Industry-Software/actions/workflows/ci.yml/badge.svg)](https://github.com/jianbaorui07-dot/Codex-Integration-with-Creative-Industry-Software/actions/workflows/ci.yml)
 ![Windows first](https://img.shields.io/badge/Windows-first-2563eb)
@@ -7,20 +7,18 @@
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
-StarBridge 是面向本地创意软件的开源接入层。它把 **Codex Skill** 的任务路由、**StarBridge MCP** 的结构化工具，以及 **Adobe UXP / Node Proxy** 的桌面软件通道组合成一套可审计的工作流。
+StarBridge 是以**图片精确转 SVG / Illustrator AI**为主推能力的本地创意软件开源接入层。它把 **Codex Skill** 的任务路由、**StarBridge MCP** 的结构化工具，以及 **Adobe UXP / Node Proxy** 的桌面软件通道组合成一套可审计的工作流；ComfyUI、Photoshop、CAD / AutoCAD、Blender 和 CapCut / 剪映等桥仍完整保留。
 
-当前重点是 Adobe 生产链：把用户明确授权的参考图，经 Photoshop 安全预处理后交给 Illustrator 做彩色矢量化，再用自动指标比较原图与预览；未通过时，只调整白名单参数并生成下一轮计划，最多修复 3 轮。
+当前默认图片转矢量路线不使用 Illustrator Image Trace。它把用户明确授权的单张 PNG / JPEG 按原始 RGBA 像素网格重建为矩形复合路径，验证 SVG 中没有嵌入位图、脚本或外链，再交给 Illustrator 存储为 `.ai`。颜色不量化、像素不缩放，复杂度会如实反映在路径数量和写入时间上。
 
 ```mermaid
 flowchart LR
-  A["用户授权的单张参考图"] --> B["Photoshop 预处理"]
-  B --> C["Illustrator 彩色 Image Trace"]
-  C --> D["AI / SVG / PNG sandbox 输出"]
-  D --> E{"自动比较是否通过？"}
-  E -- "通过" --> F["交付并保留脱敏证据"]
-  E -- "未通过且有预算" --> G["白名单参数修复计划"]
-  G --> C
-  E -- "达到 3 轮或需人工判断" --> H["停止并交还用户"]
+  A["用户授权的单张 PNG / JPEG"] --> B["读取原始 RGBA 像素"]
+  B --> C["连续同色像素合并为矩形"]
+  C --> D["按 paint 合并复合 path"]
+  D --> E["验证 SVG 无位图 / 脚本 / 外链"]
+  E --> F["Illustrator 打开并存储为 AI"]
+  F --> G["核对文件与脱敏证据"]
 ```
 
 项目坚持 local-first：默认只读或 `dry-run`，真实写入必须显式确认并限制在安全输出目录；仓库不保存客户素材、PSD / AI / DWG 私有工程、账号状态、模型文件、token 或本机路径。
@@ -30,29 +28,29 @@ flowchart LR
 | 状态 | 已覆盖能力 | 证据边界 |
 | --- | --- | --- |
 | stable（稳定） | MCP stdio、工具注册、resources / prompts、状态探针、路径脱敏、operation context、ComfyUI 队列/进度/任务快照与工作流验证；AutoCAD/DXF plan validate / dry-run / guarded write | Windows 与 Ubuntu CI 验证结构、schema、安全边界和 soft-exit |
-| experimental（Adobe 协议已实现） | Photoshop / Illustrator 规划、预检、受控执行接口；彩色矢量化 plan / validate / compare / repair_plan / execute；headless 彩色位图→可验证 SVG fallback | 默认 dry-run；repair_plan 只生成最多 3 轮的白名单参数与 execute/compare 安全模板，不自动执行；compare 只读取两个明确授权文件；headless 在 CI 中真实生成并复读 SVG，输出均不含源路径、像素或元数据 |
+| primary（主推） | 精确 RGBA 像素→矩形复合路径→已验证 SVG→Illustrator AI 交付 | 不使用 Image Trace、不嵌入位图、不量化颜色；只读单张明确输入，输出留在忽略 sandbox；桌面 AI 写入需要明确请求 |
+| experimental（其他 Adobe 协议） | Photoshop / Illustrator 规划、预检、受控执行接口；彩色矢量化 plan / validate / compare / repair_plan / execute；旧量化 SVG fallback | 兼容与研究用途；默认不作为普通图片转矢量入口；compare 只读取两个明确授权文件 |
 | UXP 安全执行已实现 | Photoshop `executeAsModal` 有界排队、取消状态、history commit / rollback、临时文档自动关闭 | 已通过 Node 模拟与协议测试；仍需已授权 Photoshop 桌面实测 |
 | planned（仍在推进） | repair plan → Illustrator execute → compare 的显式确认闭环、Adobe 桌面端端到端验收、Blender 确认渲染、CapCut 草稿骨架 | 未经本地运行证据，不宣称真实桌面控制已验证 |
 | not implemented（不实现） | 自动登录、绕过授权、递归扫描私有目录、无确认写入真实软件、上传客户工程或商业素材 | 安全硬边界 |
 
 Photoshop, Illustrator, Blender, and CapCut write flows are experimental or planned unless a reviewed local run proves otherwise.
 
-完整状态见 [能力矩阵](docs/CAPABILITY_MATRIX.md)、[彩色矢量化协议](docs/color-faithful-vectorization.md) 和 [v0.1-alpha 发布说明](docs/RELEASE_V0_1_ALPHA.md)。
+完整状态见 [精确像素矢量重建](docs/exact-pixel-vectorization.md)、[能力矩阵](docs/CAPABILITY_MATRIX.md)、[彩色矢量化协议](docs/color-faithful-vectorization.md) 和 [v0.1-alpha 发布说明](docs/RELEASE_V0_1_ALPHA.md)。
 
-## Adobe 彩色矢量工作流
+## 主推：精确像素矢量重建
 
-目标不是简单“把图片转成 SVG”，而是在安全边界内尽量保持原图的颜色、轮廓、层次和透明区域。
+目标是在源像素网格上确定性地保留 RGBA 值与位置，同时产出不含嵌入位图的可编辑矢量文件。详细写入过程和本机证据见[精确像素矢量重建文档](docs/exact-pixel-vectorization.md)。
 
-| 工具 | 作用 | 默认行为 |
+| 阶段 | 作用 | 默认行为 |
 | --- | --- | --- |
-| `illustrator.color_vectorize_plan` | 生成 Photoshop / Illustrator 应用矩阵、描摹参数和质量门槛 | 纯内存 dry-run |
-| `illustrator.color_vectorize_validate` | 校验调用方提供的轮廓、色差、相似度、节点预算和 hard gates | 只处理脱敏指标，不读取文件 |
-| `illustrator.color_vectorize_compare` | 计算 ICC、轮廓、色差、SSIM 与矢量证据 | 只读明确授权参考图和 sandbox PNG |
-| `illustrator.color_vectorize_repair_plan` | 根据脱敏 findings 生成下一轮白名单参数与 execute/compare 安全模板 | 纯内存；最多 3 轮，模板默认 dry-run 且不执行任意脚本 |
-| `illustrator.color_vectorize_execute` | 对明确传入的 PNG / JPEG 执行固定 Image Trace，计划输出 AI / SVG / PNG | dry-run；真实写入和导出需要双确认 |
-| Photoshop UXP modal envelope | 对受控 Photoshop 任务提供排队、取消和历史回滚 | 失败或取消时回滚，不返回路径或 descriptor |
+| 输入 | 一张明确授权的 PNG / JPEG | 不扫描目录、不上传云端 |
+| 重建 | 连续同色像素→矩形子路径；按 RGBA paint 合并复合 path | 不缩放、不模糊、不量化颜色 |
+| 验证 | 复读 SVG 尺寸、路径、颜色、透明度和 hash | 拒绝位图、脚本、外链和越界坐标 |
+| AI 交付 | Illustrator 打开 SVG 并“存储为” `.ai` | 不使用图像描摹；桌面写入需明确请求 |
+| 大文件写入 | 监控 Illustrator 响应和 CPU 进展，完成后核对文件 | 不因短暂未出现文件而过早中断 |
 
-安全停止条件：hard gate 失败、修复预算耗尽、需要主观判断或缺少明确授权时，流程必须停止并交还用户。
+超过 4,000,000 像素、2,000,000 个矩形子路径或 64 MiB SVG verifier 限制时，流程停止并交还用户，不自动回退到 Image Trace。
 
 ## 5 分钟开始
 
@@ -86,23 +84,30 @@ npm.cmd test
 
 PowerShell 如果拦截 `npm.ps1`，请使用 `npm.cmd`。
 
-## 彩色图直接转矢量图（两条 experimental 路线）
+## 图片直接转矢量图
 
 | 路线 | 适用场景 | 当前证据 |
 | --- | --- | --- |
-| headless offline fallback | 无 Illustrator 时，把显式 PNG/JPEG 量化为背景 `<rect>` + 可编辑 `<path>` 的纯矢量 SVG | CI 真实生成、SVG 结构复读、颜色/孔洞抽样、hash 清单与失败恢复 |
-| Illustrator native route | Windows + 已授权 Illustrator，用固定 JSX 执行原生 Image Trace | 默认 dry-run、双确认、sandbox AI/SVG/PNG 与 compare 协议；公开 CI 不声称真实桌面 E2E |
+| **精确像素矢量重建（默认）** | 普通 PNG/JPEG→逐像素矩形复合路径→SVG→Illustrator AI | 确定性输出、原始 RGBA paint、无嵌入位图；736×1314 本机样例成功生成 742,922 个子路径 AI |
+| 旧量化 SVG 实验 | 扁平插画、图标和色块稿的低复杂度候选 | 保留兼容命令、CI 复读 SVG；不作为默认图片转矢量入口 |
+| 原生 Image Trace 协议 | 研究、兼容和既有 MCP schema | 代码仍保留；普通图片转矢量工作流禁止自动选择 |
 
-无需 Illustrator 的 fallback 命令：
+主推命令：
 
 ```powershell
-python -m pip install -e ".[illustrator-trace]"
-npm.cmd run illustrator:vectorize:offline -- --input "<input.png>" --commit-preset flat_16
+python -m pip install -e ".[illustrator-vector]"
+npm.cmd run illustrator:vectorize:offline -- --input "<input.png>" --reference-id "reference"
 ```
 
-默认输出写入已被 Git 忽略的 `examples/output/illustrator/trace-practice/`；自定义输出也必须留在这个 headless 专用子树中。发布前脚本会复读验证 SVG：UTF-8 XML 与画布尺寸有效、至少有一个矢量路径、没有嵌入位图/脚本/外链，并记录 bytes、SHA-256、路径数和实际颜色数；失败时返回结构化错误且不发布半成品，若自动恢复也失败则在输出目录保留 recovery backup 供人工恢复。
+默认输出写入已被 Git 忽略的 `examples/output/illustrator/exact-pixel/<reference-id>/`。脚本记录脱敏输入 hash、画布、像素数、path 数、矩形子路径数、paint 数、SVG bytes 与 hash；不返回源文件名或绝对路径。
 
-这是一条适合扁平插画、图标和色块稿预处理的**实验性离线 CLI**，不是 Illustrator 原生 Image Trace，也不是 MCP tool。复杂照片、渐变、透明度、文字和生产交付仍需人工复核；源图与生成结果不能提交到仓库。
+旧量化命令仍可用于兼容实验：
+
+```powershell
+npm.cmd run illustrator:vectorize:legacy-quantized -- --input "<input.png>" --commit-preset flat_16
+```
+
+复杂照片会生成很大的 SVG / AI；这是保留源像素复杂度的结果。源图与生成结果不能提交到仓库。
 
 ## 架构
 
@@ -129,8 +134,8 @@ flowchart LR
 | 项目定位 | [Skill / MCP / UXP 定位](docs/skill-mcp-uxp-positioning.md) | `python scripts\starbridge_preflight.py --markdown` |
 | Photoshop | [Photoshop 接入](docs/03-codex-photoshop.md) / [UXP modal 安全协议](docs/photoshop-uxp-modal-envelope.md) | `npm.cmd run photoshop:diagnose` |
 | Illustrator | [Illustrator 接入](docs/05-codex-illustrator.md) | `npm.cmd run illustrator:preflight:plan` |
-| 彩色矢量化 | [参考图彩色矢量化协议](docs/color-faithful-vectorization.md) | MCP `illustrator.color_vectorize_compare` |
-| Headless 彩色矢量 fallback | [Illustrator 接入](docs/05-codex-illustrator.md) | `npm.cmd run illustrator:vectorize:offline -- --input "<input.png>" --commit-preset flat_16` |
+| 精确图片转 SVG / AI | [精确像素矢量重建](docs/exact-pixel-vectorization.md) | `npm.cmd run illustrator:vectorize:offline -- --input "<input.png>" --reference-id "reference"` |
+| 其他彩色矢量协议 | [参考图彩色矢量化协议](docs/color-faithful-vectorization.md) | MCP `illustrator.color_vectorize_compare` |
 | ComfyUI | [ComfyUI 接入](docs/02-codex-comfyui.md) | `python examples\comfy_bridge\comfy_probe.py` |
 | CAD / AutoCAD | [CAD 接入](docs/01-codex-cad.md) | `python scripts\test_autocad_mcp.py` |
 | Blender | [Blender 接入](docs/04-codex-blender.md) | `npm.cmd run blender:scene:plan` |
@@ -144,7 +149,7 @@ flowchart LR
 | --- | --- |
 | 图像生成区 | ComfyUI workflow 校验、队列监控、模板和任务生命周期摘要 |
 | 工程制图区 | CAD / AutoCAD plan、DXF dry-run 与受控写入 |
-| AI 矢量文件桥 | Illustrator 彩色矢量规划、比较、修复计划与受控执行，以及 headless 彩色位图→SVG fallback |
+| AI 矢量文件桥 | 主推精确像素矢量重建；另保留 Illustrator 规划、比较、修复协议和旧量化 SVG 实验 |
 | 图像编辑区 | Photoshop UXP、Node Proxy、modal 回滚与 sandbox demo |
 | 视频草稿区 | CapCut / 剪映只读探针；未配置时报告“剪映可执行文件”状态 |
 
@@ -207,7 +212,7 @@ npm.cmd test
 
 ## English
 
-StarBridge is a Windows-first, local-first integration layer connecting AI clients to creative desktop software through Codex Skills, an MCP stdio server, and auditable Adobe UXP / local proxy bridges. It includes both a guarded native Illustrator Image Trace route and an experimental headless color-raster-to-editable-SVG fallback with fail-closed artifact verification. Public examples default to read-only checks or dry-run plans; desktop writes require explicit confirmation, and all writes stay within safe output boundaries.
+StarBridge is a Windows-first, local-first integration layer whose primary workflow reconstructs an authorized PNG/JPEG pixel grid as grouped RGBA rectangle paths, verifies a raster-free SVG, and hands it to Illustrator for Save As AI without Image Trace. The repository also retains guarded Adobe protocols, legacy quantized SVG research, ComfyUI, CAD/AutoCAD, Blender, CapCut/Jianying, MCP stdio, UXP, and local proxy bridges. Public examples default to read-only checks or safe ignored outputs; desktop writes require explicit confirmation.
 
 ## License
 

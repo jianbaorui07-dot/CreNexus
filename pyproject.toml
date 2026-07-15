@@ -56,6 +56,9 @@ illustrator-trace = [
   "opencv-python-headless>=4.10,<5",
   "Pillow>=10,<13",
 ]
+illustrator-vector = [
+  "Pillow>=10,<13",
+]
 
 [project.scripts]
 starbridge = "starbridge_mcp.server:main"

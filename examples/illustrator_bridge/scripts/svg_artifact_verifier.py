@@ -12,7 +12,7 @@ _ALLOWED_ELEMENTS = {"svg", "rect", "path"}
 _ALLOWED_ATTRIBUTES = {
     "svg": {"width", "height", "viewBox"},
     "rect": {"width", "height", "fill"},
-    "path": {"d", "fill", "fill-rule", "stroke"},
+    "path": {"d", "fill", "fill-opacity", "fill-rule", "stroke"},
 }
 _HEX_COLOR = re.compile(r"#[0-9a-fA-F]{6}\Z")
 _MOVE_COMMAND = re.compile(r"(?:^|[\s,])M(?:[\s,]|$)", re.IGNORECASE)
@@ -59,6 +59,18 @@ def _view_box(value: str | None) -> list[float]:
     if not all(math.isfinite(number) for number in numbers) or numbers[2] <= 0 or numbers[3] <= 0:
         raise SvgArtifactError("invalid_view_box", "SVG viewBox extent must be positive.")
     return numbers
+
+
+def _fill_opacity(value: str | None) -> float:
+    if value is None:
+        return 1.0
+    try:
+        opacity = float(value)
+    except ValueError as exc:
+        raise SvgArtifactError("invalid_fill_opacity", "SVG fill opacity must be numeric.") from exc
+    if not math.isfinite(opacity) or opacity < 0 or opacity > 1:
+        raise SvgArtifactError("invalid_fill_opacity", "SVG fill opacity must be between 0 and 1.")
+    return opacity
 
 
 def verify_svg_artifact(
@@ -119,6 +131,7 @@ def verify_svg_artifact(
 
     paths: list[ET.Element] = []
     fills: set[str] = set()
+    paints: set[tuple[str, float]] = set()
     subpath_count = 0
     for element in root.iter():
         element_namespace, local_name = _tag_parts(element.tag)
@@ -161,6 +174,7 @@ def verify_svg_artifact(
             )
         if not _HEX_COLOR.fullmatch(fill):
             raise SvgArtifactError("invalid_fill", "SVG paths must use explicit RGB fills.")
+        opacity = _fill_opacity(element.get("fill-opacity"))
         if element.get("fill-rule") != "evenodd" or element.get("stroke") != "none":
             raise SvgArtifactError(
                 "invalid_path_style", "SVG paths must use the generated editable fill contract."
@@ -175,6 +189,7 @@ def verify_svg_artifact(
             )
         paths.append(element)
         fills.add(fill.lower())
+        paints.add((fill.lower(), opacity))
         subpath_count += len(_MOVE_COMMAND.findall(path_data))
 
     if not paths:
@@ -191,5 +206,6 @@ def verify_svg_artifact(
         "path_count": len(paths),
         "subpath_count": subpath_count,
         "color_count": len(fills),
+        "paint_count": len(paints),
         "embedded_raster_count": 0,
     }

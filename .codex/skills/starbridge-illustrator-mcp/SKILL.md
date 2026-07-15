@@ -11,6 +11,8 @@ In this repository, `AI` usually means Adobe Illustrator `.ai` vector files, not
 
 Prefer read-only environment checks, redacted document summaries, preflight, and sandbox demo plans before GUI actions or exports.
 
+For ordinary PNG/JPEG-to-vector or “convert this image to AI” requests, always use `exact_pixel_vector.py`: rebuild the original RGBA pixel grid as grouped rectangle compound paths, verify the raster-free SVG, then open it in Illustrator and Save As `.ai`. Do not use Illustrator Image Trace. If exact reconstruction exceeds its safety limits, stop and ask the user to reduce dimensions or change the delivery goal; never silently fall back to tracing.
+
 ## Read First
 
 Read only what is needed:
@@ -31,6 +33,7 @@ If changing shared MCP behavior, also read `.codex/skills/starbridge-mcp/SKILL.m
 ```powershell
 npm.cmd run illustrator:preflight:plan
 npm.cmd run illustrator:info
+npm.cmd run illustrator:vectorize:offline -- --input "<explicit-image.png>" --reference-id reference
 python examples\illustrator_bridge\scripts\preflight_plan.py --json
 python -m unittest tests.test_color_vectorization
 python -m unittest tests.test_color_vector_repair
@@ -49,7 +52,8 @@ Do not hardcode local Illustrator install paths in docs, tests, or examples.
 | Check availability | `illustrator.document_info` or bridge status probe | Read-only, no private `.ai` open |
 | Review document risk | `illustrator.preflight` | Use redacted summaries |
 | Inspect artboards/layers | future `document_info` expansion | Active session summary only |
-| Trace/vectorize plan | `illustrator.color_vectorize_plan` | Explicit authorization; no pixel read, path, cloud upload, or app launch |
+| Image→SVG / AI delivery | `exact_pixel_vector.py` then Illustrator Save As | Default and required route; explicit single image, sandbox SVG, no Image Trace, no embedded raster |
+| Legacy trace plan | `illustrator.color_vectorize_plan` | Compatibility/research only; do not select for ordinary image-to-vector delivery |
 | Validate trace quality | `illustrator.color_vectorize_validate` | Sanitized metrics only; no reference/preview file read |
 | Compare trace preview | `illustrator.color_vectorize_compare` | One authorized PNG/JPEG + one sandbox PNG; no path, pixel, or metadata returned |
 | Plan bounded repair | `illustrator.color_vectorize_repair_plan` | Sanitized findings to allowlisted parameters plus dry-run execute/compare templates; at most 3 rounds; no script or desktop execution |
@@ -66,6 +70,8 @@ Do not add tools that:
 - scan font folders or Creative Cloud cache
 - use Image Trace on private source images
 - export SVG/PDF/PNG to user directories
+- use Illustrator Image Trace for ordinary image-to-vector delivery
+- fall back to Image Trace when exact pixel reconstruction exceeds a limit
 
 Use whitelisted actions with explicit parameters and sanitized output.
 

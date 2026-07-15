@@ -74,6 +74,7 @@ class PackageScriptsTest(unittest.TestCase):
                 "illustrator:realtime:capture",
                 "illustrator:preflight:plan",
                 "illustrator:vectorize:offline",
+                "illustrator:vectorize:legacy-quantized",
                 "illustrator:demo:plan",
                 "illustrator:demo",
                 "illustrator:manifest",
@@ -127,10 +128,14 @@ class PackageScriptsTest(unittest.TestCase):
         ):
             self.assertIn(name, self.scripts)
 
-    def test_illustrator_color_trace_shortcut_is_registered(self) -> None:
+    def test_illustrator_exact_vector_shortcut_is_primary(self) -> None:
+        self.assertEqual(
+            "python examples/illustrator_bridge/scripts/exact_pixel_vector.py",
+            self.scripts["illustrator:vectorize:offline"],
+        )
         self.assertEqual(
             "python examples/illustrator_bridge/scripts/trace_photo_preview.py",
-            self.scripts["illustrator:vectorize:offline"],
+            self.scripts["illustrator:vectorize:legacy-quantized"],
         )
 
     def test_comfy_template_shortcuts_are_registered(self) -> None:
@@ -157,7 +162,14 @@ class PackageScriptsTest(unittest.TestCase):
         self.assertIsNotNone(match)
         extras_block = match.group(1)
 
-        for extra in ("dev", "cad", "comfy", "adobe", "illustrator-trace"):
+        for extra in (
+            "dev",
+            "cad",
+            "comfy",
+            "adobe",
+            "illustrator-trace",
+            "illustrator-vector",
+        ):
             self.assertRegex(extras_block, rf"(?m)^{extra}\s*=")
         self.assertIn("pytest>=8", extras_block)
         self.assertIn("ezdxf>=1.3", extras_block)
