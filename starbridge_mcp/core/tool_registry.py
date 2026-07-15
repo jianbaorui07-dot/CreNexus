@@ -457,6 +457,22 @@ CAPABILITIES: tuple[ToolCapability, ...] = (
         ),
     ),
     ToolCapability(
+        name="comfyui.asset_metadata",
+        bridge="comfyui",
+        action="asset_metadata",
+        maturity="implemented",
+        risk_level="safe_read_only",
+        description="检查当前会话 asset_id 的内存 provenance 是否仍可用于受控重生成。",
+        side_effects="无；不访问 ComfyUI、不读取文件，也不返回 workflow、prompt、模型或路径。",
+        safe_default=True,
+        requires_confirmation=False,
+        requires_local_software=False,
+        source_projects=(
+            "joenorton/comfyui-mcp-server",
+            "artokun/comfyui-mcp",
+        ),
+    ),
+    ToolCapability(
         name="comfyui.regenerate",
         bridge="comfyui",
         action="regenerate",

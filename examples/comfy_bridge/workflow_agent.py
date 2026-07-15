@@ -33,6 +33,17 @@ PROMPT_ID_PATTERN = re.compile(r"[A-Za-z0-9_-]{1,128}\Z")
 ASSET_ID_PATTERN = re.compile(r"asset_[0-9a-f]{16}\Z")
 PROVENANCE_TTL_SECONDS = 24 * 60 * 60
 MAX_PROVENANCE_RECORDS = 128
+REGENERATION_OVERRIDE_FIELDS = (
+    "cfg",
+    "height",
+    "negative_prompt",
+    "prompt",
+    "sampler",
+    "scheduler",
+    "seed",
+    "steps",
+    "width",
+)
 _GENERATION_RECORDS: dict[str, dict[str, Any]] = {}
 _ASSET_RECORDS: dict[str, dict[str, Any]] = {}
 RECOGNIZED_COMPOSER_MODULES = {
@@ -1631,6 +1642,66 @@ def generation_result(arguments: dict[str, Any]) -> dict[str, Any]:
                 else [f"generation_{state}"]
             ),
             "next_steps": next_steps,
+        }
+    )
+
+
+def asset_metadata(arguments: dict[str, Any]) -> dict[str, Any]:
+    asset_id = _validate_asset_id(arguments.get("asset_id"))
+    now = time.monotonic()
+    _prune_provenance(now=now)
+    record = _ASSET_RECORDS.get(asset_id)
+    workflow = record.get("workflow") if isinstance(record, dict) else None
+    base_result = {
+        "bridge": BRIDGE_ID,
+        "action": "asset_metadata",
+        "mode": "session_read_only",
+        "asset_id": asset_id,
+        "supported_overrides": list(REGENERATION_OVERRIDE_FIELDS),
+    }
+    if not isinstance(record, dict) or not isinstance(workflow, dict):
+        return sanitize(
+            {
+                **base_result,
+                "ok": False,
+                "available": False,
+                "can_regenerate": False,
+                "workflow_hash": None,
+                "error_code": "asset_provenance_unavailable",
+                "provenance": {
+                    "storage": "memory_only",
+                    "persisted": False,
+                    "ttl_seconds": PROVENANCE_TTL_SECONDS,
+                    "expires_in_seconds": 0,
+                },
+                "warnings": ["asset_provenance_unavailable"],
+                "next_steps": [
+                    "Generate and resolve the asset in the current MCP server session before regenerating."
+                ],
+            }
+        )
+
+    created_at = float(record.get("created_at", now))
+    age_seconds = max(0.0, now - created_at)
+    expires_in_seconds = max(0, int(PROVENANCE_TTL_SECONDS - age_seconds))
+    return sanitize(
+        {
+            **base_result,
+            "ok": True,
+            "available": True,
+            "can_regenerate": True,
+            "workflow_hash": workflow_hash(workflow),
+            "error_code": None,
+            "provenance": {
+                "storage": "memory_only",
+                "persisted": False,
+                "ttl_seconds": PROVENANCE_TTL_SECONDS,
+                "expires_in_seconds": expires_in_seconds,
+            },
+            "warnings": [],
+            "next_steps": [
+                "Review a comfyui.regenerate dry-run before explicitly confirming a new submission."
+            ],
         }
     )
 

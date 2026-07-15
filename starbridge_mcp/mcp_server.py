@@ -589,6 +589,24 @@ TOOL_DEFINITIONS: list[JsonObject] = [
         "annotations": _safe_read_annotations(requires_local_software=True),
     },
     _standard_tool(
+        name="comfyui.asset_metadata",
+        title="ComfyUI Asset Metadata",
+        description=(
+            "Check whether one stable StarBridge asset ID still has usable current-session "
+            "in-memory provenance. Returns only availability, remaining TTL, workflow hash, and "
+            "supported regeneration override names; never returns workflow, prompt, model, file, or path data."
+        ),
+        input_schema=_object_schema(
+            {
+                "asset_id": {
+                    "type": "string",
+                    "pattern": "^asset_[0-9a-f]{16}$",
+                }
+            },
+            required=["asset_id"],
+        ),
+    ),
+    _standard_tool(
         name="comfyui.regenerate",
         title="ComfyUI Regenerate",
         description=(
@@ -2360,6 +2378,12 @@ def _handle_comfy_generation_result(arguments: JsonObject) -> JsonObject:
     return generation_result(arguments)
 
 
+def _handle_comfy_asset_metadata(arguments: JsonObject) -> JsonObject:
+    from examples.comfy_bridge.workflow_agent import asset_metadata
+
+    return asset_metadata(arguments)
+
+
 def _handle_comfy_regenerate(arguments: JsonObject) -> JsonObject:
     from examples.comfy_bridge.workflow_agent import regenerate
 
@@ -3495,6 +3519,7 @@ TOOL_HANDLERS: dict[str, ToolHandler] = {
     "comfyui.workflow_repair": _handle_comfy_workflow_repair,
     "comfyui.agent_run": _handle_comfy_agent_run,
     "comfyui.generation_result": _handle_comfy_generation_result,
+    "comfyui.asset_metadata": _handle_comfy_asset_metadata,
     "comfyui.regenerate": _handle_comfy_regenerate,
     "comfy.workflow_draft": _handle_comfy_workflow_draft,
     "comfy.workflow_compose": _handle_comfy_workflow_compose,
