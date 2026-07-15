@@ -44,12 +44,14 @@ function normalizeErrors(values) {
 
 function createHistoryController(executionContext, target) {
   const hostControl = executionContext?.hostControl;
+  const requiredForWrite = target !== "none";
   const supported = Boolean(
     typeof hostControl?.suspendHistory === "function" &&
       typeof hostControl?.resumeHistory === "function",
   );
   const state = {
     target,
+    required_for_write: requiredForWrite,
     supported,
     suspended: false,
     committed: false,
@@ -60,9 +62,19 @@ function createHistoryController(executionContext, target) {
   return {
     state,
     async suspendHistory(documentID, name) {
-      if (target === "none" || suspension || !supported || documentID === undefined || documentID === null) return;
+      if (!requiredForWrite || suspension) return;
+      if (!supported) throw new Error("history_control_unavailable");
+      if (documentID === undefined || documentID === null) {
+        throw new Error("history_document_unavailable");
+      }
       suspension = await hostControl.suspendHistory({ documentID, name });
+      if (!suspension) throw new Error("history_suspension_failed");
       state.suspended = true;
+    },
+    ensureHistorySuspended() {
+      if (requiredForWrite && (!suspension || !state.suspended)) {
+        throw new Error("history_suspension_required");
+      }
     },
     async commitHistory() {
       if (!suspension) return;
@@ -123,6 +135,7 @@ export async function runModalJob(method, params, handler) {
           checkpoint,
           suspendHistory: historyController.suspendHistory,
         });
+        historyController.ensureHistorySuspended();
         checkpoint();
         await historyController.commitHistory();
         const warnings = normalizeWarnings(payload?.warnings);
@@ -176,6 +189,7 @@ export async function runModalJob(method, params, handler) {
     const status = errorCode(error) === "user_cancelled" ? "cancelled" : "failed";
     const history = {
       target: historyTarget,
+      required_for_write: historyTarget !== "none",
       supported: false,
       suspended: false,
       committed: false,
