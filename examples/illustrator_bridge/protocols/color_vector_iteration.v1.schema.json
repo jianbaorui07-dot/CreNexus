@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://starbridge.local/schemas/color_vector_iteration.v1.schema.json",
+  "title": "StarBridge Color Vector Iteration Advance",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok",
+    "bridge",
+    "action",
+    "schema_version",
+    "reference_id",
+    "reference_authorized",
+    "state",
+    "executed_round",
+    "max_repair_rounds",
+    "remaining_rounds",
+    "comparison_verdict",
+    "terminal",
+    "next_repair_round",
+    "next_repair_plan",
+    "warnings",
+    "safety",
+    "dry_run",
+    "side_effects"
+  ],
+  "properties": {
+    "ok": { "type": "boolean" },
+    "bridge": { "const": "illustrator" },
+    "action": { "const": "color_vectorize_advance" },
+    "schema_version": { "const": "starbridge.color-vector-iteration.v1" },
+    "reference_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+    },
+    "reference_authorized": { "type": "boolean" },
+    "state": {
+      "enum": ["complete", "repair_planned", "needs_user", "blocked"]
+    },
+    "executed_round": { "type": "integer", "minimum": 1, "maximum": 3 },
+    "max_repair_rounds": { "type": "integer", "minimum": 1, "maximum": 3 },
+    "remaining_rounds": { "type": "integer", "minimum": 0, "maximum": 2 },
+    "comparison_verdict": {
+      "type": ["string", "null"],
+      "enum": ["pass", "repair_needed", "blocked", null]
+    },
+    "terminal": { "type": "boolean" },
+    "next_repair_round": {
+      "type": ["integer", "null"],
+      "minimum": 2,
+      "maximum": 3
+    },
+    "next_repair_plan": {
+      "oneOf": [
+        { "$ref": "https://starbridge.local/schemas/color_vector_repair.v1.schema.json" },
+        { "type": "null" }
+      ]
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1, "maxLength": 512 }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "inputs_sanitized",
+        "reads_files",
+        "writes_files",
+        "starts_adobe",
+        "arbitrary_script",
+        "quality_gates_relaxed",
+        "bounded_iteration",
+        "visual_review_required"
+      ],
+      "properties": {
+        "inputs_sanitized": { "const": true },
+        "reads_files": { "const": false },
+        "writes_files": { "const": false },
+        "starts_adobe": { "const": false },
+        "arbitrary_script": { "const": false },
+        "quality_gates_relaxed": { "const": false },
+        "bounded_iteration": { "const": true },
+        "visual_review_required": { "const": true }
+      }
+    },
+    "dry_run": { "const": true },
+    "side_effects": { "const": false }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "state": { "const": "repair_planned" } } },
+      "then": {
+        "properties": {
+          "ok": { "const": true },
+          "terminal": { "const": false },
+          "next_repair_round": { "type": "integer" },
+          "next_repair_plan": { "type": "object" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "state": { "const": "complete" } } },
+      "then": {
+        "properties": {
+          "ok": { "const": true },
+          "terminal": { "const": true },
+          "next_repair_round": { "type": "null" },
+          "next_repair_plan": { "type": "null" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": { "enum": ["needs_user", "blocked"] }
+        }
+      },
+      "then": {
+        "properties": {
+          "ok": { "const": false },
+          "terminal": { "const": true },
+          "next_repair_round": { "type": "null" },
+          "next_repair_plan": { "type": "null" }
+        }
+      }
+    }
+  ]
+}

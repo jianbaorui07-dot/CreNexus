@@ -19,7 +19,10 @@ from starbridge_mcp.bridges.capcut_draft_structure import draft_structure_summar
 from starbridge_mcp.bridges.illustrator_preflight import preflight_summary
 from starbridge_mcp.core.color_preprocess import build_color_preprocess_plan
 from starbridge_mcp.core.color_vector_compare import compare_color_vectorization_files
-from starbridge_mcp.core.color_vector_repair import build_color_vector_repair_plan
+from starbridge_mcp.core.color_vector_repair import (
+    advance_color_vector_iteration,
+    build_color_vector_repair_plan,
+)
 from starbridge_mcp.core.color_vectorization import (
     build_color_vectorization_plan,
     validate_color_vectorization_metrics,
@@ -1441,6 +1444,127 @@ TOOL_DEFINITIONS: list[JsonObject] = [
             required=[
                 "reference_id",
                 "reference_authorized",
+                "comparison",
+                "current_trace",
+                "current_preprocess",
+            ],
+        ),
+    ),
+    _standard_tool(
+        name="illustrator.color_vectorize_advance",
+        title="Advance Bounded Color Vector Iteration",
+        description=(
+            "把一次 execute 后的脱敏 compare 结果强制收敛为完成、下一轮 repair 或终止；"
+            "纯内存处理，不读取图片、不启动 Adobe、不写文件。"
+        ),
+        input_schema=_object_schema(
+            {
+                "reference_id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+                },
+                "reference_authorized": {"type": "boolean"},
+                "source_media_type": {
+                    "type": "string",
+                    "enum": ["image/png", "image/jpeg"],
+                    "default": "image/png",
+                },
+                "strategy": {
+                    "type": "string",
+                    "enum": ["local_illustrator_trace", "hybrid"],
+                    "default": "hybrid",
+                },
+                "executed_round": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 3,
+                },
+                "max_repair_rounds": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 3,
+                    "default": 3,
+                },
+                "comparison": _object_schema(
+                    {
+                        "verdict": {
+                            "type": "string",
+                            "enum": ["pass", "repair_needed", "blocked"],
+                        },
+                        "hard_gates": _object_schema(
+                            {
+                                "reference_authorized": {"type": "boolean"},
+                                "primary_silhouette_present": {"type": "boolean"},
+                                "topology_valid": {"type": "boolean"},
+                                "editable_vector_present": {"type": "boolean"},
+                                "safe_output_scope": {"type": "boolean"},
+                            },
+                            required=[
+                                "reference_authorized",
+                                "primary_silhouette_present",
+                                "topology_valid",
+                                "editable_vector_present",
+                                "safe_output_scope",
+                            ],
+                        ),
+                        "findings": {
+                            "type": "array",
+                            "maxItems": 128,
+                            "items": _object_schema(
+                                {
+                                    "code": {
+                                        "type": "string",
+                                        "pattern": "^[a-z][a-z0-9_]{0,63}$",
+                                    },
+                                    "severity": {
+                                        "type": "string",
+                                        "enum": ["info", "warn", "critical"],
+                                    },
+                                    "message": {"type": "string", "maxLength": 512},
+                                },
+                                required=["code", "severity", "message"],
+                            ),
+                        },
+                    },
+                    required=["verdict", "hard_gates", "findings"],
+                ),
+                "current_trace": _object_schema(
+                    {
+                        "max_colors": {"type": "integer", "minimum": 2, "maximum": 256},
+                        "path_fitting": {"type": "number", "minimum": 0, "maximum": 10},
+                        "min_area": {"type": "integer", "minimum": 1, "maximum": 1000},
+                        "preprocess_blur": {"type": "number", "minimum": 0, "maximum": 2},
+                        "ignore_white": {"type": "boolean"},
+                        "output_to_swatches": {"type": "boolean"},
+                    },
+                    required=[
+                        "max_colors",
+                        "path_fitting",
+                        "min_area",
+                        "preprocess_blur",
+                        "ignore_white",
+                        "output_to_swatches",
+                    ],
+                ),
+                "current_preprocess": _object_schema(
+                    {
+                        "photoshop_preprocess": {"type": "boolean"},
+                        "normalize_srgb": {"type": "boolean"},
+                        "max_dimension": {"type": "integer", "minimum": 256, "maximum": 8192},
+                        "median_radius": {"type": "integer", "minimum": 0, "maximum": 5},
+                    },
+                    required=[
+                        "photoshop_preprocess",
+                        "normalize_srgb",
+                        "max_dimension",
+                        "median_radius",
+                    ],
+                ),
+            },
+            required=[
+                "reference_id",
+                "reference_authorized",
+                "executed_round",
                 "comparison",
                 "current_trace",
                 "current_preprocess",
@@ -3437,6 +3561,7 @@ TOOL_HANDLERS: dict[str, ToolHandler] = {
     ),
     "illustrator.color_vectorize_compare": _handle_illustrator_color_vectorize_compare,
     "illustrator.color_vectorize_repair_plan": build_color_vector_repair_plan,
+    "illustrator.color_vectorize_advance": advance_color_vector_iteration,
     "illustrator.color_vectorize_execute": _handle_illustrator_color_vectorize_execute,
     "jianying_capcut.draft_probe": lambda _arguments: _handle_python_probe(
         bridge="jianying_capcut",

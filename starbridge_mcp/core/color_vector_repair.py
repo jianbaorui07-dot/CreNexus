@@ -9,6 +9,7 @@ from starbridge_mcp.core.color_vectorization import HARD_GATE_NAMES, REFERENCE_I
 from starbridge_mcp.core.security import sanitize
 
 SCHEMA_VERSION = "starbridge.color-vector-repair.v1"
+ITERATION_SCHEMA_VERSION = "starbridge.color-vector-iteration.v1"
 FINDING_CODE_PATTERN = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 VALID_SEVERITIES = {"info", "warn", "critical"}
 VALID_VERDICTS = {"pass", "repair_needed", "blocked"}
@@ -474,4 +475,161 @@ def build_color_vector_repair_plan(arguments: dict[str, Any]) -> dict[str, Any]:
         addressed=sorted(addressed),
         unresolved=sorted(unresolved),
         warnings=warnings,
+    )
+
+
+def advance_color_vector_iteration(arguments: dict[str, Any]) -> dict[str, Any]:
+    """Advance one sanitized compare result into completion, repair, or stop."""
+
+    reference_id = str(arguments.get("reference_id") or "")
+    if not REFERENCE_ID_PATTERN.fullmatch(reference_id):
+        raise ValueError("reference_id must match ^[a-z0-9][a-z0-9_-]{0,63}$")
+
+    def result(
+        *,
+        reference_authorized: bool,
+        state: str,
+        executed_round: int,
+        max_repair_rounds: int,
+        comparison_verdict: str | None,
+        next_repair_plan: dict[str, Any] | None = None,
+        warnings: list[str] | None = None,
+    ) -> dict[str, Any]:
+        planned = state == "repair_planned"
+        next_round = executed_round + 1 if planned else None
+        return sanitize(
+            {
+                "ok": state in {"complete", "repair_planned"},
+                "bridge": "illustrator",
+                "action": "color_vectorize_advance",
+                "schema_version": ITERATION_SCHEMA_VERSION,
+                "reference_id": reference_id,
+                "reference_authorized": reference_authorized,
+                "state": state,
+                "executed_round": executed_round,
+                "max_repair_rounds": max_repair_rounds,
+                "remaining_rounds": max(0, max_repair_rounds - executed_round),
+                "comparison_verdict": comparison_verdict,
+                "terminal": not planned,
+                "next_repair_round": next_round,
+                "next_repair_plan": next_repair_plan if planned else None,
+                "warnings": warnings or [],
+                "safety": {
+                    "inputs_sanitized": True,
+                    "reads_files": False,
+                    "writes_files": False,
+                    "starts_adobe": False,
+                    "arbitrary_script": False,
+                    "quality_gates_relaxed": False,
+                    "bounded_iteration": True,
+                    "visual_review_required": True,
+                },
+                "dry_run": True,
+                "side_effects": False,
+            }
+        )
+
+    if arguments.get("reference_authorized") is not True:
+        return result(
+            reference_authorized=False,
+            state="blocked",
+            executed_round=1,
+            max_repair_rounds=1,
+            comparison_verdict=None,
+            warnings=["reference_authorized=true is required before iteration advance."],
+        )
+
+    executed_round = _integer(
+        arguments.get("executed_round"),
+        name="executed_round",
+        minimum=1,
+        maximum=3,
+    )
+    max_repair_rounds = _integer(
+        arguments.get("max_repair_rounds", 3),
+        name="max_repair_rounds",
+        minimum=1,
+        maximum=3,
+    )
+    if executed_round > max_repair_rounds:
+        raise ValueError("executed_round cannot exceed max_repair_rounds")
+
+    source_media_type, strategy = _execute_context(arguments)
+    current = _settings(arguments)
+    comparison_verdict, gates, findings = _comparison(arguments)
+    non_info_codes = {item["code"] for item in findings if item["severity"] != "info"}
+    failed_gates = [name for name in HARD_GATE_NAMES if not gates[name]]
+
+    if comparison_verdict == "pass":
+        if failed_gates or non_info_codes:
+            return result(
+                reference_authorized=True,
+                state="needs_user",
+                executed_round=executed_round,
+                max_repair_rounds=max_repair_rounds,
+                comparison_verdict=comparison_verdict,
+                warnings=["Pass verdict conflicts with hard gates or non-info findings."],
+            )
+        return result(
+            reference_authorized=True,
+            state="complete",
+            executed_round=executed_round,
+            max_repair_rounds=max_repair_rounds,
+            comparison_verdict=comparison_verdict,
+        )
+
+    if comparison_verdict == "blocked" or failed_gates:
+        return result(
+            reference_authorized=True,
+            state="needs_user",
+            executed_round=executed_round,
+            max_repair_rounds=max_repair_rounds,
+            comparison_verdict=comparison_verdict,
+            warnings=["A blocked comparison or failed hard gate requires user review."],
+        )
+
+    if executed_round >= max_repair_rounds:
+        return result(
+            reference_authorized=True,
+            state="needs_user",
+            executed_round=executed_round,
+            max_repair_rounds=max_repair_rounds,
+            comparison_verdict=comparison_verdict,
+            warnings=["Repair budget is exhausted; do not start another automatic round."],
+        )
+
+    repair_arguments = {
+        "reference_id": reference_id,
+        "reference_authorized": True,
+        "source_media_type": source_media_type,
+        "strategy": strategy,
+        "repair_round": executed_round + 1,
+        "max_repair_rounds": max_repair_rounds,
+        "comparison": {
+            "verdict": comparison_verdict,
+            "hard_gates": gates,
+            "findings": findings,
+        },
+        "current_trace": current["trace"],
+        "current_preprocess": current["preprocess"],
+    }
+    repair_plan = build_color_vector_repair_plan(repair_arguments)
+    if repair_plan.get("verdict") != "planned":
+        return result(
+            reference_authorized=True,
+            state="needs_user",
+            executed_round=executed_round,
+            max_repair_rounds=max_repair_rounds,
+            comparison_verdict=comparison_verdict,
+            warnings=repair_plan.get("warnings")
+            or ["No safe deterministic next repair is available."],
+        )
+    return result(
+        reference_authorized=True,
+        state="repair_planned",
+        executed_round=executed_round,
+        max_repair_rounds=max_repair_rounds,
+        comparison_verdict=comparison_verdict,
+        next_repair_plan=repair_plan,
+        warnings=repair_plan.get("warnings") or [],
     )

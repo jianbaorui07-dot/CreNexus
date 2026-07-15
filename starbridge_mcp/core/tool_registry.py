@@ -1146,6 +1146,27 @@ CAPABILITIES: tuple[ToolCapability, ...] = (
         ),
     ),
     ToolCapability(
+        name="illustrator.color_vectorize_advance",
+        bridge="illustrator",
+        action="color_vectorize_advance",
+        maturity="implemented",
+        risk_level="safe_read_only",
+        description=(
+            "把 execute 后的脱敏 compare 结果收敛为 complete、下一轮 repair 或终止，"
+            "并强制最多三轮。"
+        ),
+        side_effects="纯内存 dry-run；不接收路径、不读取图片、不启动 Adobe、不写文件。",
+        safe_default=True,
+        requires_confirmation=False,
+        requires_local_software=False,
+        source_projects=(
+            "alisaitteke/photoshop-mcp",
+            "modelcontextprotocol/specification",
+        ),
+        invocation="python -m starbridge_mcp.mcp_server",
+        next_step="仅 repair_planned 可调用 next_repair_plan；complete 或终止状态不得继续自动执行。",
+    ),
+    ToolCapability(
         name="illustrator.color_vectorize_execute",
         bridge="illustrator",
         action="color_vectorize_execute",
@@ -1302,6 +1323,7 @@ BRIDGE_PROFILES: dict[str, dict[str, Any]] = {
             "color_vectorize_validate",
             "color_vectorize_compare",
             "color_vectorize_repair_plan",
+            "color_vectorize_advance",
             "color_vectorize_execute",
         ],
     },
