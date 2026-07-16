@@ -529,6 +529,7 @@ def _markdown_report(report: dict[str, Any]) -> str:
         f"- 复合路径对象：{vector['path_objects']}",
         f"- 子路径：{vector['subpaths']}",
         f"- 节点：{vector['points']}",
+        f"- 贝塞尔曲线段：{vector['curve_segments']}",
         f"- SVG 大小：{vector['svg_bytes']} bytes",
         f"- 嵌入位图：{report['validation']['embedded_raster_count']}",
         f"- 外部链接：{report['validation']['external_reference_count']}",
@@ -540,6 +541,18 @@ def _markdown_report(report: dict[str, Any]) -> str:
                 f"- 像素完全一致：{str(exact['pixel_match']).lower()}",
                 f"- 不同像素数：{exact['different_pixel_count']}",
                 f"- 最大通道差：{exact['maximum_channel_difference']}",
+            ]
+        )
+    if mode["key"] == "artisan":
+        lines.extend(
+            [
+                f"- 基准多边形锚点：{vector['baseline_polygon_anchors']}",
+                f"- 锚点减少比例：{vector['anchor_reduction_ratio']:.1%}",
+                f"- 平滑锚点：{vector['smooth_anchors']}",
+                f"- 角点锚点：{vector['corner_anchors']}",
+                f"- 平均轮廓误差：{vector['mean_contour_error_px']:.2f} px",
+                f"- 最大轮廓误差：{vector['maximum_contour_error_px']:.2f} px",
+                f"- 轮廓误差阈值：{vector['curve_error_tolerance_px']:.2f} px",
             ]
         )
     if report["warnings"]:
@@ -588,13 +601,27 @@ def run_vectorization(config: RunConfig) -> dict[str, Any]:
             prepared_rgb = _prepare_rgb(rgba, preset)
             labels, paints = _build_paint_labels(rgba, prepared_rgb, preset)
             labels, cleaned_regions = _cleanup_small_regions(labels, preset.min_region_area)
-            paths, vector_metrics = _trace_design_paths(labels, paints, preset)
+            if preset.mode == "artisan":
+                from .artisan import ArtisanComplexityError, trace_artisan_paths
+
+                try:
+                    artisan_paths, vector_metrics = trace_artisan_paths(labels, preset)
+                except ArtisanComplexityError as exc:
+                    raise VectorizationError("vector_too_complex", str(exc)) from exc
+                paths = [(paints[label], path_parts) for label, path_parts in artisan_paths.items()]
+            else:
+                paths, vector_metrics = _trace_design_paths(labels, paints, preset)
             vector_metrics["cleaned_small_regions"] = cleaned_regions
             _write_design_svg(svg_path, work_image.width, work_image.height, paths)
             _design_preview(labels, paints).save(preview_path, format="PNG")
-            warnings_list.append(
-                "智能与轻量模式会减色、清理小区域并简化轮廓，输出是可编辑近似结果，不保证逐像素一致。"
-            )
+            if preset.mode == "artisan":
+                warnings_list.append(
+                    "匠心模式使用少量锚点和贝塞尔曲线重建轮廓；当前迭代属于几何艺术化重建，尚未使用语义分割模型。"
+                )
+            else:
+                warnings_list.append(
+                    "智能与轻量模式会减色、清理小区域并简化轮廓，输出是可编辑近似结果，不保证逐像素一致。"
+                )
 
         svg_size_limit = round(preset.max_svg_size_mb * 1024 * 1024)
         if svg_path.stat().st_size > svg_size_limit:
@@ -631,14 +658,31 @@ def run_vectorization(config: RunConfig) -> dict[str, Any]:
                 "height": work_image.height,
                 "path_objects": evidence["path_count"],
                 "subpaths": evidence["subpath_count"],
-                "points": evidence["point_count"],
+                "points": evidence["anchor_point_count"],
+                "coordinate_points": evidence["point_count"],
+                "control_points": evidence["control_point_count"],
+                "curve_segments": evidence["curve_segment_count"],
+                "line_segments": evidence["line_segment_count"],
                 "color_count": evidence["color_count"],
                 "paint_count": evidence["paint_count"],
                 "svg_bytes": evidence["bytes"],
                 **{
                     key: value
                     for key, value in vector_metrics.items()
-                    if key in {"cleaned_small_regions", "skipped_contours"}
+                    if key
+                    in {
+                        "cleaned_small_regions",
+                        "skipped_contours",
+                        "baseline_polygon_anchors",
+                        "anchor_reduction_ratio",
+                        "corner_anchors",
+                        "smooth_anchors",
+                        "source_contour_points",
+                        "mean_contour_error_px",
+                        "maximum_contour_error_px",
+                        "curve_error_tolerance_px",
+                        "adapted_contours",
+                    }
                 },
             },
             "validation": {

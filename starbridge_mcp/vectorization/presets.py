@@ -23,6 +23,8 @@ class VectorPreset:
     max_subpaths: int
     max_points: int
     max_svg_size_mb: float
+    curve_smoothing: float
+    corner_angle: float
 
     def public_parameters(self) -> dict[str, Any]:
         return asdict(self)
@@ -44,6 +46,8 @@ PRESETS: dict[str, VectorPreset] = {
         max_subpaths=30_000,
         max_points=240_000,
         max_svg_size_mb=48.0,
+        curve_smoothing=0.0,
+        corner_angle=0.0,
     ),
     "lightweight": VectorPreset(
         mode="lightweight",
@@ -60,6 +64,8 @@ PRESETS: dict[str, VectorPreset] = {
         max_subpaths=6_000,
         max_points=40_000,
         max_svg_size_mb=12.0,
+        curve_smoothing=0.0,
+        corner_angle=0.0,
     ),
     "exact": VectorPreset(
         mode="exact",
@@ -76,6 +82,26 @@ PRESETS: dict[str, VectorPreset] = {
         max_subpaths=2_000_000,
         max_points=8_000_000,
         max_svg_size_mb=64.0,
+        curve_smoothing=0.0,
+        corner_angle=0.0,
+    ),
+    "artisan": VectorPreset(
+        mode="artisan",
+        label_zh="匠心矢量",
+        purpose_zh="高级艺术模式；保留关键角点，以少量锚点生成直线与三次贝塞尔混合路径。",
+        max_dimension=1600,
+        colors=16,
+        blur_diameter=5,
+        min_region_area=24,
+        simplify_ratio=0.014,
+        alpha_levels=3,
+        alpha_threshold=12,
+        max_source_pixels=40_000_000,
+        max_subpaths=8_000,
+        max_points=60_000,
+        max_svg_size_mb=16.0,
+        curve_smoothing=0.82,
+        corner_angle=118.0,
     ),
 }
 
@@ -83,7 +109,7 @@ PRESETS: dict[str, VectorPreset] = {
 def normalize_mode(value: str) -> str:
     normalized = MODE_ALIASES.get(value.strip().lower(), value.strip().lower())
     if normalized not in PRESETS:
-        raise ValueError("Mode must be smart, lightweight, or exact.")
+        raise ValueError("Mode must be smart, lightweight, exact, or artisan.")
     return normalized
 
 
@@ -134,3 +160,8 @@ def _validate_preset(preset: VectorPreset) -> None:
         raise ValueError("Path safety limits must be positive.")
     if not 0 < preset.max_svg_size_mb <= 64:
         raise ValueError("SVG size limit must be greater than 0 and no more than 64 MiB.")
+    if preset.mode == "artisan":
+        if not 0 <= preset.curve_smoothing <= 1.5:
+            raise ValueError("Curve smoothing must be between 0 and 1.5.")
+        if not 30 <= preset.corner_angle <= 175:
+            raise ValueError("Corner angle must be between 30 and 175 degrees.")

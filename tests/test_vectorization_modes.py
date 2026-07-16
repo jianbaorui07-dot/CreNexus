@@ -18,6 +18,7 @@ from starbridge_mcp.vectorization import (
     engine,
     run_vectorization,
 )
+from starbridge_mcp.vectorization.svg_verify import SvgArtifactError, verify_svg_artifact
 
 HAS_DESIGN_RUNTIME = all(importlib.util.find_spec(name) is not None for name in ("cv2", "numpy"))
 
@@ -82,6 +83,33 @@ class VectorizationModeTests(unittest.TestCase):
         self.assertEqual(
             engine._configured(RunConfig("placeholder.png", mode="balanced")).mode, "smart"
         )
+
+    def test_svg_verifier_accepts_safe_cubic_paths_and_counts_real_anchors(self) -> None:
+        path = self.root / "safe-curves.svg"
+        path.write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" '
+            'viewBox="0 0 100 100"><path fill="#e63946" fill-rule="evenodd" '
+            'stroke="none" d="M 50 10 C 72 10 90 28 90 50 C 90 72 72 90 50 90 '
+            'C 28 90 10 72 10 50 C 10 28 28 10 50 10 Z"/></svg>\n',
+            encoding="utf-8",
+        )
+
+        evidence = verify_svg_artifact(path, expected_width=100, expected_height=100)
+
+        self.assertEqual(evidence["anchor_point_count"], 4)
+        self.assertEqual(evidence["control_point_count"], 8)
+        self.assertEqual(evidence["curve_segment_count"], 4)
+        self.assertEqual(evidence["line_segment_count"], 0)
+
+        unsafe = self.root / "unsafe-curves.svg"
+        unsafe.write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" '
+            'viewBox="0 0 100 100"><path fill="#e63946" fill-rule="evenodd" '
+            'stroke="none" d="M 10 10 c 10 0 20 10 20 20 L 10 80 Z"/></svg>',
+            encoding="utf-8",
+        )
+        with self.assertRaises(SvgArtifactError):
+            verify_svg_artifact(unsafe)
 
     def test_rejects_outside_output_without_creating_artifacts(self) -> None:
         source = self.make_exact_source()
@@ -173,6 +201,31 @@ class DesignVectorizationModeTests(VectorizationModeTests):
 
         self.assertEqual(raised.exception.code, "vector_too_complex")
         self.assertFalse(target.exists())
+
+    def test_artisan_mode_uses_cubic_curves_and_reduces_anchor_count(self) -> None:
+        source = self.make_design_source()
+
+        artisan = run_vectorization(
+            RunConfig(input_path=str(source), mode="artisan", reference_id="artisan-case")
+        )
+
+        output = self.output_root / "artisan-case" / "artisan"
+        svg = (output / "vector.svg").read_text(encoding="utf-8")
+        self.assertEqual(artisan["mode"]["label_zh"], "匠心矢量")
+        self.assertGreater(artisan["vector"]["curve_segments"], 0)
+        self.assertGreater(artisan["vector"]["control_points"], 0)
+        self.assertGreater(artisan["vector"]["anchor_reduction_ratio"], 0)
+        self.assertLess(
+            artisan["vector"]["points"],
+            artisan["vector"]["baseline_polygon_anchors"],
+        )
+        self.assertLessEqual(
+            artisan["vector"]["maximum_contour_error_px"],
+            artisan["vector"]["curve_error_tolerance_px"],
+        )
+        self.assertIn(" C ", svg)
+        self.assertNotIn("<image", svg)
+        self.assertNotIn("base64", svg)
 
 
 if __name__ == "__main__":

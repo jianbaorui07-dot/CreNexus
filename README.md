@@ -1,4 +1,4 @@
-# StarBridge：三模式图片矢量化 + Codex Skill + MCP
+# StarBridge：匠心矢量 + 三种基础矢量模式 + Codex Skill + MCP
 
 [![CI](https://github.com/jianbaorui07-dot/Codex-Integration-with-Creative-Industry-Software/actions/workflows/ci.yml/badge.svg)](https://github.com/jianbaorui07-dot/Codex-Integration-with-Creative-Industry-Software/actions/workflows/ci.yml)
 ![Windows first](https://img.shields.io/badge/Windows-first-2563eb)
@@ -7,9 +7,9 @@
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
-StarBridge 是以**智能矢量、轻量矢量和精确重建**为主推能力的本地创意软件开源接入层。它把 **Codex Skill** 的任务路由、**StarBridge MCP** 的结构化工具，以及 **Adobe UXP / Node Proxy** 的桌面软件通道组合成一套可审计的工作流；ComfyUI、Photoshop、CAD / AutoCAD、Blender 和 CapCut / 剪映等桥仍完整保留。
+StarBridge 是以**匠心矢量**为高级方向，并完整保留**智能矢量、轻量矢量和精确重建**三种基础模式的本地创意软件开源接入层。它把 **Codex Skill** 的任务路由、**StarBridge MCP** 的结构化工具，以及 **Adobe UXP / Node Proxy** 的桌面软件通道组合成一套可审计的工作流；ComfyUI、Photoshop、CAD / AutoCAD、Blender 和 CapCut / 剪映等桥仍完整保留。
 
-普通图片默认进入**智能矢量**：本地减色、透明度分级、小区域清理、颜色区域轮廓提取和节点简化。Logo、图标和纹样可选择**轻量矢量**；需要技术验证或像素存档时选择**精确重建**。三种模式都生成纯路径 SVG，并拒绝嵌入位图、脚本和外链；均不调用 Illustrator Image Trace。
+普通图片默认进入**智能矢量**；Logo、图标和纹样可选择**轻量矢量**；需要技术验证或像素存档时选择**精确重建**。在三种基础模式之上，新增加定位更高的 **匠心矢量**：保留关键角点，以更少锚点生成直线与三次贝塞尔混合轮廓，目标是逐步接近人工绘制的设计稿。所有模式都生成纯路径 SVG，并拒绝嵌入位图、脚本和外链；均不调用 Illustrator Image Trace。
 
 ```mermaid
 flowchart LR
@@ -17,9 +17,11 @@ flowchart LR
   B --> C["智能：色块与轮廓平衡"]
   B --> D["轻量：减少颜色与节点"]
   B --> E["精确：RGBA 像素矩形重建"]
+  B --> H["匠心：少锚点贝塞尔艺术重建"]
   C --> F["纯路径 SVG + 预览 + 报告"]
   D --> F
   E --> F
+  H --> F
   F --> G["可选 Illustrator AI 交付"]
 ```
 
@@ -30,7 +32,7 @@ flowchart LR
 | 状态 | 已覆盖能力 | 证据边界 |
 | --- | --- | --- |
 | stable（稳定） | MCP stdio、工具注册、resources / prompts、状态探针、路径脱敏、operation context、ComfyUI 队列/进度/任务快照与工作流验证；AutoCAD/DXF plan validate / dry-run / guarded write | Windows 与 Ubuntu CI 验证结构、schema、安全边界和 soft-exit |
-| primary（主推） | 智能、轻量、精确三模式统一 CLI→已验证 SVG、PNG 预览和 JSON/Markdown 报告 | 智能模式默认；轻量模式限制颜色与节点；精确模式验证 RGBA 像素一致；输出留在忽略 sandbox |
+| primary（主推） | 匠心高级模式 + 智能、轻量、精确三种基础模式→已验证 SVG、PNG 预览和报告 | 匠心模式统计锚点、控制点、曲线段、锚点减少率和轮廓误差；基础模式及旧入口完整保留 |
 | experimental（其他 Adobe 协议） | Photoshop / Illustrator 规划、预检、受控执行接口；彩色矢量化 plan / validate / compare / repair_plan / execute；旧量化 SVG fallback | 兼容与研究用途；默认不作为普通图片转矢量入口；compare 只读取两个明确授权文件 |
 | UXP 安全执行已实现 | Photoshop `executeAsModal` 有界排队、取消状态、history commit / rollback、临时文档自动关闭 | 已通过 Node 模拟与协议测试；仍需已授权 Photoshop 桌面实测 |
 | planned（仍在推进） | repair plan → Illustrator execute → compare 的显式确认闭环、Adobe 桌面端端到端验收、Blender 确认渲染、CapCut 草稿骨架 | 未经本地运行证据，不宣称真实桌面控制已验证 |
@@ -38,17 +40,18 @@ flowchart LR
 
 Photoshop, Illustrator, Blender, and CapCut write flows are experimental or planned unless a reviewed local run proves otherwise.
 
-完整状态见 [三模式矢量化](docs/vectorization-modes.md)、[精确像素矢量重建](docs/exact-pixel-vectorization.md)、[能力矩阵](docs/CAPABILITY_MATRIX.md)、[彩色矢量化协议](docs/color-faithful-vectorization.md) 和 [v0.1-alpha 发布说明](docs/RELEASE_V0_1_ALPHA.md)。
+完整状态见 [匠心矢量](docs/artisan-vector-mode.md)、[四模式矢量化](docs/vectorization-modes.md)、[精确像素矢量重建](docs/exact-pixel-vectorization.md)、[能力矩阵](docs/CAPABILITY_MATRIX.md) 和 [v0.1-alpha 发布说明](docs/RELEASE_V0_1_ALPHA.md)。
 
-## 三种产品模式
+## 四种产品模式
 
 | 模式 | 产品定位 | 核心处理 |
 | --- | --- | --- |
+| **匠心矢量（高级）** | 艺术稿、品牌图形和接近人工绘制的高级交付 | 自适应少锚点、角点保护、三次贝塞尔、轮廓误差门槛 |
 | **智能矢量（默认）** | 普通插画、海报素材和设计再编辑 | 24 色默认、透明度分级、小区域清理、复合轮廓、适度节点简化 |
 | **轻量矢量** | Logo、图标、纹样和流畅编辑 | 8 色默认、更强清理和简化、较低子路径/节点/文件大小上限 |
 | **精确重建** | 专业验证、技术证明和像素网格存档 | 不减色、不缩放；连续同色扫描段横向与纵向合并，重建后逐像素比对 |
 
-完整参数、输出和边界见[三模式矢量化文档](docs/vectorization-modes.md)。精确模式的桌面 AI 证据见[精确像素矢量重建文档](docs/exact-pixel-vectorization.md)。
+匠心模式的迭代目标与质量门槛见[匠心矢量文档](docs/artisan-vector-mode.md)；完整参数与输出见[四模式矢量化文档](docs/vectorization-modes.md)。
 
 ### 精确模式边界
 
@@ -98,6 +101,7 @@ PowerShell 如果拦截 `npm.ps1`，请使用 `npm.cmd`。
 
 | 路线 | 适用场景 | 当前证据 |
 | --- | --- | --- |
+| **匠心矢量（高级）** | 少锚点、平滑贝塞尔、人工设计感 | 安全 `M/L/C/Z` 路径；报告锚点减少率与轮廓误差；自适应增加必要锚点 |
 | **智能矢量（默认）** | 普通图片的可编辑色块和轮廓 | 统一 CLI、透明度处理、区域清理、节点简化、无嵌入位图 |
 | **轻量矢量** | Logo、图标、纹样和编辑性能优先 | 更少颜色、更少碎片、更严格的路径/节点/文件大小限制 |
 | **精确重建** | 原始 RGBA 像素网格→矩形复合路径 | 像素一致性验证；736×1314 本机旧样例成功生成 742,922 个子路径 AI |
@@ -116,6 +120,7 @@ npm.cmd run illustrator:vectorize -- --input "<input.png>" --reference-id "refer
 ```powershell
 npm.cmd run illustrator:vectorize -- --input "<input.png>" --mode lightweight --reference-id "reference"
 npm.cmd run illustrator:vectorize -- --input "<input.png>" --mode exact --reference-id "reference"
+npm.cmd run illustrator:vectorize -- --input "<input.png>" --mode artisan --reference-id "reference"
 ```
 
 默认输出写入已被 Git 忽略的 `examples/output/vectorization/<reference-id>/<mode>/`，包含 `vector.svg`、`preview.png`、`parameters.json`、`vector_report.json` 和 `vector_report.md`。报告只记录脱敏 hash 和仓库相对输出路径，不返回源文件名或绝对路径。
@@ -127,7 +132,7 @@ python -m pip install -e ".[vector-app]"
 npm.cmd run vector-app:start
 ```
 
-桌面原型支持拖放、三模式卡片、参数调整、后台转换、原图/结果双预览、结果指标和打开输出目录。基础转换不要求安装 Illustrator。
+桌面原型支持拖放、四模式卡片、参数调整、后台转换、原图/结果双预览、结果指标和打开输出目录。匠心模式额外显示锚点减少比例；基础转换不要求安装 Illustrator。
 
 旧量化命令仍可用于兼容实验：
 
@@ -162,7 +167,8 @@ flowchart LR
 | 项目定位 | [Skill / MCP / UXP 定位](docs/skill-mcp-uxp-positioning.md) | `python scripts\starbridge_preflight.py --markdown` |
 | Photoshop | [Photoshop 接入](docs/03-codex-photoshop.md) / [UXP modal 安全协议](docs/photoshop-uxp-modal-envelope.md) | `npm.cmd run photoshop:diagnose` |
 | Illustrator | [Illustrator 接入](docs/05-codex-illustrator.md) | `npm.cmd run illustrator:preflight:plan` |
-| 三模式图片转 SVG | [三模式矢量化](docs/vectorization-modes.md) | `npm.cmd run illustrator:vectorize -- --input "<input.png>" --reference-id "reference"` |
+| 四模式图片转 SVG | [四模式矢量化](docs/vectorization-modes.md) | `npm.cmd run illustrator:vectorize -- --input "<input.png>" --reference-id "reference"` |
+| 匠心少锚点贝塞尔 | [匠心矢量](docs/artisan-vector-mode.md) | `npm.cmd run illustrator:vectorize -- --input "<input.png>" --mode artisan --reference-id "reference"` |
 | 精确图片转 SVG / AI（兼容入口） | [精确像素矢量重建](docs/exact-pixel-vectorization.md) | `npm.cmd run illustrator:vectorize:offline -- --input "<input.png>" --reference-id "reference"` |
 | 其他彩色矢量协议 | [参考图彩色矢量化协议](docs/color-faithful-vectorization.md) | MCP `illustrator.color_vectorize_compare` |
 | ComfyUI | [ComfyUI 接入](docs/02-codex-comfyui.md) | `python examples\comfy_bridge\comfy_probe.py` |
@@ -178,7 +184,7 @@ flowchart LR
 | --- | --- |
 | 图像生成区 | ComfyUI workflow 校验、队列监控、模板和任务生命周期摘要 |
 | 工程制图区 | CAD / AutoCAD plan、DXF dry-run 与受控写入 |
-| AI 矢量文件桥 | 主推智能、轻量、精确三模式；另保留 Illustrator 规划、比较、修复协议和旧量化 SVG 实验 |
+| AI 矢量文件桥 | 新增高定位匠心矢量；智能、轻量、精确及旧量化入口继续保留 |
 | 图像编辑区 | Photoshop UXP、Node Proxy、modal 回滚与 sandbox demo |
 | 视频草稿区 | CapCut / 剪映只读探针；未配置时报告“剪映可执行文件”状态 |
 
@@ -241,7 +247,7 @@ npm.cmd test
 
 ## English
 
-StarBridge is a Windows-first, local-first integration layer with three verified raster-to-vector modes: Smart Vector by default, Lightweight Vector for low-complexity editing, and Exact Reconstruction for RGBA pixel-grid proof. Every mode emits raster-free SVG without Illustrator Image Trace. The repository also retains guarded Adobe protocols, legacy quantized SVG research, ComfyUI, CAD/AutoCAD, Blender, CapCut/Jianying, MCP stdio, UXP, and local proxy bridges. Public examples write only to ignored safe outputs; desktop writes require explicit confirmation.
+StarBridge is a Windows-first, local-first integration layer with a premium Artisan Vector mode above three preserved baseline modes. Artisan Vector uses adaptive anchor reduction, protected corners, and mixed line/cubic Bézier paths while reporting contour error. Smart, Lightweight, and Exact Reconstruction remain available unchanged. Every mode emits raster-free SVG without Illustrator Image Trace; desktop writes require explicit confirmation.
 
 ## License
 

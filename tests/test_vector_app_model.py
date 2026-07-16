@@ -45,11 +45,14 @@ class VectorAppModelTests(unittest.TestCase):
         smart = parameters_for_mode("smart")
         lightweight = parameters_for_mode("lightweight")
         exact = parameters_for_mode("exact")
+        artisan = parameters_for_mode("artisan")
 
         self.assertEqual(smart.colors, 24)
         self.assertEqual(lightweight.colors, 8)
         self.assertIsNone(exact.colors)
         self.assertIsNone(exact.simplify_ratio)
+        self.assertEqual(artisan.colors, 16)
+        self.assertGreater(artisan.simplify_ratio or 0, smart.simplify_ratio or 0)
 
         config = build_run_config(
             self.source,
@@ -123,6 +126,11 @@ class VectorAppGuiTests(unittest.TestCase):
         self.assertEqual(self.window.selected_mode, "exact")
         self.assertFalse(self.window.colors_input.isEnabled())
         self.assertTrue(self.window.exact_note.isVisible() or not self.window.isVisible())
+
+        self.window._select_mode("artisan")
+        self.assertEqual(self.window.selected_mode, "artisan")
+        self.assertEqual(self.window.colors_input.value(), 16)
+        self.assertTrue(self.window.colors_input.isEnabled())
 
     def test_window_completes_a_background_lightweight_job(self) -> None:
         from starbridge_mcp.vectorization import engine

@@ -25,6 +25,12 @@ class ModeCard:
 
 MODE_CARDS = (
     ModeCard(
+        key="artisan",
+        title="匠心矢量",
+        tagline="高级 · 少锚点贝塞尔艺术重建",
+        detail="保留关键角点，以更少锚点生成更接近人工绘制的曲线。",
+    ),
+    ModeCard(
         key="smart",
         title="智能矢量",
         tagline="默认 · 视觉与编辑性平衡",
@@ -112,6 +118,8 @@ def result_metrics(result: dict[str, Any]) -> tuple[tuple[str, str], ...]:
     exact = result.get("exact_validation")
     if exact is not None:
         metrics.append(("像素一致", "是" if exact["pixel_match"] else "否"))
+    if result.get("mode", {}).get("key") == "artisan":
+        metrics.append(("锚点减少", f"{vector['anchor_reduction_ratio']:.1%}"))
     return tuple(metrics)
 
 

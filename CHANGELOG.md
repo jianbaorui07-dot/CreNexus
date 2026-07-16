@@ -2,6 +2,14 @@
 
 ## Unreleased / Optimizations
 
+### 2026-07-16 — Artisan Vector iteration 1
+
+* Added a premium `artisan` mode without replacing Smart, Lightweight, Exact, or legacy entry points.
+* Added protected-corner anchor classification and mixed absolute `M/L/C/Z` paths with cubic Bézier control handles.
+* Added adaptive contour fitting that restores anchors when the measured contour error exceeds the quality tolerance.
+* Added separate anchor, control-point, curve-segment, line-segment, anchor-reduction, and contour-error evidence to the verifier and reports.
+* Added Artisan mode to the CLI and PySide6 desktop mode cards, with an offscreen end-to-end test.
+
 ### 2026-07-16 — Three-mode vector engine and desktop prototype
 
 * Added one verified vectorization core with Smart Vector as the default, Lightweight Vector for low-complexity editing, and Exact Reconstruction for RGBA pixel proof.

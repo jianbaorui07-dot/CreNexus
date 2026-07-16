@@ -24,7 +24,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--mode",
         default="smart",
-        help="smart (default), lightweight, exact; balanced is accepted as a smart alias",
+        help=(
+            "smart (default), lightweight, exact, artisan; balanced is accepted as a smart alias"
+        ),
     )
     parser.add_argument("--reference-id", default="vector-job")
     parser.add_argument("--output-dir", default="")
