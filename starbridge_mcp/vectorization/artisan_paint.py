@@ -13,6 +13,12 @@ from pathlib import Path
 from typing import Any
 
 from .artisan_brief import ArtisanBriefError, load_style_profile
+from .artisan_direction import (
+    ArtisanDirectionError,
+    build_illustrator_map,
+    load_art_direction,
+    palette_mapping,
+)
 from .artisan_edit import (
     INTENT_SELECTOR,
     SHAPE_ID,
@@ -170,12 +176,13 @@ def _paint_objects(
         attributes = _attributes(line)
         fill = attributes.get("fill", "").lower()
         path_data = attributes.get("d", "")
-        required = {"data-role", "data-depth", "data-parent"}
+        required = {"data-role", "data-depth", "data-parent", "data-name"}
         if (
             not required.issubset(attributes)
             or not HEX_COLOR.fullmatch(fill)
             or attributes.get("stroke") != "none"
             or not path_data
+            or attributes.get("data-name") != str(item[5])
         ):
             raise ArtisanPaintError(
                 "unsupported_selection", "Paint structure refinement accepts closed fills only."
@@ -206,11 +213,16 @@ def _palette_map(
     objects: list[PaintObject],
     strategy: str,
     maximum_delta_e: float,
+    manual_mapping: dict[str, str] | None = None,
 ) -> dict[str, str]:
-    if strategy == "manual-groups":
+    mapping = {item.fill: item.fill for item in objects}
+    if strategy == "manual-groups" and manual_mapping is None:
         raise ArtisanPaintError(
-            "manual_palette_required", "Manual color groups require an explicit future palette map."
+            "manual_palette_required", "Manual color groups require explicit bound art direction."
         )
+    if strategy == "manual-groups":
+        mapping.update(manual_mapping or {})
+        return mapping
     foundation_colors = {item.fill for item in objects if item.role == "foundation"}
     candidates = [
         item for item in objects if item.role != "foundation" and item.fill not in foundation_colors
@@ -219,7 +231,6 @@ def _palette_map(
     for item in candidates:
         weights[item.fill] = weights.get(item.fill, 0) + max(1, item.bbox[2] * item.bbox[3])
     ordered = sorted(weights, key=lambda color: (-weights[color], color))
-    mapping = {item.fill: item.fill for item in objects}
     if strategy == "preserve-palette" or len(ordered) < 2:
         return mapping
     if strategy == "monochrome":
@@ -286,6 +297,48 @@ def _report(core: dict[str, Any]) -> dict[str, Any]:
     return {**core, "patch_sha256": digest, "patch_ref": f"patch:{digest[:12]}"}
 
 
+def _validated_manual_mapping(
+    objects: list[PaintObject],
+    direction: dict[str, Any],
+) -> dict[str, str]:
+    selected_colors = {item.fill for item in objects}
+    foundation_colors = {item.fill for item in objects if item.role == "foundation"}
+    mapping = palette_mapping(direction)
+    if set(mapping) - selected_colors:
+        raise ArtisanPaintError(
+            "manual_palette_source_missing", "Manual palette references an unselected source color."
+        )
+    if foundation_colors.intersection(mapping) or foundation_colors.intersection(mapping.values()):
+        raise ArtisanPaintError(
+            "manual_foundation_protected",
+            "Manual palette cannot recolor to or from foundation paint.",
+        )
+    return mapping
+
+
+def _resolved_name_overrides(
+    direction: dict[str, Any] | None,
+    selected_ids: set[str],
+    removed_to_retained: dict[str, str],
+) -> dict[str, str]:
+    if direction is None:
+        return {}
+    requested = dict(direction["object_names"])
+    if set(requested) - selected_ids:
+        raise ArtisanPaintError(
+            "manual_name_target_missing", "Object naming references an unselected shape."
+        )
+    resolved: dict[str, str] = {}
+    for shape_id, name in requested.items():
+        retained_id = removed_to_retained.get(shape_id, shape_id)
+        if retained_id in resolved and resolved[retained_id] != name:
+            raise ArtisanPaintError(
+                "manual_name_conflict", "Merged shapes contain conflicting explicit names."
+            )
+        resolved[retained_id] = name
+    return resolved
+
+
 def refine_paint_structure(
     *,
     svg_path: str,
@@ -293,14 +346,18 @@ def refine_paint_structure(
     profile_path: str,
     selector: str,
     output_dir: str,
+    direction_path: str | None = None,
 ) -> dict[str, Any]:
     base_path = Path(svg_path).expanduser()
     if not base_path.is_file() or base_path.suffix.lower() != ".svg":
         raise ArtisanPaintError("invalid_svg", "Base SVG must be one explicit SVG file.")
+    direction: dict[str, Any] | None = None
     try:
         index = load_edit_index(index_path)
         profile = load_style_profile(profile_path)
-    except (EditIndexError, ArtisanBriefError) as exc:
+        if direction_path is not None:
+            direction = load_art_direction(direction_path)
+    except (EditIndexError, ArtisanBriefError, ArtisanDirectionError) as exc:
         raise ArtisanPaintError(exc.code, str(exc)) from exc
     if index["schema_version"] != 2:
         raise ArtisanPaintError(
@@ -325,8 +382,37 @@ def refine_paint_structure(
     appearance = profile["appearance"]
     paint_profile = appearance["paint"]
     strategy = str(paint_profile["strategy"])
-    mapping = _palette_map(objects, strategy, float(paint_profile["delta_e"]))
+    if strategy == "manual-groups" and direction is None:
+        raise ArtisanPaintError(
+            "manual_palette_required", "Manual color groups require explicit bound art direction."
+        )
+    if strategy != "manual-groups" and direction is not None:
+        raise ArtisanPaintError(
+            "unexpected_art_direction", "Art direction is accepted only by manual-groups."
+        )
+    if direction is not None and (
+        direction["base_edit_ref"] != index["edit_ref"]
+        or direction["profile_ref"] != profile["profile_ref"]
+    ):
+        raise ArtisanPaintError(
+            "art_direction_binding_mismatch", "Art direction does not match this index and profile."
+        )
+    manual_mapping = _validated_manual_mapping(objects, direction) if direction else None
+    mapping = _palette_map(
+        objects,
+        strategy,
+        float(paint_profile["delta_e"]),
+        manual_mapping,
+    )
     all_attributes = [_attributes(line) for line in lines.values()]
+    if direction is not None:
+        available_roles = {
+            attributes["data-role"] for attributes in all_attributes if "data-role" in attributes
+        }
+        if {role for role, _ in direction["layer_names"]} - available_roles:
+            raise ArtisanPaintError(
+                "manual_layer_target_missing", "Layer naming references a role absent from the SVG."
+            )
     parent_ids = {
         attributes["data-parent"]
         for attributes in all_attributes
@@ -347,6 +433,8 @@ def refine_paint_structure(
         batch_by_retained[retained.shape_id] = batch
         for removed in batch[1:]:
             removed_to_retained[removed.shape_id] = retained.shape_id
+    selected_ids = {item.shape_id for item in objects}
+    name_overrides = _resolved_name_overrides(direction, selected_ids, removed_to_retained)
     for item in objects:
         if item.shape_id in removed_to_retained:
             continue
@@ -354,6 +442,8 @@ def refine_paint_structure(
         mapped_color = mapping[item.fill]
         if mapped_color != item.fill:
             line = _replace_attribute(line, "fill", mapped_color)
+        if item.shape_id in name_overrides:
+            line = _replace_attribute(line, "data-name", name_overrides[item.shape_id])
         batch = batch_by_retained.get(item.shape_id)
         if batch:
             line = _replace_attribute(line, "d", " ".join(member.path_data for member in batch))
@@ -365,7 +455,12 @@ def refine_paint_structure(
         raise ArtisanPaintError(
             "foundation_color_changed", "Foundation colors must remain unchanged."
         )
-    if not color_changed and block_reduction < float(paint_profile["min_block_reduction"]):
+    direction_changed = bool(direction and (name_overrides or direction["layer_names"]))
+    if (
+        not color_changed
+        and not direction_changed
+        and block_reduction < float(paint_profile["min_block_reduction"])
+    ):
         raise ArtisanPaintError(
             "no_safe_paint_refinement", "No selected paint passed block or color reduction gates."
         )
@@ -375,11 +470,13 @@ def refine_paint_structure(
             "unsafe_output", "Output directory must not replace the source set."
         )
     output.mkdir(parents=True, exist_ok=True)
-    published = (
+    published = [
         output / "vector.svg",
         output / "artisan_edit_index.json",
         output / "artisan_paint_patch.json",
-    )
+    ]
+    if direction is not None:
+        published.append(output / "artisan_illustrator_map.json")
     if any(path.exists() for path in published):
         raise ArtisanPaintError("output_exists", "Paint refinement output already exists.")
     output_lines: list[str] = []
@@ -401,7 +498,6 @@ def refine_paint_structure(
             after = verify_svg_artifact(staged_svg)
         except SvgArtifactError as exc:
             raise ArtisanPaintError(exc.code, str(exc)) from exc
-        selected_ids = {item.shape_id for item in objects}
         refined_lines = _path_lines(refined_payload.decode("utf-8"))
         unselected_ids = set(lines) - selected_ids
         unselected_unchanged = all(lines[item] == refined_lines[item] for item in unselected_ids)
@@ -435,6 +531,7 @@ def refine_paint_structure(
             before["path_count"] == after["path_count"]
             and before["color_count"] == after["color_count"]
             and before["paint_count"] == after["paint_count"]
+            and not direction_changed
         ):
             raise ArtisanPaintError(
                 "no_measurable_paint_reduction",
@@ -446,6 +543,8 @@ def refine_paint_structure(
             retained[2] = _bbox_union(batch)
             retained[3] = sum(item.anchors for item in batch)
             retained[4] = sum(item.subpaths for item in batch)
+        for shape_id, name in name_overrides.items():
+            object_by_id[shape_id][5] = name
         updated_objects = [
             object_by_id[str(item[0])]
             for item in index["objects"]
@@ -458,6 +557,19 @@ def refine_paint_structure(
             svg_sha256=refined_sha256,
             objects=updated_objects,
             parent_edit_ref=index["edit_ref"],
+        )
+        illustrator_map = (
+            build_illustrator_map(
+                direction_ref=direction["direction_ref"],
+                svg_sha256=refined_sha256,
+                edit_ref=updated_index["edit_ref"],
+                layer_names=[[f"layer-{role}", name] for role, name in direction["layer_names"]],
+                object_names=[
+                    [shape_id, name] for shape_id, name in sorted(name_overrides.items())
+                ],
+            )
+            if direction is not None
+            else None
         )
         color_deltas = [
             (_delta_e(item.fill, mapping[item.fill]), max(1, item.bbox[2] * item.bbox[3]))
@@ -475,7 +587,10 @@ def refine_paint_structure(
             "profile_ref": profile["profile_ref"],
             "selector": selector,
             "paint_strategy": strategy,
-            "maximum_color_delta_e_allowed": paint_profile["delta_e"],
+            "client_explicit_direction": direction is not None,
+            "maximum_color_delta_e_allowed": (
+                None if strategy == "manual-groups" else paint_profile["delta_e"]
+            ),
             "selected_blocks_before": selected_before,
             "selected_blocks_after": selected_after,
             "block_reduction_ratio": round(1.0 - selected_after / selected_before, 6),
@@ -511,6 +626,15 @@ def refine_paint_structure(
             "local_analysis_only": True,
             "external_ai_calls": 0,
         }
+        if direction is not None and illustrator_map is not None:
+            report_core.update(
+                {
+                    "direction_ref": direction["direction_ref"],
+                    "explicit_object_names": len(name_overrides),
+                    "explicit_layer_names": len(direction["layer_names"]),
+                    "illustrator_map_ref": illustrator_map["map_ref"],
+                }
+            )
         report = _report(report_core)
         (staging / "artisan_edit_index.json").write_text(
             json.dumps(updated_index, ensure_ascii=False, separators=(",", ":")) + "\n",
@@ -520,12 +644,24 @@ def refine_paint_structure(
             json.dumps(report, ensure_ascii=False, separators=(",", ":")) + "\n",
             encoding="utf-8",
         )
+        if illustrator_map is not None:
+            (staging / "artisan_illustrator_map.json").write_text(
+                json.dumps(illustrator_map, ensure_ascii=False, separators=(",", ":")) + "\n",
+                encoding="utf-8",
+            )
+        staged_files = [
+            staged_svg,
+            staging / "artisan_edit_index.json",
+            staging / "artisan_paint_patch.json",
+        ]
+        if illustrator_map is not None:
+            staged_files.append(staging / "artisan_illustrator_map.json")
         for staged, destination in zip(
-            (staged_svg, staging / "artisan_edit_index.json", staging / "artisan_paint_patch.json"),
+            staged_files,
             published,
         ):
             os.replace(staged, destination)
-    return {
+    result = {
         "ok": True,
         "patch_ref": report["patch_ref"],
         "edit_ref": updated_index["edit_ref"],
@@ -535,6 +671,14 @@ def refine_paint_structure(
         "colors_after": after["color_count"],
         "external_ai_calls": 0,
     }
+    if direction is not None and illustrator_map is not None:
+        result.update(
+            {
+                "direction_ref": direction["direction_ref"],
+                "illustrator_map_ref": illustrator_map["map_ref"],
+            }
+        )
+    return result
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -543,6 +687,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--index", required=True)
     parser.add_argument("--profile", required=True)
     parser.add_argument("--selector", default="intent:paint-region")
+    parser.add_argument("--direction")
     parser.add_argument("--output-dir", required=True)
     try:
         args = parser.parse_args(argv)
@@ -552,6 +697,7 @@ def main(argv: list[str] | None = None) -> int:
             profile_path=args.profile,
             selector=args.selector,
             output_dir=args.output_dir,
+            direction_path=args.direction,
         )
     except ArtisanPaintError as exc:
         result = {"ok": False, "error": {"code": exc.code, "message": str(exc)}}

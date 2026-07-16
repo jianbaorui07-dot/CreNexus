@@ -105,7 +105,7 @@ python -m starbridge_mcp.vectorization.artisan_edit `
   --selector intent:ornament
 ```
 
-返回值只包含 `edit_ref`、匹配对象数、合并边界框、局部锚点、设计师名称和最多 24 个形状 ID，不包含源文件名或绝对路径。Iteration 6 可把三个客户答案编译为短 `profile_ref`，随后用 `artisan_refine` 对选中描边执行矢量到矢量局部精修；Iteration 7 再用 `artisan_paint` 安全合并非重叠叶子块面，并按明确的颜色策略处理调色板。两类操作都生成 `patch_ref` 和父补丁链。完整结构、预校准和局部处理都在本地执行，`external_ai_calls` 为 `0`。
+返回值只包含 `edit_ref`、匹配对象数、合并边界框、局部锚点、设计师名称和最多 24 个形状 ID，不包含源文件名或绝对路径。Iteration 6 可把三个客户答案编译为短 `profile_ref`，随后用 `artisan_refine` 对选中描边执行矢量到矢量局部精修；Iteration 7 再用 `artisan_paint` 安全合并非重叠叶子块面；Iteration 8 用 `artisan_direction` 编译客户明确给出的颜色组和设计命名。操作会生成短引用和父补丁链，完整结构、预校准和局部处理都在本地执行，`external_ai_calls` 为 `0`。
 
 ```powershell
 python -m starbridge_mcp.vectorization.artisan_paint `
@@ -116,7 +116,35 @@ python -m starbridge_mcp.vectorization.artisan_paint `
   --output-dir "<new-output>"
 ```
 
-`preserve-palette` 只允许完全同色块面合并；`reduce-near-colors` 额外启用 Delta-E 近色门；`monochrome` 必须由客户明确选择；`manual-groups` 已保留为配置选项，但在显式颜色映射协议完成前会安全拒绝，不会猜测客户配色。块面合并只接受同角色、同深度、同父对象、无子对象、边界框互不重叠的对象，并保持源子路径和锚点不变。
+`preserve-palette` 只允许完全同色块面合并；`reduce-near-colors` 额外启用 Delta-E 近色门；`monochrome` 必须由客户明确选择；`manual-groups` 必须再提供经过编译的人工指令，不提供时安全拒绝。块面合并只接受同角色、同深度、同父对象、无子对象、边界框互不重叠的对象，并保持源子路径和锚点不变。
+
+人工指令源文件只包含短引用和数组映射：
+
+```json
+{
+  "base_edit_ref": "edit:0123456789ab",
+  "profile_ref": "style:abcdef012345",
+  "palette_groups": [["#b94f42", ["#b94f42", "#ba5043"]]],
+  "object_names": [["shape-0004", "朱红装饰"]],
+  "layer_names": [["subject", "主体色块"]]
+}
+```
+
+```powershell
+python -m starbridge_mcp.vectorization.artisan_direction `
+  --spec "artisan_direction_spec.json" `
+  --output "artisan_direction.json"
+
+python -m starbridge_mcp.vectorization.artisan_paint `
+  --svg "<output>/vector.svg" `
+  --index "<output>/artisan_edit_index.json" `
+  --profile "artisan_style_profile.json" `
+  --direction "artisan_direction.json" `
+  --selector intent:paint-region `
+  --output-dir "<new-output>"
+```
+
+输出额外包含 `artisan_illustrator_map.json`。它绑定输出 SVG 哈希、`edit_ref` 与 `direction_ref`，仅描述客户指定的设计层和对象名称；真正写入 Illustrator 仍需明确确认。
 
 精确模式额外报告：
 

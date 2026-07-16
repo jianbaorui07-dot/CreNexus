@@ -207,6 +207,31 @@ python -m starbridge_mcp.vectorization.artisan_paint `
 
 同一夹具使用 `preserve-palette` 时，选中块面从 5 减到 4，颜色仍为 4。schema-v2 配置小于 1,200 bytes，paint 补丁小于 2,300 bytes；后续请求可传 `profile_ref + edit_ref + selector`，无需反复传图片或完整 SVG。
 
+## Iteration 8：显式人工配色与设计命名
+
+第八轮完成第七轮预留的 `manual-groups`，但不让算法猜测客户的审美决定。客户先选择手动颜色策略，再提交一个只含短引用和数组映射的 spec；本地编译器验证颜色、稳定形状 ID、名称字符、数量上限与重复来源，并生成不可变 `direction_ref`。
+
+```text
+edit_ref + profile_ref
+→ 客户显式颜色组 / 对象名 / 图层名
+→ 本地编译 direction_ref
+→ 校验指令与当前 SVG 索引、风格配置完全绑定
+→ 应用颜色组和非重叠叶子块面合并
+→ 把被合并对象的人工名称转移到保留对象
+→ 输出 patch_ref + edit_ref + imap_ref
+```
+
+人工指令的安全规则：
+
+- 一个源颜色只能属于一个颜色组，未选颜色和不存在的形状 ID 会拒绝；
+- 禁止从基础色改出，也禁止把其他颜色改成基础色；
+- 对象名称只允许安全字符，不能包含路径、引号或 XML 控制字符；
+- 同一合并组内两个不同人工名称会产生 `manual_name_conflict`，不会自动二选一；
+- 指令、Illustrator 映射和编辑索引均有独立哈希，并相互绑定短引用；
+- `artisan_illustrator_map.json` 只是经验证的交付映射，包含 `requires_user_confirmed_illustrator_write: true`，本轮没有自动操作桌面软件。
+
+合成回归夹具的手动颜色组把 5 个选中块面减到 3 个、全图颜色/paint 从 4/4 减到 3/3；6 个子路径、22 个锚点、基础色、重叠块和未选描边保持不变。被合并的 `shape-0004` 人工名称被确定性转移到保留的 `shape-0002`。指令与 Illustrator 映射分别小于 900 bytes，paint 补丁小于 2,800 bytes，均不包含源文件名或绝对路径。
+
 ## 验收指标
 
 | 指标 | 含义 |
@@ -337,6 +362,7 @@ npm.cmd run vector-app:start
 5. **Iteration 5：几何意图与局部索引（已完成）。** 主轮廓、装饰纹、细节和微细节分级，覆盖感知短枝清理、四级质量回退与 6 KB 级编辑索引。
 6. **Iteration 6：客户意图与局部精修（已完成）。** 三问预校准、SVG/索引绑定、设计师可读命名、曲率布线、严格拓扑门控和补丁链。
 7. **Iteration 7：块面与颜色设计（已完成）。** 非重叠叶子块面合并、基础色保护、感知近色门、paint 补丁链和无收益拒绝发布。
-8. **Iteration 8：人工配色与 Illustrator 映射。** 增加显式手动颜色组、设计层名称映射和可回滚的桌面交付验证。
+8. **Iteration 8：人工配色与 Illustrator 映射（已完成协议层）。** 显式颜色组、对象命名转移、设计层映射、三重引用绑定和低 token 指令。
+9. **Iteration 9：确认式 Illustrator 应用。** 在已授权桌面环境中消费 `imap_ref`，以事务方式应用名称、回读验证并支持回滚。
 
 匠心模式的长期目标不是声称“一键等同人工设计”，而是用可验证的锚点数量、轮廓误差、结构分层和可编辑性，逐轮缩小与专业设计师手工矢量稿之间的差距。

@@ -11,6 +11,10 @@ from starbridge_mcp.vectorization.artisan_brief import (
     compile_style_profile,
     load_style_profile,
 )
+from starbridge_mcp.vectorization.artisan_direction import (
+    compile_art_direction,
+    load_illustrator_map,
+)
 from starbridge_mcp.vectorization.artisan_edit import build_edit_index, load_edit_index
 from starbridge_mcp.vectorization.artisan_paint import ArtisanPaintError, refine_paint_structure
 from starbridge_mcp.vectorization.svg_verify import verify_svg_artifact
@@ -83,6 +87,36 @@ class ArtisanPaintStructureTests(unittest.TestCase):
         path.write_text(
             json.dumps(compile_style_profile(answers), ensure_ascii=False), encoding="utf-8"
         )
+        return path
+
+    def direction(
+        self,
+        profile_path: Path,
+        *,
+        palette_groups: list[list[object]] | None = None,
+        object_names: list[list[str]] | None = None,
+        layer_names: list[list[str]] | None = None,
+        edit_ref: str | None = None,
+    ) -> Path:
+        profile = load_style_profile(str(profile_path))
+        index = load_edit_index(str(self.index))
+        direction = compile_art_direction(
+            {
+                "base_edit_ref": edit_ref or index["edit_ref"],
+                "profile_ref": profile["profile_ref"],
+                "palette_groups": palette_groups
+                if palette_groups is not None
+                else [["#b94f42", ["#b94f42", "#ba5043"]]],
+                "object_names": object_names
+                if object_names is not None
+                else [["shape-0004", "朱红装饰"]],
+                "layer_names": layer_names
+                if layer_names is not None
+                else [["subject", "主体色块"]],
+            }
+        )
+        path = self.root / f"{direction['direction_ref'].replace(':', '-')}.json"
+        path.write_text(json.dumps(direction, ensure_ascii=False), encoding="utf-8")
         return path
 
     def test_near_colors_and_non_overlapping_leaf_blocks_are_reduced(self) -> None:
@@ -161,6 +195,135 @@ class ArtisanPaintStructureTests(unittest.TestCase):
                 output_dir=str(self.root / "mismatch"),
             )
         self.assertEqual(raised.exception.code, "svg_index_mismatch")
+
+    def test_explicit_manual_direction_reduces_and_names_design_structure(self) -> None:
+        original_lines = self.svg.read_text(encoding="utf-8").splitlines()
+        profile = self.profile("manual-groups")
+        direction = self.direction(profile)
+        result = refine_paint_structure(
+            svg_path=str(self.svg),
+            index_path=str(self.index),
+            profile_path=str(profile),
+            direction_path=str(direction),
+            selector="intent:paint-region",
+            output_dir=str(self.root / "manual-directed"),
+        )
+        self.assertEqual((result["blocks_before"], result["blocks_after"]), (5, 3))
+        self.assertEqual((result["colors_before"], result["colors_after"]), (4, 3))
+        self.assertRegex(result["direction_ref"], r"^direction:[0-9a-f]{12}$")
+        self.assertRegex(result["illustrator_map_ref"], r"^imap:[0-9a-f]{12}$")
+        output = self.root / "manual-directed"
+        svg_lines = (output / "vector.svg").read_text(encoding="utf-8").splitlines()
+        named_line = next(line for line in svg_lines if 'id="shape-0002"' in line)
+        self.assertIn('data-name="朱红装饰"', named_line)
+        self.assertEqual(original_lines[-3], svg_lines[-3])
+        index = load_edit_index(str(output / "artisan_edit_index.json"))
+        shape = next(item for item in index["objects"] if item[0] == "shape-0002")
+        self.assertEqual(shape[5], "朱红装饰")
+        illustrator_map_path = output / "artisan_illustrator_map.json"
+        illustrator_map = load_illustrator_map(str(illustrator_map_path))
+        self.assertEqual(illustrator_map["layers"], [["layer-subject", "主体色块"]])
+        self.assertEqual(illustrator_map["objects"], [["shape-0002", "朱红装饰"]])
+        self.assertTrue(illustrator_map["requires_user_confirmed_illustrator_write"])
+        map_text = illustrator_map_path.read_text(encoding="utf-8")
+        self.assertLess(len(map_text.encode("utf-8")), 900)
+        self.assertNotIn(str(self.root), map_text)
+        report_text = (output / "artisan_paint_patch.json").read_text(encoding="utf-8")
+        report = json.loads(report_text)
+        self.assertIsNone(report["maximum_color_delta_e_allowed"])
+        self.assertEqual(report["direction_ref"], result["direction_ref"])
+        self.assertEqual(report["illustrator_map_ref"], result["illustrator_map_ref"])
+        self.assertLess(len(report_text.encode("utf-8")), 2800)
+        self.assertNotIn(str(self.root), report_text)
+
+    def test_manual_direction_binding_foundation_and_name_conflicts_fail_closed(self) -> None:
+        profile = self.profile("manual-groups")
+        wrong_binding = self.direction(profile, edit_ref="edit:ffffffffffff")
+        with self.assertRaises(ArtisanPaintError) as raised:
+            refine_paint_structure(
+                svg_path=str(self.svg),
+                index_path=str(self.index),
+                profile_path=str(profile),
+                direction_path=str(wrong_binding),
+                selector="intent:paint-region",
+                output_dir=str(self.root / "wrong-binding"),
+            )
+        self.assertEqual(raised.exception.code, "art_direction_binding_mismatch")
+
+        foundation = self.direction(
+            profile,
+            palette_groups=[["#b94f42", ["#f5edda"]]],
+            object_names=[],
+            layer_names=[],
+        )
+        with self.assertRaises(ArtisanPaintError) as raised:
+            refine_paint_structure(
+                svg_path=str(self.svg),
+                index_path=str(self.index),
+                profile_path=str(profile),
+                direction_path=str(foundation),
+                selector="intent:paint-region",
+                output_dir=str(self.root / "foundation"),
+            )
+        self.assertEqual(raised.exception.code, "manual_foundation_protected")
+
+        conflict = self.direction(
+            profile,
+            object_names=[["shape-0002", "主色块"], ["shape-0004", "装饰色块"]],
+            layer_names=[],
+        )
+        with self.assertRaises(ArtisanPaintError) as raised:
+            refine_paint_structure(
+                svg_path=str(self.svg),
+                index_path=str(self.index),
+                profile_path=str(profile),
+                direction_path=str(conflict),
+                selector="intent:paint-region",
+                output_dir=str(self.root / "conflict"),
+            )
+        self.assertEqual(raised.exception.code, "manual_name_conflict")
+
+    def test_explicit_naming_can_publish_without_geometry_or_palette_change(self) -> None:
+        profile = self.profile("manual-groups")
+        direction = self.direction(
+            profile,
+            palette_groups=[],
+            object_names=[["shape-0004", "点睛色块"]],
+            layer_names=[["subject", "主体色块"]],
+        )
+        result = refine_paint_structure(
+            svg_path=str(self.svg),
+            index_path=str(self.index),
+            profile_path=str(profile),
+            direction_path=str(direction),
+            selector="shape-0004",
+            output_dir=str(self.root / "naming-only"),
+        )
+        self.assertEqual((result["blocks_before"], result["blocks_after"]), (1, 1))
+        self.assertEqual((result["colors_before"], result["colors_after"]), (4, 4))
+        output = self.root / "naming-only"
+        svg = (output / "vector.svg").read_text(encoding="utf-8")
+        self.assertIn('id="shape-0004"', svg)
+        self.assertIn('data-name="点睛色块"', svg)
+        evidence = verify_svg_artifact(output / "vector.svg")
+        self.assertEqual(evidence["path_count"], 6)
+        self.assertEqual(evidence["anchor_point_count"], 22)
+        mapping = load_illustrator_map(str(output / "artisan_illustrator_map.json"))
+        self.assertEqual(mapping["objects"], [["shape-0004", "点睛色块"]])
+
+    def test_art_direction_is_rejected_by_non_manual_strategy(self) -> None:
+        profile = self.profile("preserve-palette")
+        direction = self.direction(profile)
+        with self.assertRaises(ArtisanPaintError) as raised:
+            refine_paint_structure(
+                svg_path=str(self.svg),
+                index_path=str(self.index),
+                profile_path=str(profile),
+                direction_path=str(direction),
+                selector="intent:paint-region",
+                output_dir=str(self.root / "unexpected-direction"),
+            )
+        self.assertEqual(raised.exception.code, "unexpected_art_direction")
 
     def test_no_safe_reduction_does_not_publish_a_patch(self) -> None:
         output = self.root / "no-op"
