@@ -540,7 +540,11 @@ class MainWindow(QMainWindow):
             self.result_preview.set_image(preview_path)
         self._show_metrics(result)
         self.open_output_button.setEnabled(True)
-        self.status_label.setText(f"完成 · {result['mode']['label_zh']} · SVG 已验证")
+        structure = result.get("artisan_structure")
+        structure_note = f" · {structure['structure_ref']}" if structure else ""
+        self.status_label.setText(
+            f"完成 · {result['mode']['label_zh']} · SVG 已验证{structure_note}"
+        )
 
     @Slot(str, str)
     def _conversion_failed(self, code: str, message: str) -> None:

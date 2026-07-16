@@ -2,6 +2,14 @@
 
 ## Unreleased / Optimizations
 
+### 2026-07-16 — Artisan Vector iteration 2
+
+* Added deterministic design layers, stable shape ids, parent/depth metadata, and a compact structure reference for low-token follow-up edits.
+* Added local line-art detection that separates paper texture from ink, removes redundant background geometry, and bounds knockout paths to 96 subpaths per editable object.
+* Added contour-distance, single-shape area, and compound-area quality gates with local high-fidelity fallback for thin artwork.
+* Added safe grouped SVG verification for layer order, roles, ids, parent references, and structure depth.
+* Validated an authorized local traditional-pattern line drawing without committing the source or generated artifacts: 58,057 anchors versus a 73,086-anchor baseline (20.56% fewer), 1.25 px maximum contour error, and zero external AI calls.
+
 ### 2026-07-16 — Artisan Vector iteration 1
 
 * Added a premium `artisan` mode without replacing Smart, Lightweight, Exact, or legacy entry points.

@@ -9,7 +9,7 @@
 
 StarBridge 是以**匠心矢量**为高级方向，并完整保留**智能矢量、轻量矢量和精确重建**三种基础模式的本地创意软件开源接入层。它把 **Codex Skill** 的任务路由、**StarBridge MCP** 的结构化工具，以及 **Adobe UXP / Node Proxy** 的桌面软件通道组合成一套可审计的工作流；ComfyUI、Photoshop、CAD / AutoCAD、Blender 和 CapCut / 剪映等桥仍完整保留。
 
-普通图片默认进入**智能矢量**；Logo、图标和纹样可选择**轻量矢量**；需要技术验证或像素存档时选择**精确重建**。在三种基础模式之上，新增加定位更高的 **匠心矢量**：保留关键角点，以更少锚点生成直线与三次贝塞尔混合轮廓，目标是逐步接近人工绘制的设计稿。所有模式都生成纯路径 SVG，并拒绝嵌入位图、脚本和外链；均不调用 Illustrator Image Trace。
+普通图片默认进入**智能矢量**；Logo、图标和纹样可选择**轻量矢量**；需要技术验证或像素存档时选择**精确重建**。在三种基础模式之上，新增加定位更高的 **匠心矢量**：保留关键角点，以更少锚点生成直线与三次贝塞尔混合轮廓，并把基础、主体、细节和点睛形状组织为可引用的设计图层。所有模式都生成纯路径 SVG，并拒绝嵌入位图、脚本和外链；均不调用 Illustrator Image Trace。
 
 ```mermaid
 flowchart LR
@@ -17,7 +17,7 @@ flowchart LR
   B --> C["智能：色块与轮廓平衡"]
   B --> D["轻量：减少颜色与节点"]
   B --> E["精确：RGBA 像素矩形重建"]
-  B --> H["匠心：少锚点贝塞尔艺术重建"]
+  B --> H["匠心：少锚点 + 设计结构 + 线稿自适应"]
   C --> F["纯路径 SVG + 预览 + 报告"]
   D --> F
   E --> F
@@ -32,7 +32,7 @@ flowchart LR
 | 状态 | 已覆盖能力 | 证据边界 |
 | --- | --- | --- |
 | stable（稳定） | MCP stdio、工具注册、resources / prompts、状态探针、路径脱敏、operation context、ComfyUI 队列/进度/任务快照与工作流验证；AutoCAD/DXF plan validate / dry-run / guarded write | Windows 与 Ubuntu CI 验证结构、schema、安全边界和 soft-exit |
-| primary（主推） | 匠心高级模式 + 智能、轻量、精确三种基础模式→已验证 SVG、PNG 预览和报告 | 匠心模式统计锚点、控制点、曲线段、锚点减少率和轮廓误差；基础模式及旧入口完整保留 |
+| primary（主推） | 匠心高级模式 + 智能、轻量、精确三种基础模式→已验证 SVG、PNG 预览和报告 | 匠心模式增加设计图层、稳定形状 ID、线稿自适应、轮廓/面积双重门槛和紧凑结构引用；基础模式及旧入口完整保留 |
 | experimental（其他 Adobe 协议） | Photoshop / Illustrator 规划、预检、受控执行接口；彩色矢量化 plan / validate / compare / repair_plan / execute；旧量化 SVG fallback | 兼容与研究用途；默认不作为普通图片转矢量入口；compare 只读取两个明确授权文件 |
 | UXP 安全执行已实现 | Photoshop `executeAsModal` 有界排队、取消状态、history commit / rollback、临时文档自动关闭 | 已通过 Node 模拟与协议测试；仍需已授权 Photoshop 桌面实测 |
 | planned（仍在推进） | repair plan → Illustrator execute → compare 的显式确认闭环、Adobe 桌面端端到端验收、Blender 确认渲染、CapCut 草稿骨架 | 未经本地运行证据，不宣称真实桌面控制已验证 |
@@ -46,7 +46,7 @@ Photoshop, Illustrator, Blender, and CapCut write flows are experimental or plan
 
 | 模式 | 产品定位 | 核心处理 |
 | --- | --- | --- |
-| **匠心矢量（高级）** | 艺术稿、品牌图形和接近人工绘制的高级交付 | 自适应少锚点、角点保护、三次贝塞尔、轮廓误差门槛 |
+| **匠心矢量（高级）** | 艺术稿、品牌图形和接近人工绘制的高级交付 | 自适应少锚点、角点保护、三次贝塞尔、设计图层、线稿自适应、轮廓与面积门槛 |
 | **智能矢量（默认）** | 普通插画、海报素材和设计再编辑 | 24 色默认、透明度分级、小区域清理、复合轮廓、适度节点简化 |
 | **轻量矢量** | Logo、图标、纹样和流畅编辑 | 8 色默认、更强清理和简化、较低子路径/节点/文件大小上限 |
 | **精确重建** | 专业验证、技术证明和像素网格存档 | 不减色、不缩放；连续同色扫描段横向与纵向合并，重建后逐像素比对 |
@@ -101,7 +101,7 @@ PowerShell 如果拦截 `npm.ps1`，请使用 `npm.cmd`。
 
 | 路线 | 适用场景 | 当前证据 |
 | --- | --- | --- |
-| **匠心矢量（高级）** | 少锚点、平滑贝塞尔、人工设计感 | 安全 `M/L/C/Z` 路径；报告锚点减少率与轮廓误差；自适应增加必要锚点 |
+| **匠心矢量（高级）** | 少锚点、平滑贝塞尔、人工设计感 | 安全分组 `M/L/C/Z` 路径；稳定形状 ID；线稿镂空拆分；轮廓与复合面积验证 |
 | **智能矢量（默认）** | 普通图片的可编辑色块和轮廓 | 统一 CLI、透明度处理、区域清理、节点简化、无嵌入位图 |
 | **轻量矢量** | Logo、图标、纹样和编辑性能优先 | 更少颜色、更少碎片、更严格的路径/节点/文件大小限制 |
 | **精确重建** | 原始 RGBA 像素网格→矩形复合路径 | 像素一致性验证；736×1314 本机旧样例成功生成 742,922 个子路径 AI |
@@ -123,7 +123,7 @@ npm.cmd run illustrator:vectorize -- --input "<input.png>" --mode exact --refere
 npm.cmd run illustrator:vectorize -- --input "<input.png>" --mode artisan --reference-id "reference"
 ```
 
-默认输出写入已被 Git 忽略的 `examples/output/vectorization/<reference-id>/<mode>/`，包含 `vector.svg`、`preview.png`、`parameters.json`、`vector_report.json` 和 `vector_report.md`。报告只记录脱敏 hash 和仓库相对输出路径，不返回源文件名或绝对路径。
+默认输出写入已被 Git 忽略的 `examples/output/vectorization/<reference-id>/<mode>/`，包含 `vector.svg`、`preview.png`、`parameters.json`、`vector_report.json` 和 `vector_report.md`；匠心模式额外生成 `artisan_structure.json`。结构文件提供稳定的 `shape-*` / `layer-*` 引用和短 `structure_ref`，后续修改可只描述局部对象，减少重复上下文和 token。报告只记录脱敏 hash 和仓库相对输出路径，不返回源文件名或绝对路径。
 
 桌面软件原型：
 
@@ -132,7 +132,7 @@ python -m pip install -e ".[vector-app]"
 npm.cmd run vector-app:start
 ```
 
-桌面原型支持拖放、四模式卡片、参数调整、后台转换、原图/结果双预览、结果指标和打开输出目录。匠心模式额外显示锚点减少比例；基础转换不要求安装 Illustrator。
+桌面原型支持拖放、四模式卡片、参数调整、后台转换、原图/结果双预览、结果指标和打开输出目录。匠心模式显示设计图层、独立形状、锚点减少比例和紧凑结构引用；基础转换不要求安装 Illustrator。
 
 旧量化命令仍可用于兼容实验：
 

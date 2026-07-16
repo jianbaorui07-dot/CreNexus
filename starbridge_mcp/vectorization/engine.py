@@ -384,6 +384,83 @@ def _build_paint_labels(
     return labels, paints
 
 
+def _try_artisan_line_art(
+    rgba: Any, preset: VectorPreset
+) -> tuple[Any, dict[int, Paint], dict[str, int | float | bool]] | None:
+    alpha = rgba[:, :, 3]
+    visible = alpha >= preset.alpha_threshold
+    visible_count = int(np.count_nonzero(visible))
+    if visible_count < 256:
+        return None
+    rgb = rgba[:, :, :3]
+    lab = cv2.cvtColor(rgb, cv2.COLOR_RGB2LAB).astype(np.int16)
+    background_lab = np.median(lab[visible], axis=0)
+    difference = np.abs(lab - background_lab)
+    score = np.clip(
+        difference[:, :, 0] * 0.35 + difference[:, :, 1] * 1.8 + difference[:, :, 2],
+        0,
+        255,
+    ).astype(np.uint8)
+    threshold, _ = cv2.threshold(
+        score[visible].reshape((-1, 1)),
+        0,
+        255,
+        cv2.THRESH_BINARY + cv2.THRESH_OTSU,
+    )
+    threshold = max(10.0, float(threshold))
+    ink = visible & (score >= threshold)
+    ink_count = int(np.count_nonzero(ink))
+    ink_ratio = ink_count / visible_count
+    if ink_count < 64 or not 0.003 <= ink_ratio <= 0.32:
+        return None
+
+    component_count, components, stats, _ = cv2.connectedComponentsWithStats(
+        ink.astype(np.uint8), connectivity=8
+    )
+    cleaned_ink = np.zeros_like(ink)
+    minimum_component_area = max(2, preset.min_region_area // 12)
+    for component in range(1, component_count):
+        if int(stats[component, cv2.CC_STAT_AREA]) >= minimum_component_area:
+            cleaned_ink |= components == component
+    ink_count = int(np.count_nonzero(cleaned_ink))
+    if ink_count < 64:
+        return None
+
+    contours, _ = cv2.findContours(
+        cleaned_ink.astype(np.uint8) * 255,
+        cv2.RETR_LIST,
+        cv2.CHAIN_APPROX_SIMPLE,
+    )
+    perimeter = sum(float(cv2.arcLength(contour, True)) for contour in contours)
+    estimated_stroke_width = 2.0 * ink_count / perimeter if perimeter > 0 else float("inf")
+    background_rgb = np.median(rgb[visible & ~cleaned_ink], axis=0)
+    ink_rgb = np.median(rgb[cleaned_ink], axis=0)
+    color_separation = float(np.linalg.norm(ink_rgb.astype(float) - background_rgb.astype(float)))
+    if estimated_stroke_width > max(9.0, max(rgba.shape[:2]) * 0.007) or color_separation < 16:
+        return None
+
+    labels = np.full(alpha.shape, -1, dtype=np.int32)
+    labels[visible] = 0
+    labels[cleaned_ink] = 1
+    background_alpha = int(np.median(alpha[visible & ~cleaned_ink]))
+    ink_alpha = int(np.median(alpha[cleaned_ink]))
+    paints = {
+        0: Paint(*(int(value) for value in background_rgb), background_alpha),
+        1: Paint(*(int(value) for value in ink_rgb), ink_alpha),
+    }
+    return (
+        labels,
+        paints,
+        {
+            "line_art_adaptation": True,
+            "ink_pixel_ratio": round(ink_count / visible_count, 6),
+            "estimated_stroke_width_px": round(estimated_stroke_width, 4),
+            "line_art_threshold": round(threshold, 4),
+            "line_art_color_separation": round(color_separation, 4),
+        },
+    )
+
+
 def _cleanup_small_regions(labels: Any, min_area: int) -> tuple[Any, int]:
     if min_area <= 1:
         return labels, 0
@@ -495,6 +572,109 @@ def _write_design_svg(
         stream.write("</svg>\n")
 
 
+def _write_artisan_svg(path: Path, scene: Any, paints: dict[int, Paint]) -> None:
+    with path.open("w", encoding="utf-8", newline="\n") as stream:
+        stream.write(
+            f'<svg xmlns="http://www.w3.org/2000/svg" width="{scene.width}" '
+            f'height="{scene.height}" viewBox="0 0 {scene.width} {scene.height}">\n'
+        )
+        for role, shapes in scene.ordered_layers():
+            stream.write(f'<g id="layer-{role}" data-role="{role}">\n')
+            for shape in shapes:
+                paint = paints[shape.label]
+                opacity = "" if paint.alpha == 255 else f' fill-opacity="{_opacity(paint.alpha)}"'
+                parent = shape.parent_shape_id or "none"
+                stream.write(
+                    f'<path id="{shape.shape_id}" data-role="{shape.role}" '
+                    f'data-depth="{shape.depth}" data-parent="{parent}" '
+                    f'fill="{paint.fill}"{opacity} fill-rule="evenodd" stroke="none" '
+                    f'd="{" ".join(shape.path_parts)}"/>\n'
+                )
+            stream.write("</g>\n")
+        stream.write("</svg>\n")
+
+
+def _artisan_structure_manifest(scene: Any, paints: dict[int, Paint]) -> dict[str, Any]:
+    from .artisan import ARTISAN_ROLE_LABELS_ZH
+
+    canvas_area = float(scene.width * scene.height)
+    shapes = []
+    for shape in scene.shapes:
+        paint = paints[shape.label]
+        error_mean = (
+            shape.contour_error_total / shape.contour_error_samples
+            if shape.contour_error_samples
+            else 0.0
+        )
+        shapes.append(
+            {
+                "id": shape.shape_id,
+                "kind": shape.kind,
+                "role": shape.role,
+                "parent_id": shape.parent_shape_id,
+                "depth": shape.depth,
+                "paint": {
+                    "fill": paint.fill,
+                    "opacity": round(paint.alpha / 255, 4),
+                },
+                "area_px": round(shape.area, 2),
+                "area_ratio": round(shape.area / canvas_area, 6),
+                "bbox": {
+                    "x": shape.bbox[0],
+                    "y": shape.bbox[1],
+                    "width": shape.bbox[2],
+                    "height": shape.bbox[3],
+                },
+                "touches_canvas": shape.touches_canvas,
+                "hole_count": shape.hole_count,
+                "subpath_count": shape.subpath_count,
+                "anchors": shape.anchors,
+                "control_points": shape.control_points,
+                "curve_segments": shape.curve_segments,
+                "line_segments": shape.line_segments,
+                "mean_contour_error_px": round(error_mean, 4),
+                "maximum_contour_error_px": round(shape.maximum_contour_error, 4),
+                "maximum_area_error_ratio": round(shape.maximum_area_error_ratio, 6),
+                "compound_area_error_ratio": round(shape.compound_area_error_ratio, 6),
+                "quality_fallback_contours": shape.quality_fallback_contours,
+            }
+        )
+    layers = [
+        {
+            "id": f"layer-{role}",
+            "role": role,
+            "label_zh": ARTISAN_ROLE_LABELS_ZH[role],
+            "draw_order": index,
+            "shape_count": len(layer_shapes),
+            "shape_ids": [shape.shape_id for shape in layer_shapes],
+        }
+        for index, (role, layer_shapes) in enumerate(scene.ordered_layers())
+    ]
+    core = {
+        "schema_version": 1,
+        "strategy": scene.strategy,
+        "canvas": {"width": scene.width, "height": scene.height},
+        "layers": layers,
+        "shapes": shapes,
+    }
+    canonical = json.dumps(core, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
+        "utf-8"
+    )
+    digest = hashlib.sha256(canonical).hexdigest()
+    return {
+        **core,
+        "structure_sha256": digest,
+        "structure_ref": f"artisan:{digest[:12]}",
+        "interaction_contract": {
+            "stable_shape_ids": True,
+            "compact_reference": f"artisan:{digest[:12]}",
+            "local_analysis_only": True,
+            "external_ai_calls": 0,
+            "edit_reference_format": "<structure_ref> <shape-id|layer-id> <change>",
+        },
+    }
+
+
 def _design_preview(labels: Any, paints: dict[int, Paint]) -> Image.Image:
     rgba = np.zeros((*labels.shape, 4), dtype=np.uint8)
     for label in [int(value) for value in np.unique(labels) if value >= 0]:
@@ -553,8 +733,33 @@ def _markdown_report(report: dict[str, Any]) -> str:
                 f"- 平均轮廓误差：{vector['mean_contour_error_px']:.2f} px",
                 f"- 最大轮廓误差：{vector['maximum_contour_error_px']:.2f} px",
                 f"- 轮廓误差阈值：{vector['curve_error_tolerance_px']:.2f} px",
+                f"- 平均面积误差：{vector['mean_shape_area_error_ratio']:.2%}",
+                f"- 最大面积误差：{vector['maximum_shape_area_error_ratio']:.2%}",
+                f"- 面积误差阈值：{vector['shape_area_error_tolerance_ratio']:.0%}",
+                f"- 最大复合面积误差：{vector['maximum_compound_area_error_ratio']:.2%}",
+                f"- 复合面积误差阈值：{vector['compound_area_error_tolerance_ratio']:.0%}",
+                f"- 局部高保真回退：{vector['quality_fallback_contours']}",
+                f"- 设计图层：{vector['layer_count']}",
+                f"- 独立形状：{vector['shape_count']}",
+                f"- 镂空形状组：{vector['knockout_shape_count']}",
+                f"- 单形状最大子路径：{vector['maximum_subpaths_per_shape']}",
+                f"- 嵌套形状：{vector['nested_shape_count']}",
+                f"- 最大结构深度：{vector['maximum_structure_depth']}",
+                f"- 孔洞：{vector['hole_count']}",
+                f"- 结构引用：`{report['artisan_structure']['structure_ref']}`",
+                "- 外部 AI 调用：0（本地结构分析）",
             ]
         )
+        if vector.get("line_art_adaptation"):
+            lines.extend(
+                [
+                    "- 线稿自适应：true",
+                    f"- 墨线像素比例：{vector['ink_pixel_ratio']:.2%}",
+                    f"- 估计线宽：{vector['estimated_stroke_width_px']:.2f} px",
+                    f"- 省略的背景孔洞：{vector['suppressed_foundation_holes']}",
+                    f"- 省略的背景小岛：{vector['suppressed_foundation_islands']}",
+                ]
+            )
     if report["warnings"]:
         lines.extend(["", "## 说明", "", *[f"- {item}" for item in report["warnings"]]])
     return "\n".join(lines) + "\n"
@@ -579,6 +784,7 @@ def run_vectorization(config: RunConfig) -> dict[str, Any]:
         preview_path = staging / "preview.png"
         warnings_list: list[str] = []
         exact_validation: dict[str, Any] | None = None
+        artisan_structure: dict[str, Any] | None = None
 
         if preset.mode == "exact":
             rectangles = _merge_exact_rectangles(source_image, preset)
@@ -599,25 +805,44 @@ def run_vectorization(config: RunConfig) -> dict[str, Any]:
             work_image = _resize_for_design(source_image, preset.max_dimension)
             rgba = np.asarray(work_image, dtype=np.uint8)
             prepared_rgb = _prepare_rgb(rgba, preset)
-            labels, paints = _build_paint_labels(rgba, prepared_rgb, preset)
-            labels, cleaned_regions = _cleanup_small_regions(labels, preset.min_region_area)
+            line_art_metrics: dict[str, int | float | bool] = {}
+            line_art_result = (
+                _try_artisan_line_art(rgba, preset) if preset.mode == "artisan" else None
+            )
+            if line_art_result is not None:
+                labels, paints, line_art_metrics = line_art_result
+                cleanup_area = max(2, preset.min_region_area // 6)
+            else:
+                labels, paints = _build_paint_labels(rgba, prepared_rgb, preset)
+                cleanup_area = preset.min_region_area
+            labels, cleaned_regions = _cleanup_small_regions(labels, cleanup_area)
             if preset.mode == "artisan":
-                from .artisan import ArtisanComplexityError, trace_artisan_paths
+                from .artisan import ArtisanComplexityError, trace_artisan_scene
 
                 try:
-                    artisan_paths, vector_metrics = trace_artisan_paths(labels, preset)
+                    artisan_scene, vector_metrics = trace_artisan_scene(labels, preset)
                 except ArtisanComplexityError as exc:
                     raise VectorizationError("vector_too_complex", str(exc)) from exc
-                paths = [(paints[label], path_parts) for label, path_parts in artisan_paths.items()]
+                _write_artisan_svg(svg_path, artisan_scene, paints)
+                artisan_structure = _artisan_structure_manifest(artisan_scene, paints)
+                (staging / "artisan_structure.json").write_text(
+                    json.dumps(artisan_structure, ensure_ascii=False, indent=2) + "\n",
+                    encoding="utf-8",
+                )
             else:
                 paths, vector_metrics = _trace_design_paths(labels, paints, preset)
+                _write_design_svg(svg_path, work_image.width, work_image.height, paths)
             vector_metrics["cleaned_small_regions"] = cleaned_regions
-            _write_design_svg(svg_path, work_image.width, work_image.height, paths)
+            vector_metrics.update(line_art_metrics)
             _design_preview(labels, paints).save(preview_path, format="PNG")
             if preset.mode == "artisan":
                 warnings_list.append(
-                    "匠心模式使用少量锚点和贝塞尔曲线重建轮廓；当前迭代属于几何艺术化重建，尚未使用语义分割模型。"
+                    "匠心模式使用少量锚点、贝塞尔曲线和本地构图层级推断；当前角色是几何设计角色，不宣称识别人脸、文字等内容语义。"
                 )
+                if line_art_metrics:
+                    warnings_list.append(
+                        "已自动启用本地线稿自适应：纹理背景简化为基础层，墨线作为独立形状组织。"
+                    )
             else:
                 warnings_list.append(
                     "智能与轻量模式会减色、清理小区域并简化轮廓，输出是可编辑近似结果，不保证逐像素一致。"
@@ -634,6 +859,17 @@ def run_vectorization(config: RunConfig) -> dict[str, Any]:
             )
         except SvgArtifactError as exc:
             raise VectorizationError(exc.code, str(exc)) from exc
+        if preset.mode == "artisan" and (
+            evidence["layer_count"] != vector_metrics["layer_count"]
+            or evidence["structured_path_count"] != vector_metrics["shape_count"]
+            or evidence["nested_path_count"] != vector_metrics["nested_shape_count"]
+            or evidence["maximum_structure_depth"] != vector_metrics["maximum_structure_depth"]
+            or evidence["semantic_role_counts"] != vector_metrics["design_role_counts"]
+        ):
+            raise VectorizationError(
+                "structure_validation_failed",
+                "Artisan SVG structure does not match the generated edit manifest.",
+            )
 
         final_svg = output_dir / "vector.svg"
         final_preview = output_dir / "preview.png"
@@ -681,7 +917,33 @@ def run_vectorization(config: RunConfig) -> dict[str, Any]:
                         "mean_contour_error_px",
                         "maximum_contour_error_px",
                         "curve_error_tolerance_px",
+                        "mean_shape_area_error_ratio",
+                        "maximum_shape_area_error_ratio",
+                        "shape_area_error_tolerance_ratio",
+                        "mean_compound_area_error_ratio",
+                        "maximum_compound_area_error_ratio",
+                        "compound_area_error_tolerance_ratio",
                         "adapted_contours",
+                        "quality_fallback_contours",
+                        "structure_strategy",
+                        "layer_count",
+                        "shape_count",
+                        "knockout_shape_count",
+                        "maximum_subpaths_per_shape",
+                        "root_shape_count",
+                        "nested_shape_count",
+                        "maximum_structure_depth",
+                        "hole_count",
+                        "design_role_counts",
+                        "stable_shape_references",
+                        "external_ai_calls",
+                        "line_art_adaptation",
+                        "ink_pixel_ratio",
+                        "estimated_stroke_width_px",
+                        "line_art_threshold",
+                        "line_art_color_separation",
+                        "suppressed_foundation_holes",
+                        "suppressed_foundation_islands",
                     }
                 },
             },
@@ -693,6 +955,17 @@ def run_vectorization(config: RunConfig) -> dict[str, Any]:
                 "safety_limits_exceeded": False,
             },
             "exact_validation": exact_validation,
+            "artisan_structure": (
+                {
+                    "structure_ref": artisan_structure["structure_ref"],
+                    "structure_sha256": artisan_structure["structure_sha256"],
+                    "strategy": artisan_structure["strategy"],
+                    "stable_shape_ids": True,
+                    "external_ai_calls": 0,
+                }
+                if artisan_structure is not None
+                else None
+            ),
             "parameters": preset.public_parameters(),
             "output_dir": repo_relative(output_dir),
             "artifacts": [
@@ -712,21 +985,31 @@ def run_vectorization(config: RunConfig) -> dict[str, Any]:
             "elapsed_seconds": elapsed,
             "warnings": warnings_list,
         }
+        publish_filenames = [
+            "vector.svg",
+            "preview.png",
+            "parameters.json",
+            "vector_report.json",
+            "vector_report.md",
+        ]
+        if artisan_structure is not None:
+            final_structure = output_dir / "artisan_structure.json"
+            report["artifacts"].append(
+                {
+                    **_artifact(
+                        staging / "artisan_structure.json",
+                        "artisan_edit_structure",
+                        "application/json",
+                    ),
+                    "path": repo_relative(final_structure),
+                }
+            )
+            publish_filenames.append("artisan_structure.json")
         report_json = staging / "vector_report.json"
         report_markdown = staging / "vector_report.md"
         report_json.write_text(
             json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
         )
         report_markdown.write_text(_markdown_report(report), encoding="utf-8")
-        _publish(
-            staging,
-            output_dir,
-            (
-                "vector.svg",
-                "preview.png",
-                "parameters.json",
-                "vector_report.json",
-                "vector_report.md",
-            ),
-        )
+        _publish(staging, output_dir, tuple(publish_filenames))
     return report

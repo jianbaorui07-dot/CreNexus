@@ -8,13 +8,26 @@ from pathlib import Path
 from typing import Any
 
 SVG_NAMESPACE = "http://www.w3.org/2000/svg"
-_ALLOWED_ELEMENTS = {"svg", "rect", "path"}
+_ALLOWED_ELEMENTS = {"svg", "rect", "g", "path"}
 _ALLOWED_ATTRIBUTES = {
     "svg": {"width", "height", "viewBox"},
     "rect": {"width", "height", "fill"},
-    "path": {"d", "fill", "fill-opacity", "fill-rule", "stroke"},
+    "g": {"id", "data-role"},
+    "path": {
+        "id",
+        "data-role",
+        "data-depth",
+        "data-parent",
+        "d",
+        "fill",
+        "fill-opacity",
+        "fill-rule",
+        "stroke",
+    },
 }
 _HEX_COLOR = re.compile(r"#[0-9a-fA-F]{6}\Z")
+_STRUCTURE_ID = re.compile(r"[a-z][a-z0-9-]{0,63}\Z")
+_ARTISAN_ROLES = ("foundation", "subject", "detail", "accent")
 _NUMBER = r"(?:0|[1-9][0-9]*)(?:\.[0-9]+)?"
 _PATH_LEXEME = re.compile(rf"\s*([MLCZ]|{_NUMBER})", re.IGNORECASE)
 _MAX_SVG_BYTES = 64 * 1024 * 1024
@@ -228,6 +241,56 @@ def verify_svg_artifact(
     if not math.isclose(view_box[0], 0.0) or not math.isclose(view_box[1], 0.0):
         raise SvgArtifactError("dimension_mismatch", "SVG viewBox origin must be zero.")
 
+    group_role_by_path: dict[int, str] = {}
+    group_ids: set[str] = set()
+    group_roles: list[str] = []
+    direct_path_count = 0
+    for child in root:
+        child_namespace, child_name = _tag_parts(child.tag)
+        if child_namespace != SVG_NAMESPACE:
+            continue
+        if child_name == "path":
+            direct_path_count += 1
+            continue
+        if child_name != "g":
+            continue
+        group_id = (child.get("id") or "").strip()
+        group_role = (child.get("data-role") or "").strip()
+        if not _STRUCTURE_ID.fullmatch(group_id) or group_id in group_ids:
+            raise SvgArtifactError(
+                "invalid_structure_id", "Artisan layer ids must be unique safe identifiers."
+            )
+        if group_role not in _ARTISAN_ROLES or group_id != f"layer-{group_role}":
+            raise SvgArtifactError(
+                "invalid_structure_role", "Artisan layer role metadata is invalid."
+            )
+        group_ids.add(group_id)
+        group_roles.append(group_role)
+        grouped_paths = list(child)
+        if not grouped_paths:
+            raise SvgArtifactError(
+                "invalid_structure_group", "Artisan layers must contain at least one path."
+            )
+        for grouped_path in grouped_paths:
+            path_namespace, path_name = _tag_parts(grouped_path.tag)
+            if path_namespace != SVG_NAMESPACE or path_name != "path" or list(grouped_path):
+                raise SvgArtifactError(
+                    "invalid_structure_group",
+                    "Artisan layers may contain path elements only.",
+                )
+            group_role_by_path[id(grouped_path)] = group_role
+    if group_roles:
+        if direct_path_count:
+            raise SvgArtifactError(
+                "invalid_structure_group", "Structured SVG paths must stay inside a layer."
+            )
+        if len(group_roles) != len(set(group_roles)) or [
+            _ARTISAN_ROLES.index(role) for role in group_roles
+        ] != sorted(_ARTISAN_ROLES.index(role) for role in group_roles):
+            raise SvgArtifactError(
+                "invalid_structure_order", "Artisan layers must use canonical draw order."
+            )
+
     paths: list[ET.Element] = []
     fills: set[str] = set()
     paints: set[tuple[str, float]] = set()
@@ -237,6 +300,9 @@ def verify_svg_artifact(
     control_point_count = 0
     curve_segment_count = 0
     line_segment_count = 0
+    shape_depths: dict[str, int] = {}
+    shape_parents: dict[str, str | None] = {}
+    semantic_role_counts = dict.fromkeys(_ARTISAN_ROLES, 0)
     for element in root.iter():
         element_namespace, local_name = _tag_parts(element.tag)
         if element_namespace != SVG_NAMESPACE or local_name not in _ALLOWED_ELEMENTS:
@@ -282,6 +348,46 @@ def verify_svg_artifact(
             raise SvgArtifactError(
                 "invalid_path_style", "SVG paths must use the generated editable fill contract."
             )
+        structure_values = (
+            element.get("id"),
+            element.get("data-role"),
+            element.get("data-depth"),
+            element.get("data-parent"),
+        )
+        if any(value is not None for value in structure_values):
+            if any(value is None for value in structure_values):
+                raise SvgArtifactError(
+                    "invalid_structure_metadata",
+                    "Structured paths must provide id, role, depth, and parent metadata.",
+                )
+            shape_id, role, raw_depth, raw_parent = (
+                str(value).strip() for value in structure_values
+            )
+            if not _STRUCTURE_ID.fullmatch(shape_id) or shape_id in shape_depths:
+                raise SvgArtifactError(
+                    "invalid_structure_id", "Artisan shape ids must be unique safe identifiers."
+                )
+            expected_role = group_role_by_path.get(id(element))
+            if role not in _ARTISAN_ROLES or expected_role != role:
+                raise SvgArtifactError(
+                    "invalid_structure_role",
+                    "Artisan shape roles must match their containing layer.",
+                )
+            if not raw_depth.isdigit() or int(raw_depth) > 64:
+                raise SvgArtifactError(
+                    "invalid_structure_depth", "Artisan shape depth must be between 0 and 64."
+                )
+            if raw_parent != "none" and not _STRUCTURE_ID.fullmatch(raw_parent):
+                raise SvgArtifactError(
+                    "invalid_structure_parent", "Artisan shape parent metadata is invalid."
+                )
+            shape_depths[shape_id] = int(raw_depth)
+            shape_parents[shape_id] = None if raw_parent == "none" else raw_parent
+            semantic_role_counts[role] += 1
+        elif group_roles:
+            raise SvgArtifactError(
+                "invalid_structure_metadata", "Every structured path must expose shape metadata."
+            )
         if any(x < 0 or x > width or y < 0 or y > height for x, y in metrics["coordinates"]):
             raise SvgArtifactError(
                 "path_outside_canvas", "SVG path coordinates must stay inside the canvas."
@@ -298,6 +404,23 @@ def verify_svg_artifact(
 
     if not paths:
         raise SvgArtifactError("no_vector_paths", "SVG contains no editable vector paths.")
+    for shape_id, parent_id in shape_parents.items():
+        depth = shape_depths[shape_id]
+        if parent_id is None:
+            if depth != 0:
+                raise SvgArtifactError(
+                    "invalid_structure_depth", "Root artisan shapes must use depth zero."
+                )
+            continue
+        if parent_id not in shape_depths:
+            raise SvgArtifactError(
+                "invalid_structure_parent", "Artisan shape parent must reference a known shape."
+            )
+        if shape_depths[parent_id] != depth - 1:
+            raise SvgArtifactError(
+                "invalid_structure_depth",
+                "Artisan shape depth must be exactly one level below its parent.",
+            )
 
     return {
         "verified": True,
@@ -316,6 +439,11 @@ def verify_svg_artifact(
         "line_segment_count": line_segment_count,
         "color_count": len(fills),
         "paint_count": len(paints),
+        "layer_count": len(group_roles),
+        "structured_path_count": len(shape_depths),
+        "nested_path_count": sum(parent is not None for parent in shape_parents.values()),
+        "maximum_structure_depth": max(shape_depths.values(), default=0),
+        "semantic_role_counts": semantic_role_counts,
         "embedded_raster_count": 0,
         "external_reference_count": 0,
     }

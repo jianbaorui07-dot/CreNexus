@@ -96,6 +96,23 @@ class VectorAppModelTests(unittest.TestCase):
         self.assertIn(("子路径", "1,234"), metrics)
         self.assertIn(("SVG", "2.0 KB"), metrics)
 
+        artisan_metrics = result_metrics(
+            {
+                "mode": {"key": "artisan"},
+                "vector": {
+                    "layer_count": 3,
+                    "shape_count": 107,
+                    "points": 58057,
+                    "anchor_reduction_ratio": 0.2056,
+                    "svg_bytes": 1411806,
+                },
+                "elapsed_seconds": 2.0291,
+            }
+        )
+        self.assertEqual(artisan_metrics[0], ("设计图层", "3"))
+        self.assertEqual(artisan_metrics[1], ("独立形状", "107"))
+        self.assertEqual(artisan_metrics[3], ("锚点减少", "20.6%"))
+
 
 @unittest.skipUnless(HAS_PYSIDE6, "PySide6 optional dependency not installed")
 class VectorAppGuiTests(unittest.TestCase):

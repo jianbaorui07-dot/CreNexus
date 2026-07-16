@@ -108,6 +108,15 @@ def build_run_config(input_path: str | Path, parameters: AppParameters) -> RunCo
 
 def result_metrics(result: dict[str, Any]) -> tuple[tuple[str, str], ...]:
     vector = result["vector"]
+    if result.get("mode", {}).get("key") == "artisan":
+        return (
+            ("设计图层", str(vector["layer_count"])),
+            ("独立形状", f"{vector['shape_count']:,}"),
+            ("锚点", f"{vector['points']:,}"),
+            ("锚点减少", f"{vector['anchor_reduction_ratio']:.1%}"),
+            ("SVG", _format_bytes(vector["svg_bytes"])),
+            ("耗时", f"{result['elapsed_seconds']:.2f}s"),
+        )
     metrics = [
         ("颜色", str(vector["color_count"])),
         ("子路径", f"{vector['subpaths']:,}"),
@@ -118,8 +127,6 @@ def result_metrics(result: dict[str, Any]) -> tuple[tuple[str, str], ...]:
     exact = result.get("exact_validation")
     if exact is not None:
         metrics.append(("像素一致", "是" if exact["pixel_match"] else "否"))
-    if result.get("mode", {}).get("key") == "artisan":
-        metrics.append(("锚点减少", f"{vector['anchor_reduction_ratio']:.1%}"))
     return tuple(metrics)
 
 

@@ -159,6 +159,19 @@ class DesignVectorizationModeTests(VectorizationModeTests):
         image.save(source)
         return source
 
+    def make_line_art_source(self) -> Path:
+        source = self.root / "private-line-art-source.png"
+        image = Image.new("RGBA", (240, 180), (244, 230, 194, 255))
+        draw = ImageDraw.Draw(image)
+        ink = (188, 84, 57, 255)
+        for inset in range(16, 66, 8):
+            draw.ellipse((inset, inset // 2, 240 - inset, 180 - inset // 2), outline=ink, width=2)
+        for offset in range(0, 120, 12):
+            draw.arc((30 + offset // 3, 35, 130 + offset // 3, 145), 25, 325, fill=ink, width=2)
+        draw.rounded_rectangle((88, 57, 152, 123), radius=14, outline=ink, width=3)
+        image.save(source)
+        return source
+
     def test_smart_and_lightweight_generate_distinct_verified_outputs(self) -> None:
         source = self.make_design_source()
 
@@ -226,6 +239,78 @@ class DesignVectorizationModeTests(VectorizationModeTests):
         self.assertIn(" C ", svg)
         self.assertNotIn("<image", svg)
         self.assertNotIn("base64", svg)
+
+    def test_artisan_line_art_builds_bounded_knockouts_and_stable_edit_reference(self) -> None:
+        source = self.make_line_art_source()
+
+        first = run_vectorization(
+            RunConfig(input_path=str(source), mode="artisan", reference_id="line-art-one")
+        )
+        second = run_vectorization(
+            RunConfig(input_path=str(source), mode="artisan", reference_id="line-art-two")
+        )
+
+        output = self.output_root / "line-art-one" / "artisan"
+        structure = json.loads((output / "artisan_structure.json").read_text(encoding="utf-8"))
+        svg = (output / "vector.svg").read_text(encoding="utf-8")
+        vector = first["vector"]
+        self.assertTrue(vector["line_art_adaptation"])
+        self.assertGreater(vector["knockout_shape_count"], 0)
+        self.assertLessEqual(vector["maximum_subpaths_per_shape"], 96)
+        self.assertLessEqual(vector["maximum_contour_error_px"], vector["curve_error_tolerance_px"])
+        self.assertLessEqual(
+            vector["maximum_compound_area_error_ratio"],
+            vector["compound_area_error_tolerance_ratio"],
+        )
+        self.assertEqual(first["artisan_structure"]["external_ai_calls"], 0)
+        self.assertEqual(
+            first["artisan_structure"]["structure_ref"],
+            second["artisan_structure"]["structure_ref"],
+        )
+        self.assertRegex(first["artisan_structure"]["structure_ref"], r"^artisan:[0-9a-f]{12}$")
+        self.assertTrue(structure["interaction_contract"]["stable_shape_ids"])
+        self.assertEqual(structure["interaction_contract"]["external_ai_calls"], 0)
+        self.assertEqual(len(structure["shapes"]), vector["shape_count"])
+        self.assertEqual(
+            sum(item["shape_count"] for item in structure["layers"]),
+            vector["shape_count"],
+        )
+        self.assertIn('<g id="layer-foundation" data-role="foundation">', svg)
+        self.assertNotIn(source.name, json.dumps(structure, ensure_ascii=False))
+
+    def test_svg_verifier_validates_structured_parent_references(self) -> None:
+        path = self.root / "structured.svg"
+        path.write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" '
+            'viewBox="0 0 100 100">'
+            '<g id="layer-foundation" data-role="foundation">'
+            '<path id="shape-0001" data-role="foundation" data-depth="0" '
+            'data-parent="none" fill="#f4e6c2" fill-rule="evenodd" stroke="none" '
+            'd="M 0 0 L 100 0 L 100 100 L 0 100 Z"/></g>'
+            '<g id="layer-subject" data-role="subject">'
+            '<path id="shape-0002" data-role="subject" data-depth="1" '
+            'data-parent="shape-0001" fill="#bc5439" fill-rule="evenodd" stroke="none" '
+            'd="M 20 20 L 80 20 L 80 80 L 20 80 Z"/></g></svg>',
+            encoding="utf-8",
+        )
+
+        evidence = verify_svg_artifact(path, expected_width=100, expected_height=100)
+
+        self.assertEqual(evidence["layer_count"], 2)
+        self.assertEqual(evidence["structured_path_count"], 2)
+        self.assertEqual(evidence["nested_path_count"], 1)
+        self.assertEqual(evidence["maximum_structure_depth"], 1)
+        self.assertEqual(evidence["semantic_role_counts"]["subject"], 1)
+
+        unsafe = self.root / "structured-unsafe.svg"
+        unsafe.write_text(
+            path.read_text(encoding="utf-8").replace(
+                'data-parent="shape-0001"', 'data-parent="shape-9999"'
+            ),
+            encoding="utf-8",
+        )
+        with self.assertRaises(SvgArtifactError):
+            verify_svg_artifact(unsafe)
 
 
 if __name__ == "__main__":

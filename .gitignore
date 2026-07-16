@@ -61,6 +61,7 @@ examples/output/**/*.xmp
 examples/output/**/*.CR2
 examples/output/**/*.cr2
 examples/output/**/*.jsx
+examples/output/vectorization/**
 !examples/output/
 !examples/output/.gitkeep
 !examples/output/README.md

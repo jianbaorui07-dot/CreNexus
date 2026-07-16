@@ -1,6 +1,6 @@
 # Illustrator / AI 矢量文件桥
 
-这个 `prototype` 桥现在提供高定位的匠心矢量，以及完整保留的智能、轻量、精确三种基础模式，统一生成经过验证的纯路径 SVG，不使用 Image Trace。既有精确模式兼容脚本、原生 Image Trace 协议和旧 headless OpenCV 量化实验继续保留。
+这个 `prototype` 桥现在提供高定位的匠心矢量，以及完整保留的智能、轻量、精确三种基础模式，统一生成经过验证的纯路径 SVG，不使用 Image Trace。匠心模式额外输出设计图层、稳定形状 ID、线稿自适应结果和紧凑结构引用，便于后续只描述局部修改并减少重复 token。既有精确模式兼容脚本、原生 Image Trace 协议和旧 headless OpenCV 量化实验继续保留。
 
 ## 默认：智能矢量
 
