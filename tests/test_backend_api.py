@@ -13,7 +13,9 @@ from starbridge_mcp.backend import StarBridgeBackend, make_handler
 
 class BackendApiTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.backend = StarBridgeBackend()
+        self.temp_dir = TemporaryDirectory()
+        self.addCleanup(self.temp_dir.cleanup)
+        self.backend = StarBridgeBackend(app_data_dir=self.temp_dir.name)
 
     def test_health_endpoint(self) -> None:
         response = self.backend.route("GET", "/api/health")
@@ -86,7 +88,10 @@ class BackendApiTests(unittest.TestCase):
 
     def test_recipe_actions_are_recorded_in_audit_history(self) -> None:
         with TemporaryDirectory() as temp_dir:
-            backend = StarBridgeBackend(history_path=Path(temp_dir) / "history.json")
+            backend = StarBridgeBackend(
+                history_path=Path(temp_dir) / "history.json",
+                app_data_dir=Path(temp_dir) / "app-data",
+            )
 
             backend.route("GET", "/api/recipes/comfyui_txt2img_lifecycle/plan")
             backend.route("POST", "/api/recipes/comfyui_txt2img_lifecycle/evidence")
@@ -130,7 +135,10 @@ class BackendApiTests(unittest.TestCase):
 
     def test_recipe_run_records_confirmed_safe_execution_request(self) -> None:
         with TemporaryDirectory() as temp_dir:
-            backend = StarBridgeBackend(history_path=Path(temp_dir) / "history.json")
+            backend = StarBridgeBackend(
+                history_path=Path(temp_dir) / "history.json",
+                app_data_dir=Path(temp_dir) / "app-data",
+            )
             body = json.dumps({"confirm_run": True, "execution_target": "cloud"}).encode("utf-8")
 
             response = backend.route("POST", "/api/recipes/comfyui_txt2img_lifecycle/run", body)
@@ -146,7 +154,10 @@ class BackendApiTests(unittest.TestCase):
 
     def test_audit_history_can_be_cleared(self) -> None:
         with TemporaryDirectory() as temp_dir:
-            backend = StarBridgeBackend(history_path=Path(temp_dir) / "history.json")
+            backend = StarBridgeBackend(
+                history_path=Path(temp_dir) / "history.json",
+                app_data_dir=Path(temp_dir) / "app-data",
+            )
             backend.route("GET", "/api/recipes/comfyui_txt2img_lifecycle/plan")
 
             response = backend.route("DELETE", "/api/audit/history")
@@ -196,7 +207,7 @@ class BackendApiTests(unittest.TestCase):
         with TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             (root / "index.html").write_text("<main>ok</main>", encoding="utf-8")
-            backend = StarBridgeBackend(static_root=root)
+            backend = StarBridgeBackend(static_root=root, app_data_dir=root / "app-data")
             server = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(backend))
             thread = Thread(target=server.serve_forever, daemon=True)
             thread.start()
@@ -216,7 +227,7 @@ class BackendApiTests(unittest.TestCase):
         with TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             (root / "index.html").write_text('<div id="root">StarBridge UI</div>', encoding="utf-8")
-            backend = StarBridgeBackend(static_root=root)
+            backend = StarBridgeBackend(static_root=root, app_data_dir=root / "app-data")
 
             response = backend.route("GET", "/")
 
@@ -228,7 +239,7 @@ class BackendApiTests(unittest.TestCase):
         with TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             (root / "index.html").write_text("fallback", encoding="utf-8")
-            backend = StarBridgeBackend(static_root=root)
+            backend = StarBridgeBackend(static_root=root, app_data_dir=root / "app-data")
 
             response = backend.route("GET", "/workbench/recipes")
 
