@@ -9,7 +9,7 @@
 
 StarBridge 是以**匠心矢量**为高级方向，并完整保留**智能矢量、轻量矢量和精确重建**三种基础模式的本地创意软件开源接入层。它把 **Codex Skill** 的任务路由、**StarBridge MCP** 的结构化工具，以及 **Adobe UXP / Node Proxy** 的桌面软件通道组合成一套可审计的工作流；ComfyUI、Photoshop、CAD / AutoCAD、Blender 和 CapCut / 剪映等桥仍完整保留。
 
-普通图片默认进入**智能矢量**；Logo、图标和纹样可选择**轻量矢量**；需要技术验证或像素存档时选择**精确重建**。在三种基础模式之上，**匠心矢量**保留关键角点，以更少锚点生成直线、三次贝塞尔轮廓和人工描线式开放描边，并按切线与线宽把交叉点两侧续接成长路径。第 5 轮按局部几何把描边分成主轮廓、装饰纹、细节和微细节；第 6 轮增加客户意图预校准、矢量到矢量局部精修和可审计补丁链。它只使用可解释的几何特征，不声称识别人脸、文字或具体题材。所有模式都生成纯路径 SVG，并拒绝嵌入位图、脚本和外链；普通图片转矢量不调用 Illustrator Image Trace。
+普通图片默认进入**智能矢量**；Logo、图标和纹样可选择**轻量矢量**；需要技术验证或像素存档时选择**精确重建**。在三种基础模式之上，**匠心矢量**保留关键角点，以更少锚点生成直线、三次贝塞尔轮廓和人工描线式开放描边，并按切线与线宽把交叉点两侧续接成长路径。第 5 轮按局部几何把描边分成主轮廓、装饰纹、细节和微细节；第 6 轮增加客户意图预校准、矢量到矢量局部精修和可审计补丁链；第 7 轮在不改动源子路径和锚点的前提下，安全合并非重叠叶子块面并按客户选择压缩近似色。它只使用可解释的几何特征，不声称识别人脸、文字或具体题材。所有模式都生成纯路径 SVG，并拒绝嵌入位图、脚本和外链；普通图片转矢量不调用 Illustrator Image Trace。
 
 ```mermaid
 flowchart LR
@@ -32,7 +32,7 @@ flowchart LR
 | 状态 | 已覆盖能力 | 证据边界 |
 | --- | --- | --- |
 | stable（稳定） | MCP stdio、tools / resources / prompts、工具注册、状态探针、路径脱敏、safe roots、operation context、EvidenceManifest / JobStatus；ComfyUI 队列/进度/任务快照与工作流验证；AutoCAD/DXF plan validate / dry-run / guarded write | Windows 与 Ubuntu CI 验证结构、schema、安全边界、证据字段和 soft-exit |
-| primary（主推） | 四模式图片转 SVG：匠心、智能、轻量、精确；均输出已验证的无位图 SVG、矢量采样预览和报告 | 匠心 Iteration 6 增加三问预校准、SVG 绑定索引、局部曲线精修、拓扑硬门槛和补丁链；基础模式及旧入口完整保留 |
+| primary（主推） | 四模式图片转 SVG：匠心、智能、轻量、精确；均输出已验证的无位图 SVG、矢量采样预览和报告 | 匠心 Iteration 7 增加受拓扑保护的块面合并、感知近色归并和紧凑 paint 补丁；基础模式及旧入口完整保留 |
 | experimental（桌面与 Adobe 协议） | Photoshop session / state / preview、sandbox recipe 计划；Illustrator 预检、精确 SVG→AI 交付和保留的彩色矢量化 / Image Trace / 旧量化协议 | CLI、verifier、schema 和协议测试已覆盖；真实桌面写入仍需本机软件、明确授权和显式确认 |
 | UXP 安全执行已实现 | Photoshop `executeAsModal` 有界排队、取消状态、history commit / rollback、临时文档自动关闭 | 已通过 Node 模拟与协议测试；仍需已授权 Photoshop 桌面实测 |
 | prototype（原型） | Blender 环境/场景/参考重建计划；CapCut / 剪映可执行文件探针和脱敏草稿顶层摘要 | 只验证公开结构和安全边界；不读取私有工程，不把探针结果写成生产控制 |
@@ -43,7 +43,19 @@ Photoshop, Illustrator, Blender, and CapCut write flows are experimental or plan
 
 完整状态见 [匠心矢量](docs/artisan-vector-mode.md)、[四模式矢量化](docs/vectorization-modes.md)、[精确像素矢量重建](docs/exact-pixel-vectorization.md)、[能力矩阵](docs/CAPABILITY_MATRIX.md) 和 [v0.1-alpha 发布说明](docs/RELEASE_V0_1_ALPHA.md)。
 
-## 最新能力：匠心矢量 Iteration 6
+## 最新能力：匠心矢量 Iteration 7
+
+第 7 轮把“更少块面、更克制的颜色”变成可复用并可验证的矢量后处理：
+
+- 风格配置 schema v2 明确区分保留调色板、归并近似色、单色和手动分组；默认仍保留调色板，只有客户明确选择后才改变颜色。
+- 只合并同图层角色、同深度、同父对象、同目标 paint 的无子对象叶子块面；任何边界框重叠候选都拒绝合并，避免 `evenodd` 复合路径把重叠区翻成孔洞。
+- 基础/纸张颜色始终保护；近色归并使用本地 CIELAB Delta-E 门槛，完整源图和 SVG 不发送给外部 AI。
+- 发布前逐字节核对源子路径多重集与未选路径，并硬性保持子路径、锚点和描边数量；块面、颜色或 paint 没有真实减少时不发布补丁。
+- 输出新 `edit_ref`、短 `patch_ref` 和父补丁引用，后续迭代只需交换局部引用，不必重复上传图片或完整矢量结构。
+
+跨平台合成夹具用于证明规则本身，而不是证明某张示例图：近色策略把选中块面从 5 减到 3（-40%）、全图路径从 6 减到 4、颜色和 paint 从 4 减到 3；6 个子路径、22 个锚点、基础色、重叠块面和未选描边保持不变。保留调色板策略仍可把完全同色且不重叠的选中块面从 5 减到 4，同时颜色数不变。
+
+### Iteration 6 基线
 
 第 6 轮把一次转换升级为可复用的设计修订过程：
 

@@ -10,7 +10,12 @@ MAX_ANSWERS_BYTES = 64 * 1024
 ANSWER_OPTIONS = {
     "primary_goal": ("art-detail", "minimum-anchors", "editing-balance"),
     "routing_rule": ("strict-topology", "smooth-flow", "source-fidelity"),
-    "paint_strategy": ("preserve-palette", "monochrome", "manual-groups"),
+    "paint_strategy": (
+        "preserve-palette",
+        "reduce-near-colors",
+        "monochrome",
+        "manual-groups",
+    ),
 }
 RECOMMENDED_ANSWERS = {
     "primary_goal": "art-detail",
@@ -28,7 +33,7 @@ class ArtisanBriefError(RuntimeError):
 def brief_questions() -> dict[str, Any]:
     """Return the stable, short client questions used before local refinement."""
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "questions": [
             {
                 "id": "primary_goal",
@@ -74,12 +79,7 @@ def _validated_answers(value: Any) -> dict[str, str]:
     return answers
 
 
-def compile_style_profile(answers_value: Any) -> dict[str, Any]:
-    """Compile client answers into deterministic local geometry constraints.
-
-    This is local parameter pre-calibration, not model training. The profile is
-    intentionally compact so later edits can refer to a short immutable digest.
-    """
+def _compile_style_profile(answers_value: Any, *, schema_version: int) -> dict[str, Any]:
     answers = _validated_answers(answers_value)
     goal = answers["primary_goal"]
     routing = answers["routing_rule"]
@@ -122,8 +122,31 @@ def compile_style_profile(answers_value: Any) -> dict[str, Any]:
     intent_deviation = {
         intent: round(value * routing_scale, 4) for intent, value in intent_deviation.items()
     }
+    if schema_version == 1:
+        appearance = {
+            "preserve_path_count": True,
+            "preserve_color_count": paint == "preserve-palette",
+            "preserve_paint_count": paint == "preserve-palette",
+            "preserve_unselected_paths": True,
+        }
+    else:
+        appearance = {
+            "preserve_unselected_paths": True,
+            "paint": {
+                "strategy": paint,
+                "delta_e": {
+                    "preserve-palette": 0.0,
+                    "reduce-near-colors": 6.0,
+                    "monochrome": 200.0,
+                    "manual-groups": 0.0,
+                }[paint],
+                "min_block_reduction": 0.03,
+                "max_subpaths": 96,
+                "max_anchors": 1024,
+            },
+        }
     core = {
-        "schema_version": 1,
+        "schema_version": schema_version,
         "answers": answers,
         "geometry": {
             "minimum_anchor_reduction_ratio": minimum_reduction,
@@ -138,12 +161,7 @@ def compile_style_profile(answers_value: Any) -> dict[str, Any]:
             "reject_new_backtracking": True,
             "preserve_subpath_count": True,
         },
-        "appearance": {
-            "preserve_path_count": True,
-            "preserve_color_count": paint == "preserve-palette",
-            "preserve_paint_count": paint == "preserve-palette",
-            "preserve_unselected_paths": True,
-        },
+        "appearance": appearance,
         "calibration": {
             "kind": "deterministic-local-style-prior",
             "local_precalibration": True,
@@ -165,6 +183,15 @@ def compile_style_profile(answers_value: Any) -> dict[str, Any]:
     }
 
 
+def compile_style_profile(answers_value: Any) -> dict[str, Any]:
+    """Compile client answers into deterministic local geometry constraints.
+
+    This is local parameter pre-calibration, not model training. The profile is
+    intentionally compact so later edits can refer to a short immutable digest.
+    """
+    return _compile_style_profile(answers_value, schema_version=2)
+
+
 def load_style_profile(path_value: str) -> dict[str, Any]:
     path = Path(path_value).expanduser()
     if not path.is_file() or path.suffix.lower() != ".json":
@@ -177,7 +204,15 @@ def load_style_profile(path_value: str) -> dict[str, Any]:
         raise ArtisanBriefError(
             "invalid_style_profile", "Style profile is not valid UTF-8 JSON."
         ) from exc
-    expected = compile_style_profile(value.get("answers") if isinstance(value, dict) else None)
+    schema_version = value.get("schema_version") if isinstance(value, dict) else None
+    if schema_version not in {1, 2}:
+        raise ArtisanBriefError(
+            "unsupported_style_profile", "Style profile schema is not supported."
+        )
+    expected = _compile_style_profile(
+        value.get("answers"),
+        schema_version=int(schema_version),
+    )
     if value != expected:
         raise ArtisanBriefError(
             "style_profile_integrity_failed", "Style profile does not match its client answers."

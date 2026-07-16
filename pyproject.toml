@@ -78,6 +78,7 @@ starbridge-backend = "starbridge_mcp.backend:main"
 starbridge-vectorize = "starbridge_mcp.vectorization.cli:main"
 starbridge-artisan-brief = "starbridge_mcp.vectorization.artisan_brief:main"
 starbridge-artisan-refine = "starbridge_mcp.vectorization.artisan_refine:main"
+starbridge-artisan-paint = "starbridge_mcp.vectorization.artisan_paint:main"
 vectorflow-studio = "starbridge_mcp.vectorization.app:main"
 
 [tool.setuptools.packages.find]
