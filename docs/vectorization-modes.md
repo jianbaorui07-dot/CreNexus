@@ -97,7 +97,7 @@ examples/output/vectorization/<reference-id>/<mode>/
 
 匠心完整结构文件额外记录基础、主体、细节、点睛图层，稳定的 `shape-*` / `layer-*` ID、父子层级、颜色、边界框和锚点指标。第 5 轮再按局部几何分成 `flow-contour`、`ornament`、`detail` 和 `micro-detail`；这些是曲线意图，不是人物、文字或物体内容识别。
 
-`artisan_edit_index.json` 使用紧凑数组保存选择器、形状 ID、边界框、锚点和子路径，后续代理优先读取它。可只检查一个局部范围：
+`artisan_edit_index.json` schema v2 使用紧凑数组保存选择器、形状 ID、设计师可读名称、边界框、锚点和子路径，并用 `svg_sha256` 绑定基础 SVG。后续代理优先读取它，可只检查一个局部范围：
 
 ```powershell
 python -m starbridge_mcp.vectorization.artisan_edit `
@@ -105,7 +105,7 @@ python -m starbridge_mcp.vectorization.artisan_edit `
   --selector intent:ornament
 ```
 
-返回值只包含 `edit_ref`、匹配对象数、合并边界框、局部锚点和最多 24 个形状 ID，不包含源文件名或绝对路径。完整结构与局部索引都在本地执行，`external_ai_calls` 为 `0`。
+返回值只包含 `edit_ref`、匹配对象数、合并边界框、局部锚点、设计师名称和最多 24 个形状 ID，不包含源文件名或绝对路径。Iteration 6 还可把三个客户答案编译为短 `profile_ref`，随后用 `artisan_refine` 对选中描边执行矢量到矢量局部精修并生成 `patch_ref`。完整结构、预校准和局部精修都在本地执行，`external_ai_calls` 为 `0`。
 
 精确模式额外报告：
 

@@ -14,6 +14,7 @@ from typing import Any
 
 from PIL import Image, ImageOps, UnidentifiedImageError
 
+from .artisan_edit import build_edit_index, designer_names
 from .presets import VectorPreset, configured_preset
 from .svg_verify import SvgArtifactError, verify_svg_artifact
 
@@ -572,7 +573,12 @@ def _write_design_svg(
         stream.write("</svg>\n")
 
 
-def _write_artisan_svg(path: Path, scene: Any, paints: dict[int, Paint]) -> None:
+def _write_artisan_svg(
+    path: Path,
+    scene: Any,
+    paints: dict[int, Paint],
+    shape_names: dict[str, str],
+) -> None:
     with path.open("w", encoding="utf-8", newline="\n") as stream:
         stream.write(
             f'<svg xmlns="http://www.w3.org/2000/svg" width="{scene.width}" '
@@ -586,6 +592,7 @@ def _write_artisan_svg(path: Path, scene: Any, paints: dict[int, Paint]) -> None
                 metadata = (
                     f'<path id="{shape.shape_id}" data-role="{shape.role}" '
                     f'data-depth="{shape.depth}" data-parent="{parent}" '
+                    f'data-name="{shape_names[shape.shape_id]}" '
                 )
                 if shape.kind == "stroke":
                     opacity = (
@@ -610,7 +617,11 @@ def _write_artisan_svg(path: Path, scene: Any, paints: dict[int, Paint]) -> None
         stream.write("</svg>\n")
 
 
-def _artisan_structure_manifest(scene: Any, paints: dict[int, Paint]) -> dict[str, Any]:
+def _artisan_structure_manifest(
+    scene: Any,
+    paints: dict[int, Paint],
+    shape_names: dict[str, str],
+) -> dict[str, Any]:
     from .artisan import ARTISAN_ROLE_LABELS_ZH
 
     canvas_area = float(scene.width * scene.height)
@@ -622,6 +633,7 @@ def _artisan_structure_manifest(scene: Any, paints: dict[int, Paint]) -> dict[st
             "kind": shape.kind,
             "role": shape.role,
             "geometric_intent": shape.geometric_intent,
+            "designer_name": shape_names[shape.shape_id],
             "parent_id": shape.parent_shape_id,
             "depth": shape.depth,
             "bbox": list(shape.bbox),
@@ -713,43 +725,23 @@ def _artisan_structure_manifest(scene: Any, paints: dict[int, Paint]) -> dict[st
     }
 
 
-def _artisan_edit_index(structure: dict[str, Any]) -> dict[str, Any]:
-    core = {
-        "schema_version": 1,
-        "structure_ref": structure["structure_ref"],
-        "strategy": structure["strategy"],
-        "selectors": [
-            [
-                item["selector"],
-                item["object_count"],
-                item["anchors"],
-                item["subpaths"],
-            ]
-            for item in structure["intent_groups"]
-        ],
-        "objects": [
+def _artisan_edit_index(structure: dict[str, Any], svg_sha256: str) -> dict[str, Any]:
+    return build_edit_index(
+        structure_ref=str(structure["structure_ref"]),
+        strategy=str(structure["strategy"]),
+        svg_sha256=svg_sha256,
+        objects=[
             [
                 item["id"],
                 item["geometric_intent"],
                 item["bbox"],
                 item["anchors"],
                 item["subpaths"],
+                item["designer_name"],
             ]
             for item in structure["shapes"]
         ],
-        "edit_reference_format": "<edit_ref> <intent:selector|shape-id> <change>",
-    }
-    canonical = json.dumps(core, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
-        "utf-8"
     )
-    digest = hashlib.sha256(canonical).hexdigest()
-    return {
-        **core,
-        "edit_index_sha256": digest,
-        "edit_ref": f"edit:{digest[:12]}",
-        "local_analysis_only": True,
-        "external_ai_calls": 0,
-    }
 
 
 def _design_preview(labels: Any, paints: dict[int, Paint]) -> Image.Image:
@@ -978,9 +970,19 @@ def run_vectorization(config: RunConfig) -> dict[str, Any]:
                     artisan_scene, vector_metrics = trace_artisan_scene(labels, preset)
                 except ArtisanComplexityError as exc:
                     raise VectorizationError("vector_too_complex", str(exc)) from exc
-                _write_artisan_svg(svg_path, artisan_scene, paints)
-                artisan_structure = _artisan_structure_manifest(artisan_scene, paints)
-                artisan_edit_index = _artisan_edit_index(artisan_structure)
+                shape_names = designer_names(
+                    [(shape.shape_id, shape.geometric_intent) for shape in artisan_scene.shapes]
+                )
+                _write_artisan_svg(svg_path, artisan_scene, paints, shape_names)
+                artisan_structure = _artisan_structure_manifest(
+                    artisan_scene,
+                    paints,
+                    shape_names,
+                )
+                artisan_edit_index = _artisan_edit_index(
+                    artisan_structure,
+                    file_sha256(svg_path),
+                )
                 (staging / "artisan_structure.json").write_text(
                     json.dumps(
                         artisan_structure,

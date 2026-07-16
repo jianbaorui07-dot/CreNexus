@@ -413,7 +413,9 @@ class DesignVectorizationModeTests(VectorizationModeTests):
             "intent-selector-or-shape-id",
         )
         self.assertEqual(structure["schema_version"], 3)
-        self.assertEqual(edit_index["schema_version"], 1)
+        self.assertEqual(edit_index["schema_version"], 2)
+        self.assertEqual(edit_index["svg_sha256"], first["artifacts"][0]["sha256"])
+        self.assertIsNone(edit_index["parent_edit_ref"])
         self.assertRegex(edit_index["edit_ref"], r"^edit:[0-9a-f]{12}$")
         self.assertEqual(first["artisan_structure"]["edit_ref"], edit_index["edit_ref"])
         self.assertEqual(
@@ -422,12 +424,14 @@ class DesignVectorizationModeTests(VectorizationModeTests):
         )
         self.assertTrue(first["artisan_structure"]["intent_selectors"])
         self.assertEqual(len(edit_index["objects"]), vector["shape_count"])
+        self.assertTrue(all(len(item) == 6 and item[5] for item in edit_index["objects"]))
         self.assertEqual(len(structure["shapes"]), vector["shape_count"])
         self.assertEqual(
             sum(item["shape_count"] for item in structure["layers"]),
             vector["shape_count"],
         )
         self.assertIn('<g id="layer-foundation" data-role="foundation">', svg)
+        self.assertIn('data-name="', svg)
         self.assertIn('fill="none" stroke="#', svg)
         self.assertIn('stroke-linecap="round" stroke-linejoin="round"', svg)
         self.assertNotIn(source.name, json.dumps(structure, ensure_ascii=False))
@@ -570,6 +574,17 @@ class DesignVectorizationModeTests(VectorizationModeTests):
             )
             with self.assertRaises(SvgArtifactError):
                 verify_svg_artifact(unsafe)
+
+        unsafe_name = self.root / "unsafe-designer-name.svg"
+        unsafe_name.write_text(
+            path.read_text(encoding="utf-8").replace(
+                'data-parent="none"', 'data-parent="none" data-name="细节:script"'
+            ),
+            encoding="utf-8",
+        )
+        with self.assertRaises(SvgArtifactError) as raised:
+            verify_svg_artifact(unsafe_name)
+        self.assertEqual(raised.exception.code, "invalid_designer_name")
 
     def test_svg_verifier_validates_structured_parent_references(self) -> None:
         path = self.root / "structured.svg"

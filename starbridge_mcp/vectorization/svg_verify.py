@@ -18,6 +18,7 @@ _ALLOWED_ATTRIBUTES = {
         "data-role",
         "data-depth",
         "data-parent",
+        "data-name",
         "d",
         "fill",
         "fill-opacity",
@@ -416,6 +417,14 @@ def verify_svg_artifact(
             element.get("data-depth"),
             element.get("data-parent"),
         )
+        designer_name = element.get("data-name")
+        if designer_name is not None and (
+            not 0 < len(designer_name) <= 64
+            or not all(character.isalnum() or character in " -_" for character in designer_name)
+        ):
+            raise SvgArtifactError(
+                "invalid_designer_name", "Artisan designer names must use safe readable text."
+            )
         if any(value is not None for value in structure_values):
             if any(value is None for value in structure_values):
                 raise SvgArtifactError(

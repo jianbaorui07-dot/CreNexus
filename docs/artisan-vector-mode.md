@@ -102,6 +102,70 @@ SVG 安全验证器对开放描边使用独立的严格契约：只接受绝对 
 
 本轮同时生成 `artisan_edit_index.json`。它只保存 `edit_ref`、意图选择器、稳定 `shape-*` ID、边界框和局部复杂度，不保存源文件名或路径。代理可先检查 `intent:ornament` 等局部范围，不必把完整结构文件加载进对话。
 
+## Iteration 6：客户意图预校准与矢量局部精修
+
+第六轮不依赖某一张示例图，而是固定一套可复用修订协议：
+
+```text
+三个客户问题
+→ 本地风格配置 style_ref
+→ edit_ref + intent:* / shape-* 选择局部对象
+→ 直接读取已有 SVG 贝塞尔几何
+→ 按曲率重新分配锚点
+→ 逐子路径检查偏差、端点、自交和回头线
+→ 失败子路径保留原样
+→ 输出新 SVG、edit_ref 和 patch_ref
+```
+
+三个问题分别确定主要目标、布线规则和颜色策略。答案会编译成确定性的本地参数先验；文档中称为“预校准”，不称为已经训练新的机器学习模型。配置不包含源图片、文件名或绝对路径，`external_ai_calls` 为 `0`，后续修订只需传递不足 1 KB 的配置和短引用。
+
+编辑索引 schema v2 新增：
+
+- `svg_sha256`：索引只允许用于与它精确匹配的 SVG；
+- `designer_name`：主轮廓、装饰纹、细节、微细节和基础块面的稳定可读名称；
+- `parent_edit_ref`：记录前一轮索引，形成可审计补丁链。
+
+局部精修只改变通过质量门的选中描边 `d` 属性。以下条件是硬约束：
+
+- 开放路径每个子路径的首尾端点保持不变；
+- 不新增自交和回头线；
+- 路径数、子路径数、颜色数和 paint 数保持不变；
+- 未选路径逐字节一致；
+- 选中路径除几何 `d` 外的样式和元数据逐字节一致；
+- 单个候选失败时保留原子路径，整组选区达不到最低锚点收益时不发布补丁。
+
+命令示例：
+
+```powershell
+python -m starbridge_mcp.vectorization.artisan_brief questions
+python -m starbridge_mcp.vectorization.artisan_brief compile `
+  --answers "client_answers.json" `
+  --output "artisan_style_profile.json"
+
+python -m starbridge_mcp.vectorization.artisan_refine `
+  --svg "<output>/vector.svg" `
+  --index "<output>/artisan_edit_index.json" `
+  --profile "artisan_style_profile.json" `
+  --selector intent:flow-contour `
+  --output-dir "<new-output>"
+```
+
+同一授权回归样例上的真实结果如下；这些数字用于证明协议能运行，不把样图本身当作产品成果：
+
+| 指标 | 精修前 | 精修后 |
+| --- | ---: | ---: |
+| 通过质量门的主轮廓对象 | 6 | 6 |
+| 局部锚点 | 3,178 | 2,922（-8.06%） |
+| 全图锚点 | 24,879 | 24,623（-1.03%） |
+| 路径 / 子路径 | 111 / 8,065 | 111 / 8,065 |
+| 颜色 / paint | 2 / 2 | 2 / 2 |
+| SVG 大小 | 864,638 bytes | 841,965 bytes（-2.62%） |
+| 平均 / 最大几何偏差 | — | 0.1744 px / 2.3438 px |
+| 自交 / 回头线 | 5 / 0 | 5 / 0 |
+| 未选路径 | — | 逐字节一致 |
+
+风格配置为 958 bytes，补丁报告为 1,254 bytes，schema-v2 编辑索引为 7,874 bytes；索引仍比 30,003-byte 完整结构上下文小 73.76%。这使后续多轮修订可以交换短引用和局部证据，而不是反复上传图片或完整报告。
+
 ## 验收指标
 
 | 指标 | 含义 |
@@ -230,6 +294,7 @@ npm.cmd run vector-app:start
 3. **Iteration 3：中心线描边（已完成）。** 本地骨架追踪、开放贝塞尔描边、可变线宽、质量门控和轮廓填充回退。
 4. **Iteration 4：交叉点曲线续接（已完成）。** 切线和线宽配对、长描边续接、三级质量回退和编辑批次压缩。
 5. **Iteration 5：几何意图与局部索引（已完成）。** 主轮廓、装饰纹、细节和微细节分级，覆盖感知短枝清理、四级质量回退与 6 KB 级编辑索引。
-6. **Iteration 6：设计师交付。** Illustrator 图层、路径命名、颜色组、人工修订建议和真正的局部重算。
+6. **Iteration 6：客户意图与局部精修（已完成）。** 三问预校准、SVG/索引绑定、设计师可读命名、曲率布线、严格拓扑门控和补丁链。
+7. **Iteration 7：块面与颜色设计。** 在保留题材识别边界的前提下，研究可验证的块面合并、调色板压缩和 Illustrator 名称映射。
 
 匠心模式的长期目标不是声称“一键等同人工设计”，而是用可验证的锚点数量、轮廓误差、结构分层和可编辑性，逐轮缩小与专业设计师手工矢量稿之间的差距。

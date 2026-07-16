@@ -1,4 +1,4 @@
-# StarBridge：匠心矢量 + 三种基础矢量模式 + Codex Skill + MCP
+# StarBridge：匠心矢量 + 四模式矢量化 + Codex Skill + MCP
 
 [![CI](https://github.com/jianbaorui07-dot/Codex-Integration-with-Creative-Industry-Software/actions/workflows/ci.yml/badge.svg)](https://github.com/jianbaorui07-dot/Codex-Integration-with-Creative-Industry-Software/actions/workflows/ci.yml)
 ![Windows first](https://img.shields.io/badge/Windows-first-2563eb)
@@ -9,7 +9,7 @@
 
 StarBridge 是以**匠心矢量**为高级方向，并完整保留**智能矢量、轻量矢量和精确重建**三种基础模式的本地创意软件开源接入层。它把 **Codex Skill** 的任务路由、**StarBridge MCP** 的结构化工具，以及 **Adobe UXP / Node Proxy** 的桌面软件通道组合成一套可审计的工作流；ComfyUI、Photoshop、CAD / AutoCAD、Blender 和 CapCut / 剪映等桥仍完整保留。
 
-普通图片默认进入**智能矢量**；Logo、图标和纹样可选择**轻量矢量**；需要技术验证或像素存档时选择**精确重建**。在三种基础模式之上，新增加定位更高的 **匠心矢量**：保留关键角点，以更少锚点生成直线、三次贝塞尔轮廓和人工描线式开放描边，并按切线与线宽把交叉点两侧续接成长路径。第 5 轮会按局部几何把描边分成主轮廓、装饰纹、细节和微细节，分别选择简化与平滑强度；只有锚点、总点数、编辑批次和像素质量同时通过质量门时才采用。所有模式都生成纯路径 SVG，并拒绝嵌入位图、脚本和外链；均不调用 Illustrator Image Trace。
+普通图片默认进入**智能矢量**；Logo、图标和纹样可选择**轻量矢量**；需要技术验证或像素存档时选择**精确重建**。在三种基础模式之上，**匠心矢量**保留关键角点，以更少锚点生成直线、三次贝塞尔轮廓和人工描线式开放描边，并按切线与线宽把交叉点两侧续接成长路径。第 5 轮按局部几何把描边分成主轮廓、装饰纹、细节和微细节；第 6 轮增加客户意图预校准、矢量到矢量局部精修和可审计补丁链。它只使用可解释的几何特征，不声称识别人脸、文字或具体题材。所有模式都生成纯路径 SVG，并拒绝嵌入位图、脚本和外链；普通图片转矢量不调用 Illustrator Image Trace。
 
 ```mermaid
 flowchart LR
@@ -27,20 +27,52 @@ flowchart LR
 
 项目坚持 local-first：默认只读或 `dry-run`，真实写入必须显式确认并限制在安全输出目录；仓库不保存客户素材、PSD / AI / DWG 私有工程、账号状态、模型文件、token 或本机路径。
 
-## 当前状态：v0.1-alpha
+## 当前状态：v0.1-alpha（能力矩阵 v0.2）
 
 | 状态 | 已覆盖能力 | 证据边界 |
 | --- | --- | --- |
-| stable（稳定） | MCP stdio、工具注册、resources / prompts、状态探针、路径脱敏、operation context、ComfyUI 队列/进度/任务快照与工作流验证；AutoCAD/DXF plan validate / dry-run / guarded write | Windows 与 Ubuntu CI 验证结构、schema、安全边界和 soft-exit |
-| primary（主推） | 匠心高级模式 + 智能、轻量、精确三种基础模式→已验证 SVG、矢量采样预览和报告 | 匠心模式增加几何意图分级、稳定形状 ID、四级质量门控、轮廓填充回退和 6 KB 级局部编辑索引；基础模式及旧入口完整保留 |
-| experimental（其他 Adobe 协议） | Photoshop / Illustrator 规划、预检、受控执行接口；彩色矢量化 plan / validate / compare / repair_plan / execute；旧量化 SVG fallback | 兼容与研究用途；默认不作为普通图片转矢量入口；compare 只读取两个明确授权文件 |
+| stable（稳定） | MCP stdio、tools / resources / prompts、工具注册、状态探针、路径脱敏、safe roots、operation context、EvidenceManifest / JobStatus；ComfyUI 队列/进度/任务快照与工作流验证；AutoCAD/DXF plan validate / dry-run / guarded write | Windows 与 Ubuntu CI 验证结构、schema、安全边界、证据字段和 soft-exit |
+| primary（主推） | 四模式图片转 SVG：匠心、智能、轻量、精确；均输出已验证的无位图 SVG、矢量采样预览和报告 | 匠心 Iteration 6 增加三问预校准、SVG 绑定索引、局部曲线精修、拓扑硬门槛和补丁链；基础模式及旧入口完整保留 |
+| experimental（桌面与 Adobe 协议） | Photoshop session / state / preview、sandbox recipe 计划；Illustrator 预检、精确 SVG→AI 交付和保留的彩色矢量化 / Image Trace / 旧量化协议 | CLI、verifier、schema 和协议测试已覆盖；真实桌面写入仍需本机软件、明确授权和显式确认 |
 | UXP 安全执行已实现 | Photoshop `executeAsModal` 有界排队、取消状态、history commit / rollback、临时文档自动关闭 | 已通过 Node 模拟与协议测试；仍需已授权 Photoshop 桌面实测 |
-| planned（仍在推进） | repair plan → Illustrator execute → compare 的显式确认闭环、Adobe 桌面端端到端验收、Blender 确认渲染、CapCut 草稿骨架 | 未经本地运行证据，不宣称真实桌面控制已验证 |
+| prototype（原型） | Blender 环境/场景/参考重建计划；CapCut / 剪映可执行文件探针和脱敏草稿顶层摘要 | 只验证公开结构和安全边界；不读取私有工程，不把探针结果写成生产控制 |
+| planned（仍在推进） | repair plan → Illustrator execute → compare 的显式确认闭环、事务式 AI 发布、Adobe 桌面端端到端验收、Blender 确认渲染、CapCut 草稿骨架 | 未经本地运行证据，不宣称真实桌面控制已验证 |
 | not implemented（不实现） | 自动登录、绕过授权、递归扫描私有目录、无确认写入真实软件、上传客户工程或商业素材 | 安全硬边界 |
 
 Photoshop, Illustrator, Blender, and CapCut write flows are experimental or planned unless a reviewed local run proves otherwise.
 
 完整状态见 [匠心矢量](docs/artisan-vector-mode.md)、[四模式矢量化](docs/vectorization-modes.md)、[精确像素矢量重建](docs/exact-pixel-vectorization.md)、[能力矩阵](docs/CAPABILITY_MATRIX.md) 和 [v0.1-alpha 发布说明](docs/RELEASE_V0_1_ALPHA.md)。
+
+## 最新能力：匠心矢量 Iteration 6
+
+第 6 轮把一次转换升级为可复用的设计修订过程：
+
+- 先用三个短问题确认细节、布线和颜色策略，再编译为小于 1 KB、可复用的本地风格配置；这是确定性的参数预校准，不是模型训练，也不上传图片。
+- `artisan_edit_index.json` 升级到 schema v2，绑定基础 SVG 的 SHA-256，并为每个对象增加设计师可读名称和父补丁引用，避免把修订应用到错误文件。
+- 新增真正的矢量到矢量局部精修：只改 `intent:*` 或 `shape-*` 选中的开放描边，按曲率重新分配锚点；端点、路径数、子路径数、颜色数、paint 数、未选路径和选中对象样式均设为硬约束。
+- 每条候选独立检查最大/平均几何偏差、新增自交和回头线；不合格的子路径保留原始几何，整组没有安全收益时明确拒绝输出。
+- 每次修订生成紧凑 `patch_ref`、新 `edit_ref` 和补丁链，无需重新上传原图或把完整结构塞回对话。
+
+授权线稿仅作为可替换的回归样例。Iteration 6 在主轮廓局部修订中把通过质量门的 6 个对象从 3,178 个锚点减到 2,922 个（-8.06%），全图总锚点从 24,879 减到 24,623；111 条路径、8,065 个子路径、2 种颜色和 2 种 paint 均未改变，未选路径逐字节一致。样图与结果仍只保存在 Git 忽略目录，仓库提交的是过程、约束、测试和可复用代码。
+
+### Iteration 5 基线
+
+第 5 轮已完成并默认受质量门控保护：
+
+- 根据曲线长度、闭合性和转折密度生成 `flow-contour`、`ornament`、`detail`、`micro-detail` 四类几何意图；这是局部几何分类，不是内容识别。
+- 增加覆盖感知的微短枝清理和独立的第 4 个质量门；候选失败时按“几何意图 → 曲线续接 → 中心线 → 轮廓填充”逐级回退。
+- 生成矢量采样预览、schema-v3 意图元数据、稳定 `intent:*` 选择器，以及不含源文件名和绝对路径的 `artisan_edit_index.json`。
+- `--compact` 只返回质量指标、`edit_ref`、选择器和本地输出引用；完整报告仍留在被 Git 忽略的输出目录。
+
+同一份明确授权的本地样例回归结果如下；这些数字只说明当前算法在该样例上的证据，不代表所有图片风格的固定性能：
+
+| 指标 | Iteration 4 | Iteration 5 | 变化 |
+| --- | ---: | ---: | ---: |
+| 中心线锚点 | 30,813 | 24,875 | -19.27% |
+| 子路径 | 10,309 | 8,064 | -21.78% |
+| 可编辑批次 | 116 | 110 | -5.17% |
+| SVG 大小 | 1,014,783 bytes | 861,890 bytes | -15.07% |
+| 召回率 / Dice | 94.04% / 74.71% | 93.13% / 74.54% | 质量门内 |
 
 ## 四种产品模式
 
@@ -192,8 +224,8 @@ flowchart LR
 | --- | --- |
 | 图像生成区 | ComfyUI workflow 校验、队列监控、模板和任务生命周期摘要 |
 | 工程制图区 | CAD / AutoCAD plan、DXF dry-run 与受控写入 |
-| AI 矢量文件桥 | 新增高定位匠心矢量；智能、轻量、精确及旧量化入口继续保留 |
-| 图像编辑区 | Photoshop UXP、Node Proxy、modal 回滚与 sandbox demo |
+| AI 矢量文件桥 | 匠心 Iteration 5、几何意图选择器、局部编辑索引；智能、轻量、精确及旧量化入口继续保留 |
+| 图像编辑区 | Photoshop session / preview / state、UXP、Node Proxy、modal 回滚与 sandbox recipe |
 | 视频草稿区 | CapCut / 剪映只读探针；未配置时报告“剪映可执行文件”状态 |
 
 ## 仓库结构
@@ -255,7 +287,7 @@ npm.cmd test
 
 ## English
 
-StarBridge is a Windows-first, local-first integration layer with a premium Artisan Vector mode above three preserved baseline modes. Artisan Vector uses adaptive anchor reduction, protected corners, and mixed line/cubic Bézier paths while reporting contour error. Smart, Lightweight, and Exact Reconstruction remain available unchanged. Every mode emits raster-free SVG without Illustrator Image Trace; desktop writes require explicit confirmation.
+StarBridge is a Windows-first, local-first integration layer with a premium Artisan Vector mode above three preserved baseline modes. Artisan Vector now includes geometry-only intent profiles, tangent-aware continuation, quality-gated fallbacks, stable edit selectors, and a compact local edit index. Smart, Lightweight, and Exact Reconstruction remain available unchanged. Every mode emits verified raster-free SVG; ordinary image vectorization does not select Illustrator Image Trace, and desktop writes require explicit confirmation.
 
 ## License
 
