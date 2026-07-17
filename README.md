@@ -55,6 +55,10 @@ Photoshop, Illustrator, Blender, and CapCut write flows are experimental or plan
 
 完整状态见 [匠心矢量](docs/artisan-vector-mode.md)、[四模式矢量化](docs/vectorization-modes.md)、[精确像素矢量重建](docs/exact-pixel-vectorization.md)、[能力矩阵](docs/CAPABILITY_MATRIX.md) 和 [v0.1-alpha 发布说明](docs/RELEASE_V0_1_ALPHA.md)。
 
+## 新增：智能曲线精修 Skill
+
+`.codex/skills/starbridge-smart-vector-refinement/` 把“发现结果破碎或差异过大后的修复过程”整理为可复用质量闭环：保留原结果，生成 bounded stacked-spline 曲线候选，规范化为安全 `M/L/C/Z` 路径，验证无位图/无外链，再比较原图与**最终 SVG 实际渲染图**。默认拒绝结构差异高于 30%、归一化 MAE 高于 0.12、子路径或锚点超限的候选；不会把内部量化预览分数冒充 SVG 交付质量，也不会调用 Illustrator Image Trace。
+
 ## 最新能力：匠心矢量 Iteration 9
 
 第 9 轮把第 8 轮的 Illustrator 映射接入本地事务协议，但仍不绕过用户确认：

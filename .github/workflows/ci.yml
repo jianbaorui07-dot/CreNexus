@@ -166,4 +166,4 @@ jobs:
         run: python -c "import cv2, numpy, PIL; print(cv2.__version__, numpy.__version__, PIL.__version__)"
 
       - name: Run real headless color raster to SVG closed-loop tests
-        run: python -m unittest tests.test_illustrator_color_trace tests.test_vectorization_modes
+        run: python -m unittest tests.test_illustrator_color_trace tests.test_vectorization_modes tests.test_smart_vector_refinement_skill

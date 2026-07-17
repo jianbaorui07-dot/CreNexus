@@ -15,10 +15,19 @@ StarBridge 使用一个统一入口提供四种矢量化模式。原有智能、
 
 `balanced` 作为兼容别名会映射到 `smart`。
 
+## 智能曲线精修 Skill
+
+当智能或匠心结果出现白缝、轮廓破碎、锚点爆炸，或最终渲染与原图结构差异超过 30% 时，使用 `.codex/skills/starbridge-smart-vector-refinement/` 做候选精修。该 Skill 保留原模式和旧产物，通过可选的 VTracer stacked-spline 后端生成规范化曲线候选，再用仓库 SVG verifier 检查纯路径结构。
+
+质量评分必须比较原图与**最终 SVG 的实际渲染图**。`preview.png` 可以作为本地量化中间件或候选输入，但不能冒充最终 SVG 的相似度证据。默认硬门槛为结构差异不高于 30%、归一化 MAE 不高于 0.12、子路径不超过 12,000、锚点不超过 120,000，并要求曲线候选至少包含一个三次贝塞尔段。完整流程和调参顺序见 [智能曲线精修 Skill](../.codex/skills/starbridge-smart-vector-refinement/SKILL.md)。
+
 ## 安装和运行
 
 ```powershell
 python -m pip install -e ".[vectorization]"
+
+# 碎片/差异修复的可选曲线后端
+python -m pip install -e ".[vector-refinement]"
 
 # 客户第一阶段：像素级打印 / 精确重建
 python -m starbridge_mcp.vectorization.cli --input "<input.png>" --mode exact --reference-id "sample"

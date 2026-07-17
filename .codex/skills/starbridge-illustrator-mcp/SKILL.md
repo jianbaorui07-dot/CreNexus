@@ -13,11 +13,14 @@ Prefer read-only environment checks, redacted document summaries, preflight, and
 
 For ordinary PNG/JPEG-to-vector or “convert this image to AI” requests, enforce two stages. First use `exact_pixel_vector.py` as the pixel-level print/exact reconstruction baseline: rebuild the original RGBA grid as grouped rectangle compound paths and verify the raster-free SVG. Second, only when the customer needs a more editable drawn vector, use Artisan Vector or a customer-selected Smart/Lightweight mode on that verified baseline. Do not use Illustrator Image Trace in customer delivery. If exact reconstruction exceeds its safety limits, stop and ask the user to reduce dimensions or change the delivery goal; never silently fall back to tracing.
 
+If the Smart/Artisan result is fragmented, cracked, visibly inaccurate, or over the user's difference limit, switch to `$starbridge-smart-vector-refinement`. Score the actual final SVG render, not the internal processed preview, before any Illustrator handoff.
+
 ## Read First
 
 Read only what is needed:
 
 - `docs/05-codex-illustrator.md`
+- `.codex/skills/starbridge-smart-vector-refinement/SKILL.md` when repairing a weak curve result
 - `docs/color-faithful-vectorization.md`
 - `examples/illustrator_bridge/`
 - `examples/illustrator_bridge/scripts/preflight_plan.py`

@@ -64,6 +64,12 @@ vectorization = [
   "opencv-python-headless>=4.10,<6",
   "Pillow>=10,<13",
 ]
+vector-refinement = [
+  "numpy>=2,<3",
+  "opencv-python-headless>=4.10,<6",
+  "Pillow>=10,<13",
+  "vtracer>=0.6.11,<0.7",
+]
 vector-app = [
   "numpy>=2,<3",
   "opencv-python-headless>=4.10,<6",

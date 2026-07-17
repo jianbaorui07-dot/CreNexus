@@ -1,0 +1,4 @@
+interface:
+  display_name: "StarBridge 智能曲线精修"
+  short_description: "用最终 SVG 渲染闸门系统减少碎片、锚点和视觉偏差"
+  default_prompt: "Use $starbridge-smart-vector-refinement to refine this raster image into a seam-free, raster-free Bezier SVG and report measured fidelity and complexity."
