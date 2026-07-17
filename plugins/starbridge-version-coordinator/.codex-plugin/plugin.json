@@ -1,0 +1,37 @@
+{
+  "name": "starbridge-version-coordinator",
+  "version": "0.1.0+codex.20260717061520",
+  "description": "Plan safe StarBridge configurations for different creative-software and project generations.",
+  "author": {
+    "name": "StarBridge contributors",
+    "url": "https://github.com/jianbaorui07-dot/Codex-Integration-with-Creative-Industry-Software"
+  },
+  "homepage": "https://github.com/jianbaorui07-dot/Codex-Integration-with-Creative-Industry-Software/blob/main/docs/codex-version-coordination-service.md",
+  "repository": "https://github.com/jianbaorui07-dot/Codex-Integration-with-Creative-Industry-Software",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "mcp",
+    "creative-software",
+    "version-compatibility",
+    "starbridge"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "StarBridge Version Coordinator",
+    "shortDescription": "Match software versions to safe StarBridge routes.",
+    "longDescription": "Create a conservative Codex plan for Photoshop, Illustrator, AutoCAD, Blender, ComfyUI, and CapCut/Jianying, and migrate StarBridge v5-v8 workflows to v9.",
+    "developerName": "StarBridge contributors",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Planning"
+    ],
+    "defaultPrompt": [
+      "\u6309\u672c\u673a\u8f6f\u4ef6\u7248\u672c\u751f\u6210\u5b89\u5168\u7684 StarBridge \u914d\u7f6e\u3002",
+      "\u628a\u73b0\u6709 StarBridge v5-v8 \u5de5\u4f5c\u6d41\u8fc1\u79fb\u5230 v9\u3002",
+      "\u4e3a Photoshop \u548c Illustrator \u9009\u62e9\u517c\u5bb9\u6865\u63a5\u65b9\u5f0f\u3002"
+    ]
+  },
+  "mcpServers": "./.mcp.json"
+}

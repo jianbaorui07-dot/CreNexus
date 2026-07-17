@@ -11,7 +11,7 @@ In this repository, `AI` usually means Adobe Illustrator `.ai` vector files, not
 
 Prefer read-only environment checks, redacted document summaries, preflight, and sandbox demo plans before GUI actions or exports.
 
-For ordinary PNG/JPEG-to-vector or “convert this image to AI” requests, always use `exact_pixel_vector.py`: rebuild the original RGBA pixel grid as grouped rectangle compound paths, verify the raster-free SVG, then open it in Illustrator and Save As `.ai`. Do not use Illustrator Image Trace. If exact reconstruction exceeds its safety limits, stop and ask the user to reduce dimensions or change the delivery goal; never silently fall back to tracing.
+For ordinary PNG/JPEG-to-vector or “convert this image to AI” requests, enforce two stages. First use `exact_pixel_vector.py` as the pixel-level print/exact reconstruction baseline: rebuild the original RGBA grid as grouped rectangle compound paths and verify the raster-free SVG. Second, only when the customer needs a more editable drawn vector, use Artisan Vector or a customer-selected Smart/Lightweight mode on that verified baseline. Do not use Illustrator Image Trace in customer delivery. If exact reconstruction exceeds its safety limits, stop and ask the user to reduce dimensions or change the delivery goal; never silently fall back to tracing.
 
 ## Read First
 

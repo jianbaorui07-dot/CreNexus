@@ -2,6 +2,8 @@
 
 StarBridge 使用一个统一入口提供四种矢量化模式。原有智能、轻量和精确模式完整保留；匠心矢量作为更高定位的艺术重建模式，使用少量锚点和三次贝塞尔曲线接近人工绘制结构。所有模式都只读取用户明确传入的一张 PNG/JPEG，并输出不含嵌入位图、脚本和外链的 SVG。
 
+普通客户工作流不直接按单一模式起步，而是固定两阶段：先使用 `exact` 完成像素级打印 / 精确重建并验证基线，再按客户目标使用 `artisan` 或客户明确选择的 `smart` / `lightweight` 绘制矢量。两个阶段都禁止使用 Illustrator Image Trace；精确重建超限时停止，不自动描摹。
+
 ## 模式
 
 | 模式 | 默认参数重点 | 适用场景 | 是否逐像素一致 |
@@ -18,17 +20,18 @@ StarBridge 使用一个统一入口提供四种矢量化模式。原有智能、
 ```powershell
 python -m pip install -e ".[vectorization]"
 
-# 默认：智能矢量
+# 客户第一阶段：像素级打印 / 精确重建
+python -m starbridge_mcp.vectorization.cli --input "<input.png>" --mode exact --reference-id "sample"
+
+# 客户第二阶段：绘制型匠心矢量
+python -m starbridge_mcp.vectorization.cli --input "<input.png>" --mode artisan --reference-id "sample"
+
+# 兼容旧入口：裸调用仍映射 smart；客户工作流不要裸调用
 python -m starbridge_mcp.vectorization.cli --input "<input.png>" --reference-id "sample"
 
 # 轻量矢量
 python -m starbridge_mcp.vectorization.cli --input "<input.png>" --mode lightweight --reference-id "sample"
 
-# 精确重建
-python -m starbridge_mcp.vectorization.cli --input "<input.png>" --mode exact --reference-id "sample"
-
-# 匠心矢量
-python -m starbridge_mcp.vectorization.cli --input "<input.png>" --mode artisan --reference-id "sample"
 ```
 
 代理或自动化调用可增加 `--compact`，终端只返回关键指标、输出路径、`edit_ref` 和意图选择器；完整报告照常保存到输出目录，减少重复上下文和 token。
