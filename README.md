@@ -27,6 +27,18 @@ flowchart LR
 
 项目坚持 local-first：默认只读或 `dry-run`，真实写入必须显式确认并限制在安全输出目录；仓库不保存客户素材、PSD / AI / DWG 私有工程、账号状态、模型文件、token 或本机路径。
 
+## Codex 快速版本协同
+
+仓库新增自包含的 `starbridge-version-coordinator` 插件，用于把客户的 Photoshop、Illustrator、AutoCAD、Blender、ComfyUI、CapCut / 剪映版本映射到保守的 StarBridge 路由，并把 v5-v8 工作流增量迁移到 v9。协调器只生成计划；版本未知时先探针，真实写入仍交给完整 StarBridge MCP 并要求显式确认。
+
+```powershell
+npm.cmd run codex:coordinator:self-test
+npm.cmd run codex:coordinator:install:dry-run
+powershell -ExecutionPolicy Bypass -File plugins\starbridge-version-coordinator\scripts\install.ps1
+```
+
+完整安装、软件版本矩阵和迁移规则见 [Codex 版本配置协同服务](docs/codex-version-coordination-service.md)。
+
 ## 当前状态：v0.1-alpha（能力矩阵 v0.2）
 
 | 状态 | 已覆盖能力 | 证据边界 |

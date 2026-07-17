@@ -1,0 +1,28 @@
+{
+  "name": "starbridge-version-coordinator",
+  "version": "0.1.0",
+  "description": "Plan safe StarBridge configurations for different creative-software and project generations.",
+  "author": {
+    "name": "StarBridge contributors",
+    "url": "https://github.com/jianbaorui07-dot/Codex-Integration-with-Creative-Industry-Software"
+  },
+  "homepage": "https://github.com/jianbaorui07-dot/Codex-Integration-with-Creative-Industry-Software/blob/main/docs/codex-version-coordination-service.md",
+  "repository": "https://github.com/jianbaorui07-dot/Codex-Integration-with-Creative-Industry-Software",
+  "license": "MIT",
+  "keywords": ["codex", "mcp", "creative-software", "version-compatibility", "starbridge"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "StarBridge Version Coordinator",
+    "shortDescription": "Match software versions to safe StarBridge routes.",
+    "longDescription": "Create a conservative Codex plan for Photoshop, Illustrator, AutoCAD, Blender, ComfyUI, and CapCut/Jianying, and migrate StarBridge v5-v8 workflows to v9.",
+    "developerName": "StarBridge contributors",
+    "category": "Productivity",
+    "capabilities": ["Read", "Planning"],
+    "defaultPrompt": [
+      "按本机软件版本生成安全的 StarBridge 配置。",
+      "把现有 StarBridge v5-v8 工作流迁移到 v9。",
+      "为 Photoshop 和 Illustrator 选择兼容桥接方式。"
+    ]
+  },
+  "mcpServers": "./.mcp.json"
+}
