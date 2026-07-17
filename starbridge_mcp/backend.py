@@ -1178,11 +1178,13 @@ def _send(
     handler.send_header("Cache-Control", "no-store")
     handler.send_header("X-Content-Type-Options", "nosniff")
     origin = handler.headers.get("Origin")
-    if origin and backend.origin_allowed(origin):
-        handler.send_header("Access-Control-Allow-Origin", origin.rstrip("/"))
-        handler.send_header("Vary", "Origin")
-        handler.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
-        handler.send_header("Access-Control-Allow-Headers", f"Content-Type, {SESSION_HEADER}")
+    if origin:
+        safe_origin = origin.replace("\r", "").replace("\n", "").rstrip("/")
+        if safe_origin and backend.origin_allowed(safe_origin):
+            handler.send_header("Access-Control-Allow-Origin", safe_origin)
+            handler.send_header("Vary", "Origin")
+            handler.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+            handler.send_header("Access-Control-Allow-Headers", f"Content-Type, {SESSION_HEADER}")
     for name, value in response.headers.items():
         handler.send_header(name, value)
     handler.end_headers()
