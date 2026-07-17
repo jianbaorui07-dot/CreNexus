@@ -1,4 +1,6 @@
 import type {
+  LicenseRequestReceipt,
+  LicenseStatus,
   RuntimeStatus,
   TransportRequest,
   TransportResponse,
@@ -23,4 +25,7 @@ export interface StarBridgeTransport {
   restartBackend(): Promise<RuntimeStatus>;
   openLogsDirectory(): Promise<string>;
   getVersion(): Promise<VersionInfo>;
+  getLicenseStatus(): Promise<LicenseStatus>;
+  createLicenseRequest(): Promise<LicenseRequestReceipt>;
+  importLicenseFile(contents: string): Promise<LicenseStatus>;
 }

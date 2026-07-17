@@ -19,6 +19,7 @@ FORBIDDEN_EXTENSIONS = {
     ".aep",
     ".mp4",
     ".mov",
+    ".starbridge-license",
 }
 FORBIDDEN_TRACKED_PREFIXES = {
     "docs/cad_exact_trace_sync/exports/",

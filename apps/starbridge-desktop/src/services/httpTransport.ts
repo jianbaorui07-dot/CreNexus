@@ -1,5 +1,7 @@
 import type {
   ApiEnvelope,
+  LicenseRequestReceipt,
+  LicenseStatus,
   RuntimeStatus,
   TransportRequest,
   TransportResponse,
@@ -95,5 +97,30 @@ export class HttpTransport implements StarBridgeTransport {
 
   async getVersion(): Promise<VersionInfo> {
     return { desktop: "web-development" };
+  }
+
+  async getLicenseStatus(): Promise<LicenseStatus> {
+    return {
+      state: "community",
+      edition: "community",
+      message: "浏览器开发模式使用 Community 功能，不处理商业授权文件。",
+      deviceLimit: 0,
+      features: [],
+      commercialVerifierConfigured: false,
+    };
+  }
+
+  async createLicenseRequest(): Promise<LicenseRequestReceipt> {
+    throw new TransportError(
+      "desktop_required",
+      "请在 StarBridge Windows 桌面版中导出设备授权申请。",
+    );
+  }
+
+  async importLicenseFile(_contents: string): Promise<LicenseStatus> {
+    throw new TransportError(
+      "desktop_required",
+      "请在 StarBridge Windows 桌面版中导入授权文件。",
+    );
   }
 }

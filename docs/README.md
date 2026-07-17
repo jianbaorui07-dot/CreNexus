@@ -11,6 +11,7 @@
 | 本地 HTTP API | [starbridge-backend.md](starbridge-backend.md) |
 | MCP 本地配置 | [local-mcp-setup.md](local-mcp-setup.md) |
 | Windows 开发环境 | [windows-install.md](windows-install.md) |
+| Community / Pro 离线商业化边界 | [OFFLINE_COMMERCIALIZATION.md](OFFLINE_COMMERCIALIZATION.md) |
 | 矢量化模式 | [vectorization-modes.md](vectorization-modes.md) |
 | 精确像素矢量路线 | [exact-pixel-vectorization.md](exact-pixel-vectorization.md) |
 | 安全披露与仓库边界 | [../SECURITY.md](../SECURITY.md) / [../AGENTS.md](../AGENTS.md) |

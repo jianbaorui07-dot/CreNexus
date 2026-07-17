@@ -1,5 +1,7 @@
 import type {
   ApiEnvelope,
+  LicenseRequestReceipt,
+  LicenseStatus,
   RuntimeStatus,
   TransportRequest,
   VersionInfo,
@@ -27,6 +29,9 @@ export interface StarBridgeClient {
   restartBackend(): Promise<RuntimeStatus>;
   openLogsDirectory(): Promise<string>;
   getVersion(): Promise<VersionInfo>;
+  getLicenseStatus(): Promise<LicenseStatus>;
+  createLicenseRequest(): Promise<LicenseRequestReceipt>;
+  importLicenseFile(contents: string): Promise<LicenseStatus>;
 }
 
 function errorFromEnvelope(
@@ -105,5 +110,17 @@ export class StarBridgeApiClient implements StarBridgeClient {
 
   getVersion(): Promise<VersionInfo> {
     return this.transport.getVersion();
+  }
+
+  getLicenseStatus(): Promise<LicenseStatus> {
+    return this.transport.getLicenseStatus();
+  }
+
+  createLicenseRequest(): Promise<LicenseRequestReceipt> {
+    return this.transport.createLicenseRequest();
+  }
+
+  importLicenseFile(contents: string): Promise<LicenseStatus> {
+    return this.transport.importLicenseFile(contents);
   }
 }

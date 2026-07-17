@@ -278,6 +278,130 @@ button:hover {
   white-space: pre-wrap;
 }
 
+.license-card {
+  margin-top: 22px;
+  padding: 26px 28px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+}
+
+.license-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.license-heading h2 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.license-badge {
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.license-active {
+  border-color: color-mix(in srgb, var(--success) 48%, var(--border));
+}
+
+.license-active .license-badge {
+  background: color-mix(in srgb, var(--success) 13%, var(--surface));
+  color: var(--success);
+}
+
+.license-invalid {
+  border-color: color-mix(in srgb, var(--danger) 48%, var(--border));
+}
+
+.license-card > p {
+  margin: 12px 0 0;
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+.license-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  margin: 20px 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--border);
+}
+
+.license-facts div {
+  padding: 14px 16px;
+  background: var(--surface-muted);
+}
+
+.license-facts dt {
+  margin-bottom: 5px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.license-facts dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+.license-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 20px;
+  padding: 0;
+  list-style: none;
+}
+
+.license-features li {
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--success) 10%, var(--surface));
+  color: var(--success);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.file-button {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  padding: 0 18px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.file-button:focus-within {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.file-button input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.license-build-note {
+  font-size: 13px;
+}
+
 .safety-note {
   display: grid;
   grid-template-columns: 32px 1fr;
@@ -326,6 +450,10 @@ button:hover {
   }
 
   .status-facts {
+    grid-template-columns: 1fr;
+  }
+
+  .license-facts {
     grid-template-columns: 1fr;
   }
 

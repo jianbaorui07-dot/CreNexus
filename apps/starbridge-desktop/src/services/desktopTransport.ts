@@ -1,6 +1,8 @@
 import { invoke as tauriInvoke } from "@tauri-apps/api/core";
 
 import type {
+  LicenseRequestReceipt,
+  LicenseStatus,
   RuntimeStatus,
   TransportRequest,
   TransportResponse,
@@ -27,6 +29,25 @@ export class DesktopTransport implements StarBridgeTransport {
     }
   }
 
+  private async callLicense<T>(
+    command: "license_status" | "create_license_request" | "import_license_file",
+    args?: Record<string, unknown>,
+  ): Promise<T> {
+    try {
+      return await this.invoke<T>(command, args);
+    } catch (error) {
+      const message =
+        typeof error === "string" && error.length <= 180
+          ? error
+          : "本机授权操作未完成。";
+      throw new TransportError(
+        "license_action_failed",
+        message,
+        `Tauri command ${command} rejected the request`,
+      );
+    }
+  }
+
   request<T>(request: TransportRequest): Promise<TransportResponse<T>> {
     return this.call<TransportResponse<T>>("backend_request", { request });
   }
@@ -45,5 +66,17 @@ export class DesktopTransport implements StarBridgeTransport {
 
   getVersion(): Promise<VersionInfo> {
     return this.call<VersionInfo>("version_info");
+  }
+
+  getLicenseStatus(): Promise<LicenseStatus> {
+    return this.callLicense<LicenseStatus>("license_status");
+  }
+
+  createLicenseRequest(): Promise<LicenseRequestReceipt> {
+    return this.callLicense<LicenseRequestReceipt>("create_license_request");
+  }
+
+  importLicenseFile(contents: string): Promise<LicenseStatus> {
+    return this.callLicense<LicenseStatus>("import_license_file", { contents });
   }
 }

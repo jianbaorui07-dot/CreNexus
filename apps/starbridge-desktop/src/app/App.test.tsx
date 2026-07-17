@@ -18,6 +18,29 @@ function makeClient(status: RuntimeStatus | Promise<RuntimeStatus>): StarBridgeC
     }),
     openLogsDirectory: vi.fn().mockResolvedValue("<LOCAL_APP_DATA>/StarBridge/logs"),
     getVersion: vi.fn().mockResolvedValue({ desktop: "0.1.0" }),
+    getLicenseStatus: vi.fn().mockResolvedValue({
+      state: "community",
+      edition: "community",
+      message: "Community 免费版正在本机运行，不需要授权文件。",
+      deviceLimit: 0,
+      features: [],
+      commercialVerifierConfigured: false,
+    }),
+    createLicenseRequest: vi.fn().mockResolvedValue({
+      requestId: "request-test",
+      fileName: "StarBridge-license-request-request-test.json",
+      location: "<LOCAL_APP_DATA>/StarBridge/license/requests",
+      folderOpened: true,
+    }),
+    importLicenseFile: vi.fn().mockResolvedValue({
+      state: "active",
+      edition: "pro",
+      message: "离线授权签名和当前设备绑定均已验证。",
+      licenseId: "SB-PRO-TEST",
+      deviceLimit: 1,
+      features: ["batch.processing"],
+      commercialVerifierConfigured: true,
+    }),
   };
 }
 
@@ -99,5 +122,22 @@ describe("desktop runtime status", () => {
 
     await waitFor(() => expect(client.restartBackend).toHaveBeenCalledOnce());
     expect(await screen.findByText("本地服务已恢复。")).toBeInTheDocument();
+  });
+
+  it("shows the offline Community license flow without claiming Pro is active", async () => {
+    const client = makeClient({
+      state: "connected",
+      message: "connected",
+      recoveryAttempts: 0,
+    });
+    render(<App client={client} />);
+
+    expect(await screen.findByText("Community 免费版正在本机运行，不需要授权文件。"))
+      .toBeInTheDocument();
+    expect(screen.queryByText("授权有效")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "导出设备授权申请" }));
+    await waitFor(() => expect(client.createLicenseRequest).toHaveBeenCalledOnce());
+    expect(await screen.findByText(/文件夹已打开/)).toBeInTheDocument();
   });
 });

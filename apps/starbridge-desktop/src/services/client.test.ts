@@ -19,6 +19,28 @@ function transportReturning(status: number, body: Record<string, unknown>): Star
     }),
     openLogsDirectory: async () => "logs",
     getVersion: async () => ({ desktop: "test" }),
+    getLicenseStatus: async () => ({
+      state: "community",
+      edition: "community",
+      message: "community",
+      deviceLimit: 0,
+      features: [],
+      commercialVerifierConfigured: false,
+    }),
+    createLicenseRequest: async () => ({
+      requestId: "request-test",
+      fileName: "request.json",
+      location: "license/requests",
+      folderOpened: false,
+    }),
+    importLicenseFile: async () => ({
+      state: "active",
+      edition: "pro",
+      message: "active",
+      deviceLimit: 1,
+      features: [],
+      commercialVerifierConfigured: true,
+    }),
   } as StarBridgeTransport;
 }
 

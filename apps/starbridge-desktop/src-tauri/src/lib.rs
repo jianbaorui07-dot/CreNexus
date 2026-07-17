@@ -13,6 +13,8 @@ use tauri_plugin_shell::{
 };
 use uuid::Uuid;
 
+mod licensing;
+
 const READY_PREFIX: &str = "STARBRIDGE_READY ";
 const APP_DATA_ENV: &str = "STARBRIDGE_APP_DATA_DIR";
 const SESSION_ENV: &str = "STARBRIDGE_SESSION_TOKEN";
@@ -531,6 +533,31 @@ fn version_info() -> VersionInfo {
     }
 }
 
+#[tauri::command]
+fn license_status(app: AppHandle) -> Result<licensing::LicenseStatus, String> {
+    let root = starbridge_data_root(&app)?;
+    Ok(licensing::installed_status(&root))
+}
+
+#[tauri::command]
+fn create_license_request(app: AppHandle) -> Result<licensing::LicenseRequestReceipt, String> {
+    let root = starbridge_data_root(&app)?;
+    let (mut receipt, directory) = licensing::create_request(&root, env!("CARGO_PKG_VERSION"))?;
+    if open::that(directory).is_ok() {
+        licensing::mark_folder_opened(&mut receipt);
+    }
+    Ok(receipt)
+}
+
+#[tauri::command]
+fn import_license_file(
+    app: AppHandle,
+    contents: String,
+) -> Result<licensing::LicenseStatus, String> {
+    let root = starbridge_data_root(&app)?;
+    licensing::import_license(&root, &contents)
+}
+
 pub fn run() {
     let manager = BackendManager::default();
     let app = tauri::Builder::default()
@@ -548,7 +575,10 @@ pub fn run() {
             backend_request,
             restart_backend,
             open_logs_directory,
-            version_info
+            version_info,
+            license_status,
+            create_license_request,
+            import_license_file
         ])
         .setup({
             let manager = manager.clone();

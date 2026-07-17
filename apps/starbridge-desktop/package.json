@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build --no-bundle"
+    "tauri:build": "tauri build --no-bundle",
+    "tauri:bundle:nsis": "tauri build --bundles nsis"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.8.0",

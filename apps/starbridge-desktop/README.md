@@ -4,6 +4,8 @@
 
 P1 只实现启动、连接、恢复和诊断基座，不代表安装器、完整工作流界面或真实创意软件控制已经验收。
 
+P2 已开始建立公开的离线授权基础：桌面端可以导出脱敏设备申请，并在 Rust 层导入和验证 Ed25519 签名授权。当前 Community 构建没有生产验签公钥，也不包含 Pro 功能代码。商业边界、建议价格和签发流程以 [`docs/OFFLINE_COMMERCIALIZATION.md`](../../docs/OFFLINE_COMMERCIALIZATION.md) 为准。
+
 ## 目录职责
 
 ```text
@@ -83,7 +85,13 @@ P1 的无安装器本地构建命令为：
 npm.cmd run tauri:build --prefix apps\starbridge-desktop
 ```
 
-本阶段 `bundle.active` 为 `false`，不制作 NSIS/MSI。安装器、签名、升级与卸载验证属于 P3。
+P2 增加了仅用于本地验收的当前用户 NSIS 构建入口：
+
+```powershell
+npm.cmd run tauri:bundle:nsis --prefix apps\starbridge-desktop
+```
+
+该入口不需要 StarBridge 服务器。当前开发机已完成一次构建、当前用户安装、真实窗口启动、正常关闭和卸载测试；由于仍没有 Authenticode 证书和干净机器验收，产物不能作为公开收费安装包。
 
 ## one-folder 发布边界
 

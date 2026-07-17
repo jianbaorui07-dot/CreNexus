@@ -12,6 +12,9 @@ __pycache__/
 .env.*
 !.env.example
 .codex/config.toml
+*.starbridge-license
+StarBridge-license-request-*.json
+starbridge-license-private*
 .venv/
 .venv-build/
 venv/

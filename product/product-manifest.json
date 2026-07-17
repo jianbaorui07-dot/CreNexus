@@ -1,0 +1,176 @@
+{
+  "schemaVersion": 1,
+  "product": {
+    "name": "StarBridge",
+    "version": "0.1.0",
+    "positioning": "本地优先的 Windows 创意软件工作台，在用户确认后连接创意工具并保存可检查的任务证据。",
+    "serverRequired": false,
+    "desktopValidation": "available-local",
+    "installerValidation": "available-local",
+    "commercialLaunch": "planned"
+  },
+  "sourceBoundary": {
+    "communityRepository": "jianbaorui07-dot/Codex-Integration-with-Creative-Industry-Software",
+    "communitySource": "public",
+    "commercialSource": "private",
+    "commercialRepositoryCreated": false,
+    "premiumImplementationsAllowedInCommunityRepository": false
+  },
+  "editions": [
+    {
+      "id": "community",
+      "publicName": "Community 免费版",
+      "status": "available-local",
+      "priceCny": 0,
+      "licenseTerm": "free",
+      "deviceLimit": null,
+      "sourceVisibility": "public"
+    },
+    {
+      "id": "pro",
+      "publicName": "Pro 专业版",
+      "status": "planned",
+      "earlyBirdPriceCny": 399,
+      "priceStatus": "proposed",
+      "licenseTerm": "perpetual",
+      "minimumDevices": 1,
+      "deviceLimit": 2,
+      "sourceVisibility": "private"
+    },
+    {
+      "id": "enterprise",
+      "publicName": "Enterprise 企业版",
+      "status": "planned",
+      "priceStatus": "custom-quote",
+      "licenseTerm": "contract",
+      "deviceLimit": null,
+      "sourceVisibility": "private"
+    }
+  ],
+  "features": [
+    {
+      "id": "desktop.local_runtime",
+      "publicName": "Windows 本地桌面运行",
+      "internalName": "tauri_sidecar_runtime",
+      "edition": "community",
+      "status": "available-local",
+      "evidenceLevel": "real-desktop-validation",
+      "requiresUserConfirmation": false,
+      "requiresThirdPartySoftware": false,
+      "documentation": "docs/P1_PREREQUISITES.md"
+    },
+    {
+      "id": "licensing.offline_import",
+      "publicName": "离线授权文件导入",
+      "internalName": "ed25519_offline_license_v1",
+      "edition": "pro",
+      "status": "experimental",
+      "evidenceLevel": "unit-and-build-validation",
+      "requiresUserConfirmation": true,
+      "requiresThirdPartySoftware": false,
+      "documentation": "docs/OFFLINE_COMMERCIALIZATION.md"
+    },
+    {
+      "id": "vectorization.advanced",
+      "publicName": "高级矢量化",
+      "internalName": "commercial_advanced_vectorization",
+      "edition": "pro",
+      "status": "planned",
+      "evidenceLevel": "none",
+      "requiresUserConfirmation": true,
+      "requiresThirdPartySoftware": false,
+      "documentation": "docs/OFFLINE_COMMERCIALIZATION.md"
+    },
+    {
+      "id": "batch.processing",
+      "publicName": "批量处理",
+      "internalName": "commercial_batch_processing",
+      "edition": "pro",
+      "status": "planned",
+      "evidenceLevel": "none",
+      "requiresUserConfirmation": true,
+      "requiresThirdPartySoftware": false,
+      "documentation": "docs/OFFLINE_COMMERCIALIZATION.md"
+    },
+    {
+      "id": "integration.adobe",
+      "publicName": "Adobe 联动增强",
+      "internalName": "commercial_adobe_bridge",
+      "edition": "pro",
+      "status": "planned",
+      "evidenceLevel": "none",
+      "requiresUserConfirmation": true,
+      "requiresThirdPartySoftware": true,
+      "documentation": "docs/OFFLINE_COMMERCIALIZATION.md"
+    },
+    {
+      "id": "integration.comfyui",
+      "publicName": "ComfyUI 联动增强",
+      "internalName": "commercial_comfyui_bridge",
+      "edition": "pro",
+      "status": "planned",
+      "evidenceLevel": "none",
+      "requiresUserConfirmation": true,
+      "requiresThirdPartySoftware": true,
+      "documentation": "docs/OFFLINE_COMMERCIALIZATION.md"
+    },
+    {
+      "id": "integration.blender",
+      "publicName": "Blender 联动增强",
+      "internalName": "commercial_blender_bridge",
+      "edition": "pro",
+      "status": "planned",
+      "evidenceLevel": "none",
+      "requiresUserConfirmation": true,
+      "requiresThirdPartySoftware": true,
+      "documentation": "docs/OFFLINE_COMMERCIALIZATION.md"
+    },
+    {
+      "id": "updates.offline_signed_packages",
+      "publicName": "离线签名更新包",
+      "internalName": "commercial_offline_update_packages",
+      "edition": "pro",
+      "status": "planned",
+      "evidenceLevel": "none",
+      "requiresUserConfirmation": true,
+      "requiresThirdPartySoftware": false,
+      "documentation": "docs/OFFLINE_COMMERCIALIZATION.md"
+    },
+    {
+      "id": "support.enterprise_customization",
+      "publicName": "企业定制",
+      "internalName": "enterprise_custom_delivery",
+      "edition": "enterprise",
+      "status": "planned",
+      "evidenceLevel": "none",
+      "requiresUserConfirmation": true,
+      "requiresThirdPartySoftware": false,
+      "documentation": "docs/OFFLINE_COMMERCIALIZATION.md"
+    }
+  ],
+  "licensing": {
+    "status": "experimental",
+    "activation": "manual-offline-file-import",
+    "signatureAlgorithm": "Ed25519",
+    "licenseSchema": "starbridge-license/v1",
+    "deviceRequestSchema": "starbridge-license-request/v1",
+    "rawHardwareIdentifiersStored": false,
+    "networkActivation": false,
+    "productionPrivateKeyInRepository": false,
+    "productionPrivateKeyInApplication": false,
+    "productionPublicKeyConfigured": false
+  },
+  "dataPolicy": {
+    "coreComputation": "local-only",
+    "userImages": "local-only",
+    "designFiles": "local-only",
+    "licenseFiles": "local-only",
+    "telemetry": "disabled",
+    "backgroundNetworkService": false
+  },
+  "download": {
+    "status": "planned",
+    "publicInstallerAvailable": false,
+    "reason": "A local current-user NSIS install/start/close/uninstall test passed, but Authenticode signing and clean-machine acceptance are not complete."
+  }
+}

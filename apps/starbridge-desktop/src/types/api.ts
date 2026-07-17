@@ -19,6 +19,27 @@ export interface VersionInfo {
   backend?: string;
 }
 
+export type LicenseState = "community" | "active" | "invalid";
+export type LicenseEdition = "community" | "pro" | "enterprise";
+
+export interface LicenseStatus {
+  state: LicenseState;
+  edition: LicenseEdition;
+  message: string;
+  licenseId?: string;
+  deviceLimit: number;
+  features: string[];
+  commercialVerifierConfigured: boolean;
+  reason?: string;
+}
+
+export interface LicenseRequestReceipt {
+  requestId: string;
+  fileName: string;
+  location: string;
+  folderOpened: boolean;
+}
+
 export interface ApiErrorShape {
   code?: string;
   message?: string;
