@@ -89,6 +89,9 @@ export interface CodexConnectorInstallResult {
   installed: boolean;
   connector: string;
   message: string;
+  migrated_existing_connector?: boolean;
+  backup_created?: boolean;
+  backup_file?: string | null;
   restart_required: boolean;
   next_steps: string[];
 }

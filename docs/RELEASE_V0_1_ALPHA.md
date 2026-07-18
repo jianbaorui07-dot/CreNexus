@@ -1,6 +1,6 @@
-# v0.1.0-alpha.0 发布候选说明
+# v0.1.0-alpha.1 发布候选说明
 
-`v0.1.0-alpha.0` 是一个 Windows-first / local-first 的安全桥接候选版。它的目标是让 Codex / Cursor / Claude Code 等 AI coding agents 通过 MCP stdio 发现和调用本机创意软件相关的安全探针、workflow 校验、DXF dry-run plan 和受保护 sandbox demo。它不是签名公开发行版，不绕过授权，不上传私有资产，也不替代创意软件。
+`v0.1.0-alpha.1` 是一个 Windows-first / local-first 的安全桥接候选版。它的目标是让 Codex / Cursor / Claude Code 等 AI coding agents 通过 MCP stdio 发现和调用本机创意软件相关的安全探针、workflow 校验、DXF dry-run plan 和受保护 sandbox demo。它不是签名公开发行版，不绕过授权，不上传私有资产，也不替代创意软件。
 
 ## What is included
 

@@ -58,11 +58,17 @@ export function IntegrationsPage({
     setBusy(true);
     setMessage("");
     try {
+      let migratedExistingConnector = false;
       if (!connections?.codex.connector_configured) {
-        await client.installCodexConnector(true);
+        const installResult = await client.installCodexConnector(true);
+        migratedExistingConnector = Boolean(installResult.migrated_existing_connector);
       }
       await client.openCodexPairing(pairingCode);
-      setMessage("已打开新的 Codex 任务。请发送预填的关联指令，CreNexus 会自动等待结果。");
+      setMessage(
+        migratedExistingConnector
+          ? "已备份旧 Codex 配置并安全迁移同名连接器；新的 Codex 任务已打开，请完成关联。"
+          : "已打开新的 Codex 任务。请发送预填的关联指令，CreNexus 会自动等待结果。",
+      );
       await onRefresh();
     } catch (reason) {
       setMessage(actionError(reason));

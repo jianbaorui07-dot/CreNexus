@@ -13,7 +13,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 class ProductFactsConsistencyTests(unittest.TestCase):
     def test_semver_to_pep440_mapping(self) -> None:
-        self.assertEqual("0.1.0a0", pep440_version("0.1.0-alpha.0"))
+        self.assertEqual("0.1.0a1", pep440_version("0.1.0-alpha.1"))
         self.assertEqual("1.2.3rc4", pep440_version("1.2.3-rc.4"))
 
     def test_all_machine_readable_product_facts_are_consistent(self) -> None:

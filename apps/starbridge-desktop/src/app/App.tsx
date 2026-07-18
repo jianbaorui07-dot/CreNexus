@@ -44,7 +44,7 @@ const INITIAL_LICENSE: LicenseStatus = {
 const INITIAL_UPDATE_STATUS: SoftwareUpdateStatus = {
   configured: false,
   source: "GitHub Releases",
-  currentVersion: "0.1.0-alpha.0",
+  currentVersion: "0.1.0-alpha.1",
   available: false,
   signatureRequired: true,
   automaticChecksSupported: false,

@@ -2,6 +2,12 @@
 
 ## Unreleased / Optimizations
 
+### 2026-07-18 — CreNexus 0.1.0-alpha.1 Windows app
+
+* Replaced the legacy desktop UI with the editorial StarBridge control-console design while retaining existing local workflows and software probes.
+* Added an in-place Codex connector migration that backs up `config.toml`, replaces only the legacy `starbridge-desktop` tables, and preserves every unrelated Codex and MCP setting.
+* Added migration, backup-failure, idempotency, desktop frontend, packaged sidecar, and Windows installer regression coverage.
+
 * Added Artisan final-render adaptive optimization with high-fidelity, balanced, and minimal-anchor quality presets.
 * Added original-resolution SVG rendering, structural difference, normalized MAE, edge Dice, local error hotspots, Pareto selection, reverse anchor deletion, and deterministic rollback to the prior Artisan result.
 * Added quality-gated four-anchor cubic ellipse fitting while preserving four-corner rectangles and compound-path holes.

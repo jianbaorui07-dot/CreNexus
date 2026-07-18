@@ -58,7 +58,7 @@ powershell -ExecutionPolicy Bypass -File plugins\starbridge-version-coordinator\
 
 完整安装、软件版本矩阵和迁移规则见 [Codex 版本配置协同服务](docs/codex-version-coordination-service.md)。
 
-## 当前状态：v0.1.0-alpha.0
+## 当前状态：v0.1.0-alpha.1
 
 | 状态 | 已覆盖能力 | 证据边界 |
 | --- | --- | --- |
