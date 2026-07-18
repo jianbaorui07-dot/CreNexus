@@ -192,6 +192,16 @@ describe("desktop runtime status", () => {
         message: "已找到 Codex；需要安装 CreNexus 本地连接器。",
       },
     });
+    client.installCodexConnector = vi.fn().mockResolvedValue({
+      installed: true,
+      connector: "starbridge-desktop",
+      message: "旧版 Codex 连接器已备份并迁移到 CreNexus 托管配置。",
+      migrated_existing_connector: true,
+      backup_created: true,
+      backup_file: "config.crenexus-backup-example.toml",
+      restart_required: true,
+      next_steps: [],
+    });
     render(<App client={client} />);
 
     fireEvent.click(await screen.findByRole("button", { name: "连接 Codex 后开始制图" }));
@@ -199,6 +209,9 @@ describe("desktop runtime status", () => {
 
     await waitFor(() => expect(client.installCodexConnector).toHaveBeenCalledWith(true));
     expect(client.openCodexPairing).toHaveBeenCalledWith("ABCD2345");
+    expect(
+      await screen.findByText("已备份旧 Codex 配置并安全迁移同名连接器；新的 Codex 任务已打开，请完成关联。"),
+    ).toBeInTheDocument();
   });
 
   it("pairs a running creative application without claiming a process-only bridge can edit", async () => {

@@ -140,6 +140,23 @@ try {
         throw "The packaged sidecar returned an invalid pairing code."
     }
 
+    New-Item -ItemType Directory -Path $codexTestHome -Force | Out-Null
+    $codexTestConfig = Join-Path $codexTestHome "config.toml"
+    $legacyConfig = @'
+model = "gpt-5.6"
+
+[mcp_servers.starbridge-desktop]
+command = "legacy-sidecar"
+args = ["--legacy"]
+
+[mcp_servers.starbridge-desktop.env]
+LEGACY_VALUE = "backup-only"
+
+[mcp_servers.other-tool]
+command = "other-tool"
+'@
+    [IO.File]::WriteAllText($codexTestConfig, $legacyConfig, [Text.UTF8Encoding]::new($false))
+
     $connectorInstall = Invoke-RestMethod `
         -Uri "http://127.0.0.1:$($ready.port)/api/connections/codex/install" `
         -Method Post `
@@ -147,13 +164,36 @@ try {
         -ContentType "application/json" `
         -Body '{"confirm_install":true}' `
         -TimeoutSec 10
-    $codexTestConfig = Join-Path $codexTestHome "config.toml"
     if (-not $connectorInstall.data.installed -or -not (Test-Path -LiteralPath $codexTestConfig -PathType Leaf)) {
         throw "The packaged sidecar did not install its managed Codex connector."
+    }
+    if (-not $connectorInstall.data.migrated_existing_connector -or -not $connectorInstall.data.backup_created) {
+        throw "The packaged sidecar did not safely migrate the legacy Codex connector."
     }
     $codexTestConfigText = [IO.File]::ReadAllText($codexTestConfig)
     if (-not $codexTestConfigText.Contains("mcp_servers.starbridge-desktop") -or $codexTestConfigText.Contains($sessionCredential)) {
         throw "The managed Codex connector config was missing or exposed the desktop credential."
+    }
+    if ($codexTestConfigText.Contains("legacy-sidecar") -or
+        -not $codexTestConfigText.Contains("mcp_servers.other-tool")) {
+        throw "The managed connector migration did not replace only the legacy connector tables."
+    }
+    $configBackups = @(Get-ChildItem -LiteralPath $codexTestHome -File -Filter "config.crenexus-backup-*.toml")
+    if ($configBackups.Count -ne 1 -or
+        -not ([IO.File]::ReadAllText($configBackups[0].FullName)).Contains("legacy-sidecar")) {
+        throw "The legacy Codex connector backup was not created correctly."
+    }
+
+    $repeatInstall = Invoke-RestMethod `
+        -Uri "http://127.0.0.1:$($ready.port)/api/connections/codex/install" `
+        -Method Post `
+        -Headers $headers `
+        -ContentType "application/json" `
+        -Body '{"confirm_install":true}' `
+        -TimeoutSec 10
+    if ($repeatInstall.data.migrated_existing_connector -or
+        @(Get-ChildItem -LiteralPath $codexTestHome -File -Filter "config.crenexus-backup-*.toml").Count -ne 1) {
+        throw "The managed connector reinstall was not idempotent."
     }
 
     $mcpInfo = [Diagnostics.ProcessStartInfo]::new()

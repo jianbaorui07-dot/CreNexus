@@ -1,6 +1,6 @@
 [package]
 name = "starbridge-desktop"
-version = "0.1.0-alpha.0"
+version = "0.1.0-alpha.1"
 description = "Windows-first local CreNexus desktop runtime"
 authors = ["CreNexus contributors"]
 license = "MIT"

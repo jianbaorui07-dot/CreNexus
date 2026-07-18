@@ -30,7 +30,7 @@
   "product": {
     "name": "CreNexus",
     "descriptionZhCn": "AI 创意软件协同平台",
-    "version": "0.1.0-alpha.0",
+    "version": "0.1.0-alpha.1",
     "positioning": "Windows AI 创意软件协同平台：Codex 负责理解与调度，CreNexus MCP 负责受控执行、安全验证和脱敏证据，创意软件负责实际生产。",
     "serverRequired": false,
     "desktopValidation": "experimental",

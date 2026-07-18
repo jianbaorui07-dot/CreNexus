@@ -21,7 +21,7 @@ class ReleaseDocsTests(unittest.TestCase):
 
     def test_version_is_canonical_alpha_semver(self) -> None:
         self.assertEqual(
-            "0.1.0-alpha.0",
+            "0.1.0-alpha.1",
             (REPO_ROOT / "VERSION").read_text(encoding="utf-8").strip(),
         )
 

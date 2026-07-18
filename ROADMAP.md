@@ -1,6 +1,6 @@
 # Roadmap
 
-本路线图记录 CreNexus 公开仓库的下一步方向。当前产品版本是 `0.1.0-alpha.0`。产品事实以 [PRODUCT_FACTS](docs/PRODUCT_FACTS.md) 为准，目标架构以 [工作流架构 v2](docs/ARCHITECTURE_V2.md) 为准。
+本路线图记录 CreNexus 公开仓库的下一步方向。当前产品版本是 `0.1.0-alpha.1`。产品事实以 [PRODUCT_FACTS](docs/PRODUCT_FACTS.md) 为准，目标架构以 [工作流架构 v2](docs/ARCHITECTURE_V2.md) 为准。
 
 ## 工作流产品化 P0–P10
 

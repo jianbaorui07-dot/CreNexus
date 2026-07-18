@@ -99,12 +99,75 @@ class DesktopConnectionTests(unittest.TestCase):
         contents = config.read_text(encoding="utf-8")
         self.assertTrue(first["installed"])
         self.assertTrue(second["installed"])
+        self.assertFalse(first["migrated_existing_connector"])
+        self.assertFalse(first["backup_created"])
         self.assertIn('model = "gpt-5.6"', contents)
         self.assertEqual(1, contents.count(CONNECTOR_BEGIN))
         self.assertEqual(1, contents.count(CONNECTOR_END))
         self.assertIn("mcp_servers.starbridge-desktop", contents)
         self.assertNotIn("auth.json", contents)
         self.assertNotIn("token", contents.lower())
+
+    def test_connector_install_backs_up_and_migrates_unmanaged_entry(self) -> None:
+        manager = self.manager()
+        codex_home = self.root / "codex-home"
+        codex_home.mkdir()
+        config = codex_home / "config.toml"
+        original = """model = \"gpt-5.6\"
+
+[mcp_servers.starbridge-desktop]
+command = \"legacy-sidecar\"
+args = [\"--legacy\"]
+
+[mcp_servers.starbridge-desktop.env]
+LEGACY_VALUE = \"preserve-in-backup-only\"
+
+[mcp_servers.other-tool]
+command = \"other-tool\"
+"""
+        config.write_text(original, encoding="utf-8")
+
+        with patch.dict(os.environ, {"CODEX_HOME": str(codex_home)}):
+            migrated = manager.install_codex_connector(confirm_install=True)
+            repeated = manager.install_codex_connector(confirm_install=True)
+
+        contents = config.read_text(encoding="utf-8")
+        backups = list(codex_home.glob("config.crenexus-backup-*.toml"))
+        self.assertTrue(migrated["installed"])
+        self.assertTrue(migrated["migrated_existing_connector"])
+        self.assertTrue(migrated["backup_created"])
+        self.assertEqual(1, len(backups))
+        self.assertEqual(original, backups[0].read_text(encoding="utf-8"))
+        self.assertNotIn("legacy-sidecar", contents)
+        self.assertNotIn("LEGACY_VALUE", contents)
+        self.assertIn("[mcp_servers.other-tool]", contents)
+        self.assertIn('command = "other-tool"', contents)
+        self.assertEqual(1, contents.count(CONNECTOR_BEGIN))
+        self.assertEqual(1, contents.count(CONNECTOR_END))
+        self.assertFalse(repeated["migrated_existing_connector"])
+        self.assertFalse(repeated["backup_created"])
+        self.assertNotIn(str(codex_home), json.dumps(migrated))
+
+    def test_connector_install_does_not_modify_config_when_backup_fails(self) -> None:
+        manager = self.manager()
+        codex_home = self.root / "codex-home"
+        codex_home.mkdir()
+        config = codex_home / "config.toml"
+        original = '[mcp_servers."starbridge-desktop"]\ncommand = "legacy-sidecar"\n'
+        config.write_text(original, encoding="utf-8")
+
+        with (
+            patch.dict(os.environ, {"CODEX_HOME": str(codex_home)}),
+            patch(
+                "starbridge_mcp.core.desktop_connections.shutil.copy2",
+                side_effect=OSError("backup unavailable"),
+            ),
+            self.assertRaises(ConnectionSetupError) as blocked,
+        ):
+            manager.install_codex_connector(confirm_install=True)
+
+        self.assertEqual("connector_config_backup_failed", blocked.exception.code)
+        self.assertEqual(original, config.read_text(encoding="utf-8"))
 
     def test_mcp_pair_tool_schema_and_guarded_write(self) -> None:
         listed = handle_request({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})

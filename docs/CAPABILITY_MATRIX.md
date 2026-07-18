@@ -1,6 +1,6 @@
 # CreNexus Capability Matrix（schema v2）
 
-这份矩阵只记录当前仓库可以公开发布和测试的能力边界。产品版本为 `0.1.0-alpha.0`；标题中的 schema v2 不是产品版本。状态只能使用 `stable / experimental / planned / not_implemented`，具体语义以 [PRODUCT_FACTS](PRODUCT_FACTS.md) 为准。
+这份矩阵只记录当前仓库可以公开发布和测试的能力边界。产品版本为 `0.1.0-alpha.1`；标题中的 schema v2 不是产品版本。状态只能使用 `stable / experimental / planned / not_implemented`，具体语义以 [PRODUCT_FACTS](PRODUCT_FACTS.md) 为准。
 
 这里有两层状态词：
 

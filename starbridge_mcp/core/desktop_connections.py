@@ -31,6 +31,14 @@ PAIRING_TTL_SECONDS = 15 * 60
 MAX_CONFIG_BYTES = 2 * 1024 * 1024
 CREATE_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
+_UNMANAGED_CONNECTOR_TABLE = re.compile(
+    r"(?ms)^[ \t]*\[[ \t]*mcp_servers[ \t]*\.[ \t]*"
+    r'(?:starbridge-desktop|"starbridge-desktop")'
+    r"(?:[ \t]*\.[ \t]*(?:[A-Za-z0-9_-]+|\"[^\"\r\n]+\"))*"
+    r"[ \t]*\][ \t]*(?:#[^\r\n]*)?(?:\r?\n|$)"
+    r".*?(?=^[ \t]*\[[^\r\n]*\][ \t]*(?:#[^\r\n]*)?(?:\r?\n|$)|\Z)"
+)
+
 JsonObject = dict[str, Any]
 ProcessProbe = Callable[[], set[str]]
 InstallProbe = Callable[[Iterable[str], str | None], bool]
@@ -393,6 +401,24 @@ def _connector_command() -> tuple[Path, list[str], Path | None]:
     return command, ["-m", "starbridge_mcp.mcp_server"], repository_root
 
 
+def _remove_unmanaged_connector_tables(contents: str) -> tuple[str, bool]:
+    migrated = _UNMANAGED_CONNECTOR_TABLE.search(contents) is not None
+    if not migrated:
+        return contents, False
+    return _UNMANAGED_CONNECTOR_TABLE.sub("\n", contents), True
+
+
+def _backup_codex_config(config: Path) -> Path:
+    timestamp = _utc_now().strftime("%Y%m%dT%H%M%SZ")
+    backup = config.with_name(f"{config.stem}.crenexus-backup-{timestamp}{config.suffix}")
+    if backup.exists():
+        backup = config.with_name(
+            f"{config.stem}.crenexus-backup-{timestamp}-{uuid4().hex[:8]}{config.suffix}"
+        )
+    shutil.copy2(config, backup)
+    return backup
+
+
 class DesktopConnectionManager:
     def __init__(
         self,
@@ -499,12 +525,19 @@ class DesktopConnectionManager:
             rf"(?ms)^\s*{re.escape(CONNECTOR_BEGIN)}.*?{re.escape(CONNECTOR_END)}\s*"
         )
         preserved = managed_pattern.sub("\n", contents).rstrip()
-        if re.search(r"(?m)^\s*\[mcp_servers\.starbridge-desktop(?:\.env)?\]\s*$", preserved):
-            raise ConnectionSetupError(
-                "connector_config_conflict",
-                "Codex 配置中已有非托管的 starbridge-desktop 条目，CreNexus 未覆盖它。",
-                ["请先在 config.toml 中重命名或删除冲突条目。"],
-            )
+        preserved, migrated_existing_connector = _remove_unmanaged_connector_tables(preserved)
+        preserved = preserved.rstrip()
+
+        backup: Path | None = None
+        if migrated_existing_connector:
+            try:
+                backup = _backup_codex_config(config)
+            except OSError as error:
+                raise ConnectionSetupError(
+                    "connector_config_backup_failed",
+                    "无法备份现有 Codex 配置，CreNexus 未做修改。",
+                    ["请确认 config.toml 所在目录可写后重试。"],
+                ) from error
 
         block_lines = [
             CONNECTOR_BEGIN,
@@ -542,7 +575,14 @@ class DesktopConnectionManager:
         return {
             "installed": True,
             "connector": "starbridge-desktop",
-            "message": "Codex 本地连接器已安装或更新。",
+            "message": (
+                "旧版 Codex 连接器已备份并迁移到 CreNexus 托管配置。"
+                if migrated_existing_connector
+                else "Codex 本地连接器已安装或更新。"
+            ),
+            "migrated_existing_connector": migrated_existing_connector,
+            "backup_created": backup is not None,
+            "backup_file": backup.name if backup is not None else None,
             "restart_required": True,
             "next_steps": ["打开一个新的 Codex 任务，再发送 CreNexus 预填的配对指令。"],
         }
