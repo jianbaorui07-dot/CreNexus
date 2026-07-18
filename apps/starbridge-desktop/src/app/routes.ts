@@ -17,20 +17,21 @@ export type PageId =
 export interface NavigationItem {
   id: PageId;
   label: string;
+  caption: string;
 }
 
 export const NAVIGATION_ITEMS: NavigationItem[] = [
-  { id: "home", label: "首页" },
-  { id: "projects", label: "项目" },
-  { id: "workflows", label: "创意工作流" },
-  { id: "vectorization", label: "图片矢量化" },
-  { id: "ai-generation", label: "AI 图片生成" },
-  { id: "tasks", label: "任务中心" },
-  { id: "integrations", label: "连接中心" },
-  { id: "delivery", label: "交付与证据" },
-  { id: "batch", label: "批量生产" },
-  { id: "license", label: "版本与授权" },
-  { id: "diagnostics", label: "设置与诊断" },
+  { id: "home", label: "首页", caption: "HOME" },
+  { id: "projects", label: "项目", caption: "PROJECTS" },
+  { id: "workflows", label: "创意工作流", caption: "WORKFLOWS" },
+  { id: "vectorization", label: "图片矢量化", caption: "VECTORIZATION" },
+  { id: "ai-generation", label: "AI 图片生成", caption: "AI GENERATION" },
+  { id: "tasks", label: "任务中心", caption: "TASK CENTER" },
+  { id: "integrations", label: "连接中心", caption: "CONNECTIONS" },
+  { id: "delivery", label: "交付与证据", caption: "DELIVERABLES" },
+  { id: "batch", label: "批量生产", caption: "BATCH PRODUCTION" },
+  { id: "license", label: "版本与授权", caption: "VERSIONS & LICENSE" },
+  { id: "diagnostics", label: "设置与诊断", caption: "SETTINGS & DIAG" },
 ];
 
 export const PAGE_TITLES: Record<PageId, string> = {
@@ -48,4 +49,21 @@ export const PAGE_TITLES: Record<PageId, string> = {
   diagnostics: "设置与诊断",
   "job-detail": "任务详情",
   "legacy-vectorization": "旧版矢量化兼容入口",
+};
+
+export const PAGE_CAPTIONS: Record<PageId, string> = {
+  home: "HOME",
+  projects: "PROJECTS",
+  workflows: "WORKFLOWS",
+  vectorization: "VECTORIZATION",
+  "ai-generation": "AI GENERATION",
+  "photoshop-production": "PHOTOSHOP PRODUCTION",
+  tasks: "TASK CENTER",
+  integrations: "CONNECTIONS",
+  delivery: "DELIVERABLES",
+  batch: "BATCH PRODUCTION",
+  license: "VERSIONS & LICENSE",
+  diagnostics: "SETTINGS & DIAGNOSTICS",
+  "job-detail": "JOB DETAIL",
+  "legacy-vectorization": "LEGACY VECTORIZATION",
 };
