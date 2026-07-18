@@ -273,6 +273,13 @@ class DesktopBackendSecurityTests(unittest.TestCase):
         self.assertEqual("stopping", payload["data"]["status"])
         self.assertTrue(server.wait(timeout=5))
         server.stop()
+        events = [
+            json.loads(line)
+            for line in server.backend.app_paths.runtime_log.read_text(
+                encoding="utf-8"
+            ).splitlines()
+        ]
+        self.assertEqual("server_stopped", events[-1]["event"])
 
     def test_parent_monitor_requests_stop_when_parent_is_absent(self) -> None:
         stopped = Event()

@@ -1734,6 +1734,7 @@ class StarBridgeHttpServer:
         self._thread: Thread | None = None
         self._started = Event()
         self._stopped = Event()
+        self._stop_lock = RLock()
         self.backend.register_shutdown(self.stop)
 
     @property
@@ -1753,8 +1754,6 @@ class StarBridgeHttpServer:
             self._server.serve_forever(poll_interval=0.1)
         except BaseException as exc:  # pragma: no cover - process boundary
             self.backend.record_crash(exc)
-        finally:
-            self._stopped.set()
 
     def start(self) -> None:
         if self._started.is_set():
@@ -1774,15 +1773,16 @@ class StarBridgeHttpServer:
         return not self._thread.is_alive()
 
     def stop(self) -> None:
-        if self._stopped.is_set() and not self.running:
-            return
-        if self._started.is_set() and self.running:
-            self._server.shutdown()
-        self._server.server_close()
-        if self._thread is not None and self._thread is not current_thread():
-            self._thread.join(timeout=5)
-        self._stopped.set()
-        self.backend.record_runtime_event("server_stopped", {"pid": os.getpid()})
+        with self._stop_lock:
+            if self._stopped.is_set():
+                return
+            if self._started.is_set() and self.running:
+                self._server.shutdown()
+            self._server.server_close()
+            if self._thread is not None and self._thread is not current_thread():
+                self._thread.join(timeout=5)
+            self.backend.record_runtime_event("server_stopped", {"pid": os.getpid()})
+            self._stopped.set()
 
     def ready_payload(self) -> JsonObject:
         return {
