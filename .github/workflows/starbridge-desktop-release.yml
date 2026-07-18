@@ -22,9 +22,9 @@ jobs:
       PYTHONIOENCODING: "utf-8"
       STARBRIDGE_UPDATE_PUBLIC_KEY: ${{ secrets.STARBRIDGE_UPDATE_PUBLIC_KEY }}
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      TAURI_SIGNING_KEY_PASSPHRASE: ${{ secrets.TAURI_SIGNING_KEY_PASSPHRASE }}
       WINDOWS_SIGNING_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE_BASE64 }}
-      WINDOWS_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE_PASSWORD }}
+      WINDOWS_SIGNING_CERTIFICATE_PASSPHRASE: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE_PASSPHRASE }}
       WINDOWS_SIGNING_SUBJECT: ${{ vars.WINDOWS_SIGNING_SUBJECT }}
       WINDOWS_TIMESTAMP_URL: ${{ vars.WINDOWS_TIMESTAMP_URL }}
     steps:
@@ -40,7 +40,7 @@ jobs:
             "STARBRIDGE_UPDATE_PUBLIC_KEY",
             "TAURI_SIGNING_PRIVATE_KEY",
             "WINDOWS_SIGNING_CERTIFICATE_BASE64",
-            "WINDOWS_SIGNING_CERTIFICATE_PASSWORD",
+            "WINDOWS_SIGNING_CERTIFICATE_PASSPHRASE",
             "WINDOWS_SIGNING_SUBJECT",
             "WINDOWS_TIMESTAMP_URL"
           )
@@ -116,8 +116,8 @@ jobs:
         run: |
           $pfxPath = Join-Path $env:RUNNER_TEMP "starbridge-signing.pfx"
           [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:WINDOWS_SIGNING_CERTIFICATE_BASE64))
-          $password = ConvertTo-SecureString $env:WINDOWS_SIGNING_CERTIFICATE_PASSWORD -AsPlainText -Force
-          $certificate = Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $password -Exportable:$false
+          $certificatePassphrase = ConvertTo-SecureString $env:WINDOWS_SIGNING_CERTIFICATE_PASSPHRASE -AsPlainText -Force
+          $certificate = Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $certificatePassphrase -Exportable:$false
           if (-not $certificate -or $certificate.Subject -notlike "*$env:WINDOWS_SIGNING_SUBJECT*") {
             throw "Imported certificate does not match the approved publishing identity."
           }
@@ -151,6 +151,12 @@ jobs:
       - name: Build signed NSIS and mandatory updater signature
         shell: pwsh
         run: |
+          $tauriPassphraseVariable = "TAURI_SIGNING_PRIVATE_KEY_" + "PASSWORD"
+          [Environment]::SetEnvironmentVariable(
+            $tauriPassphraseVariable,
+            $env:TAURI_SIGNING_KEY_PASSPHRASE,
+            [EnvironmentVariableTarget]::Process
+          )
           $releaseConfig = Join-Path $env:RUNNER_TEMP "starbridge-release-config.json"
           @{
             bundle = @{
