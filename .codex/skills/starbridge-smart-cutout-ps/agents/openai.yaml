@@ -1,0 +1,4 @@
+interface:
+  display_name: "StarBridge 智能抠图 PS"
+  short_description: "将图片中的主要物体智能分层并生成 Photoshop 原生 PSD"
+  default_prompt: "Use $starbridge-smart-cutout-ps to separate each visible building into its own transparent Photoshop layer."

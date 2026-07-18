@@ -18,6 +18,7 @@ Read only what is needed:
 - `examples/photoshop_bridge/README.md`
 - `docs/03-codex-photoshop.md`
 - `docs/photoshop-codex-bridge.md`
+- `.codex/skills/starbridge-smart-cutout-ps/SKILL.md` for one-subject-per-layer tasks
 - `starbridge_mcp/adapters/photoshop/`
 - `starbridge_mcp/core/tool_registry.py`
 - `tests/test_photoshop_*.py`
@@ -45,6 +46,7 @@ Use `npm.cmd`, not bare `npm`, on Windows PowerShell.
 | Check availability | `ps.probe`, `photoshop.session_info` | Read-only, no PSD open |
 | Inspect active document | `ps.document.info`, `photoshop.document_info` | Active document only, no save/export |
 | Inspect layers | `ps.layers.list` | Layer tree summary only |
+| Separate each visible subject | `$starbridge-smart-cutout-ps` | Explicit image/spec/model; generated files stay in ignored output |
 | Validate BatchPlay | `ps.batchplay.validate` | Validate descriptors, never execute arbitrary BatchPlay |
 | Plan actions | `photoshop.recipe_list`, `photoshop.recipe_plan` | Dry-run first |
 | Prepare Illustrator trace source | `photoshop.recipe_run` + `prepare_vector_trace` | One authorized PNG/JPEG; copy first; write/export confirmations |
@@ -63,6 +65,12 @@ Any real Photoshop write/export must require:
 - no absolute user path in returned text
 
 Never add a raw "execute script" tool. Add audited recipe-level actions instead.
+
+## Smart Cutout Routing
+
+Route requests such as “每栋楼一个图层”, “每个物体分别抠图”, or “生成可编辑分层 PSD” to `$starbridge-smart-cutout-ps`. That skill owns instance prompt boxes, disjoint full-canvas RGBA export, preview review, and the Photoshop-native save/reopen compatibility gate.
+
+Do not claim completion from masks or a parser-readable PSD alone. Require the expected subject count, exact pixel partition, and `validated_after_reopen=true`; otherwise report the result as needing review or prepared for Photoshop.
 
 For `prepare_vector_trace`, keep the fixed flow: validate authorization → copy the explicit source into `examples/output/photoshop` → run only the repository JSX → save a redacted EvidenceManifest → pass only the prepared sandbox PNG to Illustrator.
 

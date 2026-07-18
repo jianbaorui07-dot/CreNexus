@@ -1,0 +1,31 @@
+{
+  "schema_version": "starbridge.smart_cutout_spec.v1",
+  "box_mode": "normalized",
+  "background": {
+    "name": "背景",
+    "refine": "none",
+    "points": [
+      [0.08, 0.08],
+      [0.50, 0.10],
+      [0.92, 0.08]
+    ]
+  },
+  "remainder_name": "其他未分配前景",
+  "layers": [
+    {
+      "name": "主体_01",
+      "box": [0.10, 0.25, 0.38, 0.95],
+      "priority": 10
+    },
+    {
+      "name": "主体_02",
+      "box": [0.34, 0.15, 0.68, 0.95],
+      "priority": 20
+    },
+    {
+      "name": "主体_03_前景",
+      "box": [0.62, 0.35, 0.92, 0.98],
+      "priority": 30
+    }
+  ]
+}
