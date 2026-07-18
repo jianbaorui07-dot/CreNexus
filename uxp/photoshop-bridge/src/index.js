@@ -335,6 +335,179 @@ async function saveActiveDocumentAsPng(document, absolutePath) {
   return fileEntry;
 }
 
+async function activateDocument(document) {
+  if (typeof document?.activate === "function") {
+    await document.activate();
+  }
+}
+
+async function closeDocumentWithoutSaving(document) {
+  if (typeof document?.closeWithoutSaving === "function") {
+    await document.closeWithoutSaving();
+    return;
+  }
+  throw new Error("photoshop_close_without_saving_unavailable");
+}
+
+async function saveProductionCopy(document, absolutePath, format) {
+  const fileEntry = await resolveOutputEntry(absolutePath);
+  const saveAs = document?.saveAs || document?.api?.saveAs;
+  if (!saveAs) throw new Error("photoshop_save_as_unavailable");
+  if (format === "png" || format === "subject") {
+    if (typeof saveAs.png !== "function") throw new Error("photoshop_png_export_unavailable");
+    await saveAs.png(fileEntry, { compression: 6, interlaced: false }, true);
+  } else if (format === "jpeg") {
+    if (typeof saveAs.jpg !== "function") throw new Error("photoshop_jpeg_export_unavailable");
+    await saveAs.jpg(fileEntry, { quality: 10 }, true);
+  } else if (format === "psd") {
+    if (typeof saveAs.psd !== "function") throw new Error("photoshop_psd_export_unavailable");
+    await saveAs.psd(fileEntry, {}, true);
+  } else {
+    throw new Error("unsupported_production_format");
+  }
+}
+
+function assertProductionParams(params) {
+  if (params?.confirm_write !== true || params?.managed_source_verified !== true || params?.safe_roots_verified !== true) {
+    throw new Error("production_proxy_verification_required");
+  }
+  const sourcePath = String(params?.source_path || "");
+  const stagingOutputs = params?.staging_outputs || {};
+  if (!sourcePath || !Object.keys(stagingOutputs).length) throw new Error("production_paths_required");
+  return { sourcePath, stagingOutputs };
+}
+
+async function importProjectLayer(sandboxDocument, sourcePath) {
+  const sourceEntry = await localFileSystem.getEntryWithUrl(toFileUrl(sourcePath));
+  if (!sourceEntry || !sourceEntry.isFile) throw new Error("managed_source_file_unavailable");
+  const sourceDocument = await app.open(sourceEntry);
+  try {
+    const sourceLayer = sourceDocument?.activeLayers?.[0] || sourceDocument?.layers?.[0];
+    if (!sourceLayer || typeof sourceLayer.duplicate !== "function") throw new Error("managed_source_layer_unavailable");
+    await sourceLayer.duplicate(sandboxDocument);
+  } finally {
+    await closeDocumentWithoutSaving(sourceDocument);
+  }
+  await activateDocument(sandboxDocument);
+  const importedLayer = sandboxDocument?.activeLayers?.[0] || null;
+  if (importedLayer) importedLayer.name = "StarBridge Imported Asset";
+  return Boolean(importedLayer);
+}
+
+async function applyProductionAdjustments(params) {
+  const canvas = params?.canvas || {};
+  const adjustment = params?.adjustment || {};
+  const descriptors = [];
+  if (canvas.resize === true) {
+    descriptors.push({
+      _obj: "canvasSize",
+      width: { _unit: "pixelsUnit", _value: Number(canvas.width) },
+      height: { _unit: "pixelsUnit", _value: Number(canvas.height) },
+      horizontal: { _enum: "horizontalLocation", _value: "horizontalCenter" },
+      vertical: { _enum: "verticalLocation", _value: "verticalCenter" },
+    });
+  }
+  const brightness = Number(adjustment.brightness || 0);
+  const contrast = Number(adjustment.contrast || 0);
+  if (brightness !== 0 || contrast !== 0) {
+    descriptors.push({
+      _obj: "make",
+      _target: [{ _ref: "adjustmentLayer" }],
+      using: {
+        _obj: "adjustmentLayer",
+        name: "StarBridge Brightness Contrast",
+        type: { _obj: "brightnessEvent", brightness, contrast, useLegacy: false },
+      },
+    });
+  }
+  const saturation = Number(adjustment.saturation || 0);
+  if (saturation !== 0) {
+    descriptors.push({
+      _obj: "make",
+      _target: [{ _ref: "adjustmentLayer" }],
+      using: {
+        _obj: "adjustmentLayer",
+        name: "StarBridge Saturation",
+        type: {
+          _obj: "hueSaturation",
+          presetKind: { _enum: "presetKindType", _value: "presetKindCustom" },
+          saturation,
+        },
+      },
+    });
+  }
+  if (descriptors.length) await action.batchPlay(descriptors, { synchronousExecution: true, modalBehavior: "execute" });
+  return descriptors.length;
+}
+
+async function exportSubjectCopy(document, absolutePath) {
+  await action.batchPlay([
+    { _obj: "autoCutout", sampleAllLayers: false },
+    { _obj: "copyToLayer" },
+  ], { synchronousExecution: true, modalBehavior: "execute" });
+  const subjectLayer = document?.activeLayers?.[0];
+  if (!subjectLayer) throw new Error("photoshop_subject_layer_unavailable");
+  subjectLayer.name = "StarBridge Subject";
+  const visibility = (document.layers || []).map((layer) => ({ layer, visible: Boolean(layer.visible) }));
+  try {
+    for (const item of visibility) item.layer.visible = item.layer === subjectLayer;
+    await saveProductionCopy(document, absolutePath, "subject");
+  } finally {
+    for (const item of visibility) item.layer.visible = item.visible;
+  }
+}
+
+async function productionExecuteConfirmed(params) {
+  const { sourcePath, stagingOutputs } = assertProductionParams(params);
+  const originalDocument = activeDocumentOrNull();
+  if (!originalDocument || typeof originalDocument.duplicate !== "function") {
+    return { ok: false, executed: false, message: "An active Photoshop document is required." };
+  }
+  return runModalJob(
+    "ps.production.execute_confirmed",
+    { commandName: "StarBridge Photoshop Production", historyTarget: "handler_document", timeoutSeconds: 45 },
+    async (executionContext, modalControl) => {
+      const hostControl = executionContext?.hostControl;
+      if (typeof hostControl?.registerAutoCloseDocument !== "function" || typeof hostControl?.unregisterAutoCloseDocument !== "function") {
+        throw new Error("photoshop_auto_close_control_required");
+      }
+      modalControl.checkpoint();
+      const sandboxDocument = await originalDocument.duplicate("StarBridge Sandbox Copy", false);
+      const sandboxId = sandboxDocument?.id ?? sandboxDocument?._id;
+      if (sandboxId === undefined || sandboxId === null) throw new Error("sandbox_document_id_unavailable");
+      await hostControl.registerAutoCloseDocument(sandboxId);
+      await modalControl.suspendHistory(sandboxId, "StarBridge Photoshop Production");
+      await activateDocument(sandboxDocument);
+      modalControl.checkpoint();
+      const imported = await importProjectLayer(sandboxDocument, sourcePath);
+      modalControl.checkpoint();
+      const adjustmentCount = await applyProductionAdjustments(params);
+      modalControl.checkpoint();
+      for (const [format, outputPath] of Object.entries(stagingOutputs)) {
+        if (format !== "subject") await saveProductionCopy(sandboxDocument, String(outputPath), format);
+      }
+      if (params?.export_subject === true) {
+        if (!stagingOutputs.subject) throw new Error("subject_output_path_required");
+        await exportSubjectCopy(sandboxDocument, String(stagingOutputs.subject));
+      }
+      modalControl.checkpoint();
+      await hostControl.unregisterAutoCloseDocument(sandboxId);
+      return {
+        ok: true,
+        executed: true,
+        sandbox_copy: true,
+        source_overwritten: false,
+        imported_project_layer: imported,
+        adjustment_count: adjustmentCount,
+        output_formats: Object.keys(stagingOutputs),
+        rollback_supported: true,
+        photoshop_host: currentHost(),
+        warnings: [],
+      };
+    },
+  );
+}
+
 async function previewExport(params) {
   const document = activeDocumentOrNull();
   if (!document) {
@@ -413,6 +586,7 @@ const handlers = {
   "ps.camera_raw.tune": cameraRawTune,
   "ps.batchplay.validate.local": batchplayValidate,
   "ps.batchplay.execute_confirmed": batchplayExecuteConfirmed,
+  "ps.production.execute_confirmed": productionExecuteConfirmed,
 };
 
 const client = new BridgeClient({ handlers });

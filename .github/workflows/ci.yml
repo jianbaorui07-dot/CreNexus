@@ -75,6 +75,7 @@ jobs:
         run: |
           python scripts/security_check.py
           python scripts/check_product_facts.py
+          python scripts/check_text_encoding.py
           python scripts/collect_bridge_status.py --json
           python examples/bridge_status.py --json --redact-paths --soft-exit
           python -m starbridge_mcp.server tools --json --safe-only
@@ -120,6 +121,7 @@ jobs:
         run: |
           python scripts/security_check.py
           python scripts/check_product_facts.py
+          python scripts/check_text_encoding.py
 
       - name: Run preflight
         run: python scripts/starbridge_preflight.py --markdown

@@ -10,6 +10,9 @@ interface ProjectsPageProps {
   onOpenWorkflow: (projectId: string, workflowId: string) => void;
 }
 
+const usesImportedAsset = (workflowId: string) =>
+  workflowId === "vector-delivery-v1" || workflowId === "photoshop-production-v1";
+
 export function ProjectsPage({ client, runtimeReady, onOpenWorkflow }: ProjectsPageProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectName, setProjectName] = useState("");
@@ -89,7 +92,7 @@ export function ProjectsPage({ client, runtimeReady, onOpenWorkflow }: ProjectsP
         <div className="form-grid">
           <label>项目名称<input value={projectName} maxLength={80} onChange={(event) => setProjectName(event.target.value)} placeholder="例如：品牌图标重制" /></label>
           <label>项目说明（可选）<input value={description} maxLength={240} onChange={(event) => setDescription(event.target.value)} placeholder="仅保存项目说明，不保存素材原路径" /></label>
-          <label>工作流<select value={workflowId} onChange={(event) => setWorkflowId(event.target.value)}><option value="vector-delivery-v1">图片矢量交付</option><option value="comfyui-generation-v1">本机 ComfyUI 图片生成</option></select></label>
+          <label>工作流<select value={workflowId} onChange={(event) => setWorkflowId(event.target.value)}><option value="vector-delivery-v1">图片矢量交付</option><option value="comfyui-generation-v1">本机 ComfyUI 图片生成</option><option value="photoshop-production-v1">Photoshop 安全副本与交付</option></select></label>
         </div>
         <button type="button" className="primary" disabled={!runtimeReady || busy || !projectName.trim()} onClick={() => void createProject()}>创建项目</button>
       </section>
@@ -104,18 +107,18 @@ export function ProjectsPage({ client, runtimeReady, onOpenWorkflow }: ProjectsP
                 <div><span className="task-kind">{project.workflowId}</span><h3>{project.projectName}</h3><p>{project.description || "未填写项目说明"}</p></div>
                 <span className="state-label neutral">{project.sourceAssets.length} 个素材</span>
               </div>
-              {project.workflowId === "vector-delivery-v1" && project.sourceAssets.length > 0 ? (
+              {usesImportedAsset(project.workflowId) && project.sourceAssets.length > 0 ? (
                 <ul className="asset-list">
                   {project.sourceAssets.map((asset) => <li key={asset.assetId}><strong>{asset.basename}</strong><span>{Math.ceil(asset.sizeBytes / 1024)} KB · SHA-256 {asset.sha256.slice(0, 12)}…</span></li>)}
                 </ul>
-              ) : project.workflowId === "vector-delivery-v1" ? <p className="truth-note">尚未导入素材。原始路径不会被保存到项目记录。</p> : <p className="truth-note">提示词与模型名只在建立任务后进入进程内临时保险库，不保存到项目。</p>}
-              {project.workflowId === "vector-delivery-v1" ? <label className="confirmation">
+              ) : usesImportedAsset(project.workflowId) ? <p className="truth-note">尚未导入素材。原始路径不会被保存到项目记录。</p> : <p className="truth-note">提示词与模型名只在建立任务后进入进程内临时保险库，不保存到项目。</p>}
+              {usesImportedAsset(project.workflowId) ? <label className="confirmation">
                 <input type="checkbox" checked={importConfirmations[project.projectId] ?? false} onChange={(event) => setImportConfirmations((current) => ({ ...current, [project.projectId]: event.target.checked }))} />
                 我确认把接下来明确选择的一张图片复制到 StarBridge 的项目安全目录。
               </label> : null}
               <div className="button-row">
-                {project.workflowId === "vector-delivery-v1" ? <button type="button" className="secondary" disabled={busy || !importConfirmations[project.projectId]} onClick={() => void importAsset(project.projectId)}>选择并导入图片</button> : null}
-                <button type="button" className="primary" disabled={project.workflowId === "vector-delivery-v1" && project.sourceAssets.length === 0} onClick={() => onOpenWorkflow(project.projectId, project.workflowId)}>打开工作流</button>
+                {usesImportedAsset(project.workflowId) ? <button type="button" className="secondary" disabled={busy || !importConfirmations[project.projectId]} onClick={() => void importAsset(project.projectId)}>选择并导入图片</button> : null}
+                <button type="button" className="primary" disabled={usesImportedAsset(project.workflowId) && project.sourceAssets.length === 0} onClick={() => onOpenWorkflow(project.projectId, project.workflowId)}>打开工作流</button>
               </div>
             </article>
           ))}

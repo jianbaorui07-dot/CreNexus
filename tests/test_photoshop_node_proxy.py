@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import json
 import os
+import socket
 import subprocess
+import tempfile
 import time
 import unittest
 import urllib.request
+from hashlib import sha256
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -34,9 +37,19 @@ def post_rpc(port: str, method: str, params: dict, request_id: int = 1) -> dict:
 @unittest.skipUnless(SERVER_JS.exists(), "node proxy source not present")
 class PhotoshopNodeProxyTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.port = "8975"
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe_socket:
+            probe_socket.bind(("127.0.0.1", 0))
+            self.port = str(probe_socket.getsockname()[1])
+        self.temporary = tempfile.TemporaryDirectory()
+        self.app_data = Path(self.temporary.name) / "StarBridge"
+        self.source = self.app_data / "projects" / "project-test" / "source" / "asset-test.png"
+        self.source.parent.mkdir(parents=True)
+        self.source.write_bytes(b"managed-project-source")
+        self.artifact_dir = self.app_data / "artifacts" / "project-test" / "job-test"
+        self.artifact_dir.mkdir(parents=True)
         env = dict(os.environ)
         env["STARBRIDGE_PHOTOSHOP_PROXY_PORT"] = self.port
+        env["STARBRIDGE_APP_DATA_DIR"] = str(self.app_data)
         self.process = subprocess.Popen(
             ["node", str(SERVER_JS)],
             cwd=REPO_ROOT,
@@ -66,6 +79,7 @@ class PhotoshopNodeProxyTests(unittest.TestCase):
             self.process.stdout.close()
         if self.process.stderr:
             self.process.stderr.close()
+        self.temporary.cleanup()
 
     def test_health_endpoint_reports_running(self) -> None:
         payload = read_json(f"http://127.0.0.1:{self.port}/health")
@@ -174,6 +188,63 @@ class PhotoshopNodeProxyTests(unittest.TestCase):
         )
         self.assertEqual(-32010, payload["error"]["code"])
 
+    def _production_params(self) -> dict:
+        return {
+            "job_id": "job-test",
+            "confirm_write": True,
+            "source_path": str(self.source),
+            "source_sha256": sha256(self.source.read_bytes()).hexdigest(),
+            "outputs": {"png": str(self.artifact_dir / "photoshop-preview.png")},
+            "canvas": {"resize": False, "width": 1920, "height": 1080},
+            "adjustment": {"brightness": 0, "contrast": 0, "saturation": 0},
+            "export_subject": False,
+        }
+
+    def test_production_requires_explicit_confirmation(self) -> None:
+        params = self._production_params()
+        params["confirm_write"] = False
+        payload = post_rpc(self.port, "ps.production.execute_confirmed", params)
+        self.assertEqual(-32010, payload["error"]["code"])
+
+    def test_production_rejects_hash_mismatch_and_outside_output(self) -> None:
+        params = self._production_params()
+        params["source_sha256"] = "0" * 64
+        payload = post_rpc(self.port, "ps.production.execute_confirmed", params)
+        self.assertEqual(-32602, payload["error"]["code"])
+        self.assertIn("hash_mismatch", payload["error"]["message"])
+
+        params = self._production_params()
+        params["outputs"] = {"png": str(Path(self.temporary.name) / "outside.png")}
+        payload = post_rpc(self.port, "ps.production.execute_confirmed", params)
+        self.assertEqual(-32602, payload["error"]["code"])
+        self.assertIn("outside_managed_artifacts", payload["error"]["message"])
+
+    def test_production_rejects_non_fixed_output_names_and_wrong_job_directory(self) -> None:
+        params = self._production_params()
+        params["outputs"] = {"png": str(self.artifact_dir / "customer-name.png")}
+        payload = post_rpc(self.port, "ps.production.execute_confirmed", params)
+        self.assertEqual(-32602, payload["error"]["code"])
+
+        params = self._production_params()
+        wrong_directory = self.app_data / "artifacts" / "project-test" / "other-job"
+        wrong_directory.mkdir(parents=True)
+        params["outputs"] = {"png": str(wrong_directory / "photoshop-preview.png")}
+        payload = post_rpc(self.port, "ps.production.execute_confirmed", params)
+        self.assertEqual(-32602, payload["error"]["code"])
+
+    def test_production_subject_output_must_match_subject_flag(self) -> None:
+        params = self._production_params()
+        params["export_subject"] = True
+        payload = post_rpc(self.port, "ps.production.execute_confirmed", params)
+        self.assertEqual(-32602, payload["error"]["code"])
+        self.assertEqual("subject_output_must_match_export_subject", payload["error"]["message"])
+
+    def test_production_accepts_managed_paths_before_connection_check(self) -> None:
+        payload = post_rpc(self.port, "ps.production.execute_confirmed", self._production_params())
+        self.assertEqual(-32001, payload["error"]["code"])
+        self.assertEqual("uxp_client_not_connected", payload["error"]["message"])
+        self.assertEqual([], list(self.artifact_dir.iterdir()))
+
     def test_protocol_schema_lists_same_public_methods(self) -> None:
         schema = json.loads(
             (
@@ -188,6 +259,31 @@ class PhotoshopNodeProxyTests(unittest.TestCase):
         self.assertNotIn("ps.run_jsx", methods)
         self.assertIn("ps.preview.export", methods)
         self.assertIn("ps.batchplay.execute_confirmed", methods)
+        self.assertIn("ps.production.execute_confirmed", methods)
+        production_rule = next(
+            rule
+            for rule in schema["allOf"]
+            if rule["if"]["properties"]["method"].get("const") == "ps.production.execute_confirmed"
+        )
+        production_params = production_rule["then"]["properties"]["params"]
+        self.assertEqual(
+            {
+                "job_id",
+                "confirm_write",
+                "source_path",
+                "source_sha256",
+                "outputs",
+                "canvas",
+                "adjustment",
+                "export_subject",
+            },
+            set(production_params["required"]),
+        )
+        self.assertFalse(production_params["additionalProperties"])
+        self.assertEqual(
+            {"png", "jpeg", "psd", "subject"},
+            set(schema["properties"]["params"]["properties"]["outputs"]["properties"]),
+        )
 
     def test_uxp_bridge_declares_runtime_sandbox_guards(self) -> None:
         index_source = (REPO_ROOT / "uxp" / "photoshop-bridge" / "src" / "index.js").read_text(
@@ -200,6 +296,8 @@ class PhotoshopNodeProxyTests(unittest.TestCase):
         self.assertIn("document.duplicate", runner_source)
         self.assertIn("registerAutoCloseDocument", runner_source)
         self.assertIn("unregisterAutoCloseDocument", runner_source)
+        self.assertIn("productionExecuteConfirmed", index_source)
+        self.assertIn("managed_source_verified", index_source)
 
 
 if __name__ == "__main__":

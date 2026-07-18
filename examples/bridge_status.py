@@ -360,13 +360,12 @@ def check_photoshop(probe_com: bool) -> dict:
         "photoshop_exe_configured": bool(os.environ.get("PHOTOSHOP_EXE")),
         "photoshop_exe_exists": bool(photoshop),
         "has_win32com": has_win32com,
+        "connection_verified": False,
     }
 
     if not probe_com:
-        details.append("已跳过 COM 探测。需要连接已打开的 Photoshop 时加 --probe-executables。")
-        return status(
-            "Photoshop", "warn" if not has_win32com else "ok", details, data, "Photoshop 修图桥"
-        )
+        details.append("已跳过 COM 探测，不能判定为已连接；需要验证时加 --probe-executables。")
+        return status("Photoshop", "warn", details, data, "Photoshop 修图桥")
 
     if not has_win32com:
         details.append("处理建议：如需 Python COM 探测，请安装 pywin32。")
@@ -379,7 +378,14 @@ def check_photoshop(probe_com: bool) -> dict:
         version = str(app.Version)
         documents = int(app.Documents.Count)
         details.append(f"已连接 Photoshop COM：版本 {version}，当前文档数 {documents}")
-        data.update({"active_com_object": True, "version": version, "documents": documents})
+        data.update(
+            {
+                "active_com_object": True,
+                "connection_verified": True,
+                "version": version,
+                "documents": documents,
+            }
+        )
         return status("Photoshop", "ok", details, data, "Photoshop 修图桥")
     except Exception as exc:  # noqa: BLE001 - status script should keep going.
         details.append(f"未找到正在运行的 Photoshop COM 对象：{exc}")
@@ -411,20 +417,16 @@ def check_illustrator(probe_com: bool) -> dict:
         "illustrator_exe_configured": bool(os.environ.get("ILLUSTRATOR_EXE")),
         "illustrator_exe_exists": bool(illustrator),
         "has_win32com": has_win32com,
+        "connection_verified": False,
     }
 
     if not probe_com:
-        details.append("已跳过 COM 探测。需要连接已打开的 Illustrator 时加 --probe-executables。")
-        if illustrator:
-            state = "ok"
-        elif has_win32com:
-            state = "warn"
+        details.append("已跳过 COM 探测，不能判定为已连接；需要验证时加 --probe-executables。")
+        if has_win32com:
             details.append(
                 "pywin32/win32com 可用，但还没有确认 Illustrator 可执行文件或正在运行的 COM 对象。"
             )
-        else:
-            state = "warn"
-        return status("Illustrator", state, details, data, "AI 矢量文件桥")
+        return status("Illustrator", "warn", details, data, "AI 矢量文件桥")
 
     if not has_win32com:
         details.append("处理建议：如需 Python COM 探测，请安装 pywin32。")
@@ -437,7 +439,14 @@ def check_illustrator(probe_com: bool) -> dict:
         version = str(app.Version)
         documents = int(app.Documents.Count)
         details.append(f"已连接 Illustrator COM：版本 {version}，当前文档数 {documents}")
-        data.update({"active_com_object": True, "version": version, "documents": documents})
+        data.update(
+            {
+                "active_com_object": True,
+                "connection_verified": True,
+                "version": version,
+                "documents": documents,
+            }
+        )
         return status("Illustrator", "ok", details, data, "AI 矢量文件桥")
     except Exception as exc:  # noqa: BLE001 - status script should keep going.
         details.append(f"未找到正在运行的 Illustrator COM 对象：{exc}")

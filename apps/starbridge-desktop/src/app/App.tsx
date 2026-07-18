@@ -8,6 +8,7 @@ import { HomePage } from "../pages/HomePage";
 import { IntegrationsPage } from "../pages/IntegrationsPage";
 import { JobDetailPage } from "../pages/JobDetailPage";
 import { LicensePage } from "../pages/LicensePage";
+import { PhotoshopProductionPage } from "../pages/PhotoshopProductionPage";
 import { ProjectsPage } from "../pages/ProjectsPage";
 import { TasksPage } from "../pages/TasksPage";
 import { VectorizationPage } from "../pages/VectorizationPage";
@@ -244,7 +245,13 @@ export function App({ client: providedClient }: AppProps) {
   const renderPage = () => {
     const openWorkflow = (projectId?: string, workflowId = "vector-delivery-v1") => {
       setSelectedProjectId(projectId);
-      setPage(workflowId === "comfyui-generation-v1" ? "ai-generation" : "workflows");
+      setPage(
+        workflowId === "comfyui-generation-v1"
+          ? "ai-generation"
+          : workflowId === "photoshop-production-v1"
+            ? "photoshop-production"
+            : "workflows",
+      );
     };
     const openJob = (jobId: string, projectId: string) => {
       setSelectedJobId(jobId);
@@ -271,6 +278,8 @@ export function App({ client: providedClient }: AppProps) {
           return <IntegrationsPage client={client} connections={connections} loading={connectionsLoading} error={connectionsError} onRefresh={refreshConnections} onRestartBridge={restart} />;
         }
         return <ComfyUiGenerationPage client={client} runtimeReady={status.state === "connected"} initialProjectId={selectedProjectId} onOpenJob={openJob} />;
+      case "photoshop-production":
+        return <PhotoshopProductionPage client={client} runtimeReady={status.state === "connected"} initialProjectId={selectedProjectId} onOpenJob={openJob} />;
       case "legacy-vectorization":
         return <VectorizationPage
           client={client}

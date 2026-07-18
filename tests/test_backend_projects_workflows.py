@@ -11,6 +11,65 @@ from starbridge_mcp.backend import StarBridgeBackend
 
 
 class BackendProjectsWorkflowTests(unittest.TestCase):
+    def test_photoshop_project_creates_a_fixed_redacted_job_plan(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            backend = StarBridgeBackend(app_data_dir=root / "app-data")
+            source = root / "customer-input.png"
+            Image.new("RGB", (24, 24), (80, 120, 160)).save(source)
+            workflows = backend.route("GET", "/api/workflows")
+            photoshop = next(
+                item
+                for item in workflows.body["data"]["workflows"]
+                if item["workflowId"] == "photoshop-production-v1"
+            )
+            self.assertEqual("experimental", photoshop["capabilityStatus"])
+            self.assertTrue(photoshop["requiresConfirmation"])
+
+            created = backend.route(
+                "POST",
+                "/api/projects",
+                json.dumps(
+                    {
+                        "projectName": "Photoshop 安全副本",
+                        "workflowId": "photoshop-production-v1",
+                    }
+                ).encode("utf-8"),
+            )
+            project_id = created.body["data"]["projectId"]
+            imported = backend.route(
+                "POST",
+                f"/api/projects/{project_id}/assets",
+                json.dumps({"inputPath": str(source), "confirmImport": True}).encode("utf-8"),
+            )
+            asset_id = imported.body["data"]["asset"]["assetId"]
+            job = backend.route(
+                "POST",
+                "/api/jobs",
+                json.dumps(
+                    {
+                        "projectId": project_id,
+                        "workflowId": "photoshop-production-v1",
+                        "sourceAssetId": asset_id,
+                        "outputFormats": ["png", "jpeg", "psd"],
+                        "resizeCanvas": True,
+                        "canvasWidth": 1080,
+                        "canvasHeight": 1080,
+                        "brightness": 5,
+                        "contrast": 3,
+                        "saturation": 4,
+                    }
+                ).encode("utf-8"),
+            )
+            self.assertEqual(201, job.status)
+            plan_file = next((root / "app-data" / "jobs").rglob("plan.json"))
+            plan_text = plan_file.read_text(encoding="utf-8")
+
+        self.assertNotIn(str(root), plan_text)
+        self.assertNotIn("customer-input.png", plan_text)
+        self.assertNotIn("descriptor", plan_text.lower())
+        self.assertIn('"execute-production"', plan_text)
+
     def test_comfyui_job_plan_does_not_persist_prompt_or_model_name(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

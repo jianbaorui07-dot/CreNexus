@@ -529,4 +529,74 @@ describe("desktop runtime status", () => {
     });
     expect((await screen.findAllByText("等待开始")).length).toBeGreaterThan(0);
   });
+
+  it("builds a fixed Photoshop copy-first task from a managed project image", async () => {
+    const client = makeClient({ state: "connected", message: "运行正常。", recoveryAttempts: 0 });
+    const project = {
+      schemaVersion: 1,
+      projectId: "project-photoshop",
+      projectName: "Photoshop 安全副本",
+      workflowId: "photoshop-production-v1",
+      description: "",
+      sourceAssets: [{
+        assetId: "asset-photoshop",
+        basename: "selected-image.png",
+        relativePath: "projects/project-photoshop/source/asset-photoshop.png",
+        sha256: "b".repeat(64),
+        mediaType: "image/png",
+        sizeBytes: 4096,
+        importedAt: "2026-07-18T08:00:00Z",
+      }],
+      currentJob: null,
+      jobHistory: [],
+      artifacts: [],
+      qualityReports: [],
+      evidence: [],
+      createdAt: "2026-07-18T08:00:00Z",
+      updatedAt: "2026-07-18T08:00:00Z",
+    } as const;
+    const job = {
+      schemaVersion: 1,
+      jobId: "job-photoshop",
+      projectId: "project-photoshop",
+      workflowId: "photoshop-production-v1",
+      status: "queued",
+      currentStep: "validate-source",
+      progress: 0,
+      createdAt: "2026-07-18T08:00:00Z",
+      updatedAt: "2026-07-18T08:00:00Z",
+      completedAt: null,
+      artifacts: [],
+      warnings: [],
+      error: null,
+      evidenceId: null,
+    } as const;
+    client.getProjects = vi.fn().mockResolvedValue([project]);
+    client.createCreativeJob = vi.fn().mockResolvedValue(job);
+    client.getCreativeJob = vi.fn().mockResolvedValue(job);
+    client.getCreativeJobEvents = vi.fn().mockResolvedValue([]);
+
+    render(<App client={client} />);
+    fireEvent.click(await screen.findByRole("button", { name: "项目" }));
+    expect(await screen.findByText("selected-image.png")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "打开工作流" }));
+    expect(await screen.findByText("只修改受控副本，再导出真实文件")).toBeInTheDocument();
+    const createButton = screen.getByRole("button", { name: "建立 Photoshop 任务计划" });
+    await waitFor(() => expect(createButton).toBeEnabled());
+    fireEvent.click(createButton);
+
+    await waitFor(() => expect(client.createCreativeJob).toHaveBeenCalledTimes(1));
+    expect(client.createCreativeJob).toHaveBeenCalledWith(expect.objectContaining({
+      projectId: "project-photoshop",
+      workflowId: "photoshop-production-v1",
+      sourceAssetId: "asset-photoshop",
+      outputFormats: ["png", "jpeg", "psd"],
+      resizeCanvas: false,
+      brightness: 0,
+      contrast: 0,
+      saturation: 0,
+      exportSubject: false,
+    }));
+    expect((await screen.findAllByText("等待开始")).length).toBeGreaterThan(0);
+  });
 });

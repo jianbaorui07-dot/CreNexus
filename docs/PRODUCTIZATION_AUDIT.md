@@ -12,8 +12,9 @@
 2. Adobe、Blender、AutoCAD、ComfyUI、CapCut 的代码、协议或 mock 证据不能宣传为当前真实软件已连接。
 3. `vector-delivery-v1` 尚未生成经过真实 Illustrator 验收的 AI 副本；交付中心只列出实际存在的格式。
 4. `comfyui-generation-v1` 已通过模拟回环集成测试，但尚未在用户授权的本机 ComfyUI 上验收。
+5. `photoshop-production-v1` 已通过模拟 UXP 代理闭环，但真实 Photoshop 导入、调整层、主体选择和 PNG/JPEG/PSD 导出仍未验收。
 
-已完成的基础包括 bootstrap/CI/安全扫描修复、统一产品事实、Project/CreativeJob/Workflow Engine 持久化、旧 VectorJob 兼容、两个 v1 工作流和桌面项目/任务/交付主路径。
+已完成的基础包括 bootstrap/CI/安全扫描修复、统一产品事实、Project/CreativeJob/Workflow Engine 持久化、旧 VectorJob 兼容、三个 v1 工作流和桌面项目/任务/交付主路径。
 
 ## 当前事实入口
 

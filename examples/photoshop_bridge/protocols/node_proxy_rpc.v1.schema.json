@@ -16,19 +16,53 @@
         "ps.preview.export",
         "ps.camera_raw.tune",
         "ps.batchplay.validate.local",
-        "ps.batchplay.execute_confirmed"
+        "ps.batchplay.execute_confirmed",
+        "ps.production.execute_confirmed"
       ]
     },
     "params": {
       "type": "object",
       "maxProperties": 32,
       "properties": {
-        "job_id": {"type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$"},
+        "job_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,95}$"},
         "dry_run": {"type": "boolean", "default": true},
         "confirm_write": {"type": "boolean", "default": false},
         "confirm_apply": {"type": "boolean", "default": false},
         "confirm_export": {"type": "boolean", "default": false},
         "output_path": {"type": "string", "maxLength": 1024},
+        "source_path": {"type": "string", "minLength": 1, "maxLength": 1024},
+        "source_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "outputs": {
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 4,
+          "properties": {
+            "png": {"type": "string", "maxLength": 1024, "pattern": "[\\\\/]photoshop-preview\\.png$"},
+            "jpeg": {"type": "string", "maxLength": 1024, "pattern": "[\\\\/]photoshop-preview\\.jpg$"},
+            "psd": {"type": "string", "maxLength": 1024, "pattern": "[\\\\/]photoshop-copy\\.psd$"},
+            "subject": {"type": "string", "maxLength": 1024, "pattern": "[\\\\/]photoshop-subject\\.png$"}
+          },
+          "additionalProperties": false
+        },
+        "canvas": {
+          "type": "object",
+          "properties": {
+            "resize": {"type": "boolean"},
+            "width": {"type": "integer", "minimum": 64, "maximum": 8192},
+            "height": {"type": "integer", "minimum": 64, "maximum": 8192}
+          },
+          "additionalProperties": false
+        },
+        "adjustment": {
+          "type": "object",
+          "properties": {
+            "brightness": {"type": "integer", "minimum": -150, "maximum": 150},
+            "contrast": {"type": "integer", "minimum": -100, "maximum": 100},
+            "saturation": {"type": "integer", "minimum": -100, "maximum": 100}
+          },
+          "additionalProperties": false
+        },
+        "export_subject": {"type": "boolean", "default": false},
         "descriptor": {"type": "object"},
         "descriptors": {
           "type": "array",
@@ -38,5 +72,40 @@
       },
       "additionalProperties": true
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"method": {"const": "ps.production.execute_confirmed"}},
+        "required": ["method"]
+      },
+      "then": {
+        "properties": {
+          "params": {
+            "required": [
+              "job_id",
+              "confirm_write",
+              "source_path",
+              "source_sha256",
+              "outputs",
+              "canvas",
+              "adjustment",
+              "export_subject"
+            ],
+            "properties": {
+              "job_id": true,
+              "confirm_write": true,
+              "source_path": true,
+              "source_sha256": true,
+              "outputs": true,
+              "canvas": true,
+              "adjustment": true,
+              "export_subject": true
+            },
+            "additionalProperties": false
+          }
+        }
+      }
+    }
+  ]
 }

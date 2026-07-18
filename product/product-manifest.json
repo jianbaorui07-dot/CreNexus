@@ -195,6 +195,18 @@
       "documentation": "docs/workflows/comfyui-generation-v1.md"
     },
     {
+      "id": "workflow.photoshop_production_v1",
+      "publicName": "Photoshop 安全副本与交付工作流",
+      "edition": "community",
+      "capabilityStatus": "experimental",
+      "evidenceLevel": "integration",
+      "recommended": false,
+      "deprecated": false,
+      "requiresUserConfirmation": true,
+      "requiresThirdPartySoftware": true,
+      "documentation": "docs/workflows/photoshop-production-v1.md"
+    },
+    {
       "id": "delivery.basic",
       "publicName": "基础交付与脱敏证据",
       "edition": "community",

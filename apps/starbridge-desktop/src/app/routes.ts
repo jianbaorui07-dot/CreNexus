@@ -4,6 +4,7 @@ export type PageId =
   | "workflows"
   | "vectorization"
   | "ai-generation"
+  | "photoshop-production"
   | "tasks"
   | "integrations"
   | "delivery"
@@ -38,6 +39,7 @@ export const PAGE_TITLES: Record<PageId, string> = {
   workflows: "创意工作流",
   vectorization: "图片矢量化",
   "ai-generation": "AI 图片生成",
+  "photoshop-production": "Photoshop 安全副本",
   tasks: "任务中心",
   integrations: "连接中心",
   delivery: "交付与证据",

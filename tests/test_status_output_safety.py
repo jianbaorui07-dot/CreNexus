@@ -86,6 +86,10 @@ class StatusOutputSafetyTests(unittest.TestCase):
         self.assert_no_private_paths(completed.stdout)
         payload = json.loads(completed.stdout)
         self.assertTrue(payload["results"])
+        by_name = {item["name"]: item for item in payload["results"]}
+        for name in ("Photoshop", "Illustrator"):
+            self.assertEqual("warn", by_name[name]["status"])
+            self.assertFalse(by_name[name]["data"]["connection_verified"])
 
 
 if __name__ == "__main__":

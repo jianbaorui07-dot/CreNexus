@@ -7,6 +7,7 @@ function NavigationIcon({ page }: { page: PageId }) {
     workflows: <><circle cx="6" cy="6" r="2" /><circle cx="18" cy="18" r="2" /><path d="M8 6h5a3 3 0 0 1 3 3v7M6 8v10h10" /></>,
     vectorization: <><path d="m4 18 5-5 4 4 3-3 4 4" /><rect x="3" y="4" width="18" height="16" rx="2" /></>,
     "ai-generation": <><path d="m12 3 1.4 4.1L17.5 8.5l-4.1 1.4L12 14l-1.4-4.1-4.1-1.4 4.1-1.4z" /><path d="m18 14 .8 2.2L21 17l-2.2.8L18 20l-.8-2.2L15 17l2.2-.8z" /></>,
+    "photoshop-production": <><rect x="4" y="4" width="16" height="16" rx="3" /><path d="M8 16V8h3.2a2.7 2.7 0 0 1 0 5.4H8M15 11.5c.7-.6 2.3-.6 2.8.2.6 1-2.8.6-2.8 2.5 0 1.3 2 1.4 3 .6" /></>,
     batch: <><rect x="4" y="4" width="12" height="12" rx="2" /><path d="M8 20h10a2 2 0 0 0 2-2V8" /></>,
     integrations: <><path d="M8 8h8v8H8z" /><path d="M3 12h5m8 0h5M12 3v5m0 8v5" /></>,
     tasks: <><path d="M7 4h10M7 9h10M7 14h7M7 19h5" /><path d="M3 4h.01M3 9h.01M3 14h.01M3 19h.01" /></>,

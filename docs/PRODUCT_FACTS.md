@@ -25,7 +25,7 @@
 - Pro 和 Enterprise 均为 `planned`，没有开售。
 - 四种离线矢量化引擎属于 Community。
 - 基础 Project、CreativeJob、Workflow Engine、单任务历史、基础交付和脱敏 Evidence 已有 Community 实现与集成测试，状态为 `experimental`。
-- `vector-delivery-v1` 和 `comfyui-generation-v1` 已接入统一任务系统；前者在离线小图夹具上完成闭环，后者在模拟回环 ComfyUI 上完成闭环。两者都尚未获得发布级或真实第三方软件验收。
+- `vector-delivery-v1`、`comfyui-generation-v1` 和 `photoshop-production-v1` 已接入统一任务系统；前者在离线小图夹具上完成闭环，后两者分别通过模拟回环服务和模拟 UXP 代理闭环。三者都尚未获得发布级或真实第三方软件写入验收。
 - 批量队列、并发、检查点、高级恢复和商业策略属于未来 Pro。
 - 本地曾构建未签名 NSIS，但没有公开安装包、生产更新公钥、Authenti­code、干净 Windows、完整 Defender、SmartScreen 或公开升级证据。
 - 软件更新代码属于 `experimental` 且 not live。
@@ -38,5 +38,6 @@
 
 ```powershell
 python scripts\check_product_facts.py
+python scripts\check_text_encoding.py
 python examples\bridge_status.py --json --redact-paths --soft-exit
 ```

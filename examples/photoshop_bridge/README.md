@@ -213,3 +213,9 @@ powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\scripts\color
 ```
 
 默认不执行；缺少任一确认只返回计划或拒绝。脚本只连接已经运行的 Photoshop，不自动启动应用；输出为 `examples/output/photoshop/` 内的源图副本和 8-bit RGB PNG。中值降噪默认关闭，防止为了减少路径而无意改变原图颜色或细节。
+
+## 区域十三：统一 Photoshop 生产工作流
+
+`photoshop-production-v1` 已接入 Project、CreativeJob、任务中心和交付页。它不是任意 Photoshop 控制器，只执行固定流程：只读探测、复制活动文档、导入一张已托管且 hash 绑定的项目图片、可选调整画布与基础调色、可选主体导出，以及 PNG/JPEG/PSD 副本导出。
+
+生产 RPC 为 `ps.production.execute_confirmed`，协议 schema 位于 `protocols/node_proxy_rpc.v1.schema.json`，安全说明位于 `docs/photoshop-node-proxy-security.md`。输出只进入 StarBridge 应用数据目录，真实写入需要 CreativeJob 的明确确认。当前状态是 `experimental`：模拟 UXP 闭环已通过，真实授权 Photoshop 会话写入尚未验收，不能显示为稳定或已连接。

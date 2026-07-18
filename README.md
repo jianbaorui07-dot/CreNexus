@@ -63,8 +63,8 @@ powershell -ExecutionPolicy Bypass -File plugins\starbridge-version-coordinator\
 | 状态 | 已覆盖能力 | 证据边界 |
 | --- | --- | --- |
 | stable（稳定） | MCP 协议层、安全默认工具、safe roots、路径脱敏、四种离线矢量化引擎 | 自动测试证明对应的离线范围；`recommended` 另行表示主推，不创造第五种状态 |
-| experimental（实验） | Tauri 桌面壳、sidecar、更新器、Project、CreativeJob、Workflow Engine、`vector-delivery-v1`、`comfyui-generation-v1`、基础交付、Adobe/CAD 受保护协议、Blender/CapCut 探针 | 已有实现和自动化证据，但未同时完成当前授权软件、失败恢复和发布级验收 |
-| planned（计划） | Illustrator AI 副本交付、统一交付打包、有限 Adobe 完整工作流和 Pro 批量 | 路线已确定；完成前不能在产品中显示为可用 |
+| experimental（实验） | Tauri 桌面壳、sidecar、更新器、Project、CreativeJob、Workflow Engine、`vector-delivery-v1`、`comfyui-generation-v1`、`photoshop-production-v1`、基础交付、Adobe/CAD 受保护协议、Blender/CapCut 探针 | 已有实现和自动化证据，但未同时完成当前授权软件、失败恢复和发布级验收 |
+| planned（计划） | Illustrator AI 副本交付、统一交付打包、有限 Illustrator 完整工作流和 Pro 批量 | 路线已确定；完成前不能在产品中显示为可用 |
 | not_implemented（not implemented / 未实现或禁止） | 自动登录、绕过授权、递归扫描私有目录、无确认写入、上传客户工程或商业素材 | 安全硬边界 |
 
 Photoshop, Illustrator, Blender, and CapCut write flows are experimental or planned unless a reviewed local run proves otherwise.

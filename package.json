@@ -77,6 +77,7 @@
     "preflight:json": "python scripts/starbridge_preflight.py --json",
     "security:check": "python scripts/security_check.py",
     "product:facts:check": "python scripts/check_product_facts.py",
+    "text:encoding:check": "python scripts/check_text_encoding.py",
     "canvas:dev": "powershell -ExecutionPolicy Bypass -File scripts/start_starbridge_canvas.ps1",
     "canvas:build": "npm --prefix examples/starbridge_canvas run build",
     "canvas:mcp": "node examples/starbridge_canvas/mcp/server.mjs",
