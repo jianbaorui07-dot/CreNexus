@@ -3,9 +3,15 @@ import type {
   CodexConnectionResetResult,
   CodexConnectorInstallResult,
   ConnectionOverview,
+  CreativeJob,
+  CreativeJobCreateRequest,
+  CreativeJobRunResult,
   CreativeApplicationConnection,
+  JobHistoryEvent,
   LicenseRequestReceipt,
   LicenseStatus,
+  Project,
+  ProjectDelivery,
   RuntimeStatus,
   SoftwareUpdateProgress,
   SoftwareUpdateStatus,
@@ -15,6 +21,7 @@ import type {
   VectorJob,
   VectorSelection,
   VectorizationStart,
+  WorkflowSummary,
 } from "../types/api";
 import { createTransport } from "./runtime";
 import { TransportError, type StarBridgeTransport } from "./transport";
@@ -57,6 +64,21 @@ export interface StarBridgeClient {
   getLicenseStatus(): Promise<LicenseStatus>;
   createLicenseRequest(): Promise<LicenseRequestReceipt>;
   importLicenseFile(contents: string): Promise<LicenseStatus>;
+  getWorkflows(): Promise<WorkflowSummary[]>;
+  getProjects(): Promise<Project[]>;
+  createProject(projectName: string, workflowId: string, description: string): Promise<Project>;
+  importProjectAsset(projectId: string, confirmImport: boolean): Promise<Project | null>;
+  getCreativeJobs(): Promise<CreativeJob[]>;
+  createCreativeJob(request: CreativeJobCreateRequest): Promise<CreativeJob>;
+  getCreativeJob(jobId: string): Promise<CreativeJob>;
+  runCreativeJob(
+    jobId: string,
+    approvalRef?: string,
+    confirmExecute?: boolean,
+  ): Promise<CreativeJobRunResult>;
+  cancelCreativeJob(jobId: string, confirmCancel: boolean): Promise<CreativeJob>;
+  getCreativeJobEvents(jobId: string): Promise<JobHistoryEvent[]>;
+  getProjectDelivery(projectId: string): Promise<ProjectDelivery>;
   chooseVectorInput(): Promise<VectorSelection | null>;
   startVectorization(request: VectorizationStart): Promise<VectorJob>;
   getVectorizationJob(jobId: string): Promise<VectorJob>;
@@ -132,6 +154,13 @@ export class StarBridgeApiClient implements StarBridgeClient {
         throw errorFromEnvelope(response.status, response.body);
       }
       return response.body;
+    });
+  }
+
+  private async requestData<T>(request: TransportRequest): Promise<T> {
+    return this.execute(async () => {
+      const response = await this.transport.request<ApiEnvelope<T>>(request);
+      return this.unwrap(response.status, response.body);
     });
   }
 
@@ -240,6 +269,95 @@ export class StarBridgeApiClient implements StarBridgeClient {
 
   importLicenseFile(contents: string): Promise<LicenseStatus> {
     return this.transport.importLicenseFile(contents);
+  }
+
+  async getWorkflows(): Promise<WorkflowSummary[]> {
+    const data = await this.requestData<{ workflows: WorkflowSummary[] }>({
+      method: "GET",
+      path: "/api/workflows",
+    });
+    return data.workflows;
+  }
+
+  async getProjects(): Promise<Project[]> {
+    const data = await this.requestData<{ projectCount: number; projects: Project[] }>({
+      method: "GET",
+      path: "/api/projects",
+    });
+    return data.projects;
+  }
+
+  createProject(
+    projectName: string,
+    workflowId: string,
+    description: string,
+  ): Promise<Project> {
+    return this.requestData({
+      method: "POST",
+      path: "/api/projects",
+      body: { projectName, workflowId, description },
+    });
+  }
+
+  async importProjectAsset(
+    projectId: string,
+    confirmImport: boolean,
+  ): Promise<Project | null> {
+    return this.execute(async () => {
+      const response = await this.transport.importProjectAsset(projectId, confirmImport);
+      return response ? this.unwrap(response.status, response.body).project : null;
+    });
+  }
+
+  async getCreativeJobs(): Promise<CreativeJob[]> {
+    const data = await this.requestData<{ jobCount: number; jobs: CreativeJob[] }>({
+      method: "GET",
+      path: "/api/jobs",
+    });
+    return data.jobs;
+  }
+
+  createCreativeJob(request: CreativeJobCreateRequest): Promise<CreativeJob> {
+    return this.requestData({ method: "POST", path: "/api/jobs", body: { ...request } });
+  }
+
+  getCreativeJob(jobId: string): Promise<CreativeJob> {
+    return this.requestData({ method: "GET", path: `/api/jobs/${jobId}` });
+  }
+
+  runCreativeJob(
+    jobId: string,
+    approvalRef?: string,
+    confirmExecute = false,
+  ): Promise<CreativeJobRunResult> {
+    return this.requestData({
+      method: "POST",
+      path: `/api/jobs/${jobId}/run`,
+      body: { approvalRef, confirmExecute },
+    });
+  }
+
+  cancelCreativeJob(jobId: string, confirmCancel: boolean): Promise<CreativeJob> {
+    return this.requestData({
+      method: "POST",
+      path: `/api/jobs/${jobId}/cancel`,
+      body: { confirmCancel },
+    });
+  }
+
+  async getCreativeJobEvents(jobId: string): Promise<JobHistoryEvent[]> {
+    const data = await this.requestData<{
+      eventCount: number;
+      events: JobHistoryEvent[];
+    }>({ method: "GET", path: `/api/jobs/${jobId}/events` });
+    return data.events;
+  }
+
+  getProjectDelivery(projectId: string): Promise<ProjectDelivery> {
+    return this.requestData({
+      method: "GET",
+      path: `/api/projects/${projectId}/delivery`,
+    });
   }
 
   chooseVectorInput(): Promise<VectorSelection | null> {

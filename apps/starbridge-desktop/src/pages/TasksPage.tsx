@@ -1,12 +1,26 @@
 import { EmptyState } from "../components/EmptyState/EmptyState";
-import { TaskCard } from "../components/TaskCard/TaskCard";
-import type { VectorHistoryEvent } from "../types/api";
+import type { CreativeJob } from "../types/api";
 
-export function TasksPage({ tasks, onStart }: { tasks: VectorHistoryEvent[]; onStart: () => void }) {
+const STATUS_LABELS: Record<CreativeJob["status"], string> = {
+  queued: "等待开始",
+  running: "运行中",
+  needs_user: "等待确认",
+  completed: "已完成",
+  failed: "失败",
+  cancelled: "已取消",
+};
+
+interface TasksPageProps {
+  tasks: CreativeJob[];
+  onStart: () => void;
+  onOpenJob: (jobId: string, projectId: string) => void;
+}
+
+export function TasksPage({ tasks, onStart, onOpenJob }: TasksPageProps) {
   return (
     <div className="standard-page">
-      <header className="page-intro"><div><span className="page-kicker">本机任务记录</span><h2>查看已经真实完成的任务</h2><p>这里只记录脱敏摘要和质量指标，不记录原始图片路径，也不会同步到服务器。</p></div><button type="button" className="primary" onClick={onStart}>新建矢量化任务</button></header>
-      {tasks.length > 0 ? <div className="task-list">{tasks.map((event) => <TaskCard event={event} key={event.eventId} />)}</div> : <EmptyState title="还没有任务记录" description="完成一次图片矢量化后，StarBridge 会在本机保存脱敏任务摘要。" action={<button type="button" className="secondary" onClick={onStart}>开始第一个任务</button>} />}
+      <header className="page-intro"><div><span className="page-kicker">CreativeJob</span><h2>统一任务中心</h2><p>项目工作流使用六种固定状态；这里显示持久化进度、当前步骤和实际产物数量，不显示原始文件路径。</p></div><button type="button" className="primary" onClick={onStart}>新建创意任务</button></header>
+      {tasks.length > 0 ? <div className="record-list">{tasks.map((job) => <article className="record-panel creative-job-card" key={job.jobId}><div className="record-heading"><div><span className="task-kind">{job.workflowId}</span><h3>{job.currentStep}</h3><p>更新于 {new Date(job.updatedAt).toLocaleString()}</p></div><span className={`job-status status-${job.status}`}>{STATUS_LABELS[job.status]}</span></div><div className="progress-row"><progress max={100} value={job.progress} /><span>{job.progress}%</span></div><div className="record-footer"><span>{job.artifacts.length} 个真实产物{job.evidenceId ? " · 已登记证据" : ""}</span><button type="button" className="secondary" onClick={() => onOpenJob(job.jobId, job.projectId)}>查看任务</button></div></article>)}</div> : <EmptyState title="还没有创意任务" description="建立项目并选择工作流后，任务计划会保存在本机。" action={<button type="button" className="secondary" onClick={onStart}>建立第一个任务</button>} />}
     </div>
   );
 }

@@ -19,8 +19,11 @@ class ReleaseDocsTests(unittest.TestCase):
             with self.subTest(path=relative):
                 self.assertTrue((REPO_ROOT / relative).exists())
 
-    def test_version_is_0_1_0(self) -> None:
-        self.assertEqual("0.1.0", (REPO_ROOT / "VERSION").read_text(encoding="utf-8").strip())
+    def test_version_is_canonical_alpha_semver(self) -> None:
+        self.assertEqual(
+            "0.1.0-alpha.0",
+            (REPO_ROOT / "VERSION").read_text(encoding="utf-8").strip(),
+        )
 
 
 if __name__ == "__main__":

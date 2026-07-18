@@ -65,6 +65,7 @@ function transportReturning(status: number, body: Record<string, unknown>): Star
       features: [],
       commercialVerifierConfigured: true,
     }),
+    importProjectAsset: async () => null,
     chooseVectorInput: async () => null,
     startVectorization: async () => ({ status: 202, body: { ok: false } }),
     getVectorizationJob: async () => ({ status: 404, body: { ok: false } }),

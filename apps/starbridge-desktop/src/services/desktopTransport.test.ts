@@ -3,6 +3,18 @@ import { describe, expect, it, vi } from "vitest";
 import { DesktopTransport } from "./desktopTransport";
 
 describe("desktop license transport", () => {
+  it("imports a project asset only through the fixed desktop picker command", async () => {
+    const invoke = vi.fn().mockResolvedValue(null);
+    const transport = new DesktopTransport(invoke);
+
+    await transport.importProjectAsset("project-test", true);
+
+    expect(invoke).toHaveBeenCalledWith("import_project_asset", {
+      projectId: "project-test",
+      confirmImport: true,
+    });
+  });
+
   it("uses fixed commands for the Codex connector lifecycle", async () => {
     const invoke = vi.fn().mockResolvedValue({ status: 200, body: { ok: true } });
     const transport = new DesktopTransport(invoke);

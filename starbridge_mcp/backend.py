@@ -11,7 +11,7 @@ import os
 import signal
 import time
 from collections.abc import Callable, Iterable, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -33,12 +33,32 @@ from starbridge_mcp.core.desktop_connections import (
     DesktopConnectionManager,
 )
 from starbridge_mcp.core.security import sanitize
+from starbridge_mcp.domain.errors import (
+    ConfirmationRequiredError,
+    DomainValidationError,
+    RecordNotFoundError,
+)
 from starbridge_mcp.mcp_server import SERVER_INFO, handle_request
+from starbridge_mcp.storage import AssetStore, EvidenceStore, JobStore, ProjectStore
 from starbridge_mcp.vectorization.engine import (
     RunConfig,
     VectorizationError,
     file_sha256,
     run_vectorization,
+)
+from starbridge_mcp.workflows.comfyui_generation_pipeline import (
+    WORKFLOW_ID as COMFYUI_GENERATION_WORKFLOW_ID,
+)
+from starbridge_mcp.workflows.comfyui_generation_pipeline import (
+    register_comfyui_generation_workflow,
+)
+from starbridge_mcp.workflows.engine import WorkflowEngine
+from starbridge_mcp.workflows.registry import WorkflowRegistry
+from starbridge_mcp.workflows.vector_delivery_pipeline import (
+    WORKFLOW_ID as VECTOR_DELIVERY_WORKFLOW_ID,
+)
+from starbridge_mcp.workflows.vector_delivery_pipeline import (
+    register_vector_delivery_workflow,
 )
 
 JsonObject = dict[str, Any]
@@ -187,6 +207,20 @@ class StarBridgeBackend:
         self._session_credential = session_credential
         self.max_request_body_bytes = max_request_body_bytes
         self.app_paths: AppDataPaths = resolve_app_data_paths(app_data_dir)
+        self.project_store = ProjectStore(self.app_paths.projects)
+        self.job_store = JobStore(self.app_paths.jobs)
+        self.asset_store = AssetStore(self.app_paths.projects)
+        self.evidence_store = EvidenceStore(self.app_paths.evidence)
+        self.workflow_registry = WorkflowRegistry()
+        register_vector_delivery_workflow(self.workflow_registry)
+        register_comfyui_generation_workflow(self.workflow_registry)
+        self.workflow_engine = WorkflowEngine(
+            registry=self.workflow_registry,
+            project_store=self.project_store,
+            job_store=self.job_store,
+            evidence_store=self.evidence_store,
+            app_paths=self.app_paths,
+        )
         self.connections = DesktopConnectionManager(self.app_paths)
         self.static_root = static_root or DEFAULT_STATIC_ROOT
         self.history_path = history_path or self.app_paths.history_file
@@ -473,11 +507,17 @@ class StarBridgeBackend:
     def _vector_job_public(job: JsonObject) -> JsonObject:
         response: JsonObject = {
             "jobId": job["job_id"],
+            "projectId": "legacy-vectorization",
+            "workflowId": "legacy-vectorization-v1",
             "status": job["status"],
             "progress": job["progress"],
             "stage": job["stage"],
+            "currentStep": job["stage"],
             "mode": job["mode"],
             "createdAt": job["created_at"],
+            "artifacts": [],
+            "warnings": [],
+            "evidenceId": None,
         }
         for key in ("completed_at", "result", "error"):
             if job.get(key) is not None:
@@ -487,6 +527,8 @@ class StarBridgeBackend:
                     "error": "error",
                 }[key]
                 response[public_key] = job[key]
+        if isinstance(job.get("result"), dict):
+            response["warnings"] = list(job["result"].get("warnings") or [])
         return response
 
     def _record_vector_event(self, job: JsonObject, result: JsonObject) -> None:
@@ -714,6 +756,242 @@ class StarBridgeBackend:
                 "data": {
                     "eventCount": len(events),
                     "events": events,
+                },
+            },
+        )
+
+    def _workflow_catalog(self) -> BackendResponse:
+        return BackendResponse(
+            200,
+            {
+                "ok": True,
+                "data": {
+                    "workflows": [
+                        {
+                            "workflowId": VECTOR_DELIVERY_WORKFLOW_ID,
+                            "name": "图片 → 精确重建 → 绘制型矢量 → 交付",
+                            "capabilityStatus": "experimental",
+                            "recommended": True,
+                            "ordinaryCustomerRoute": True,
+                            "requiresConfirmation": True,
+                            "drawingModes": ["artisan", "smart", "lightweight"],
+                            "imageTraceFallback": False,
+                        },
+                        {
+                            "workflowId": COMFYUI_GENERATION_WORKFLOW_ID,
+                            "name": "提示词 → 校验 → 本机 ComfyUI → 结果证据",
+                            "capabilityStatus": "experimental",
+                            "recommended": False,
+                            "ordinaryCustomerRoute": True,
+                            "requiresConfirmation": True,
+                            "drawingModes": [],
+                            "imageTraceFallback": False,
+                        },
+                    ]
+                },
+            },
+        )
+
+    def _create_project(self, body: JsonObject) -> BackendResponse:
+        project_name = body.get("projectName") or body.get("project_name")
+        workflow_id = body.get("workflowId") or body.get("workflow_id")
+        description = body.get("description") or ""
+        if not isinstance(project_name, str) or not project_name.strip():
+            return self._error(400, "project_name_required", "请输入项目名称。")
+        if workflow_id not in self.workflow_registry.workflow_ids():
+            return self._error(400, "workflow_not_available", "请选择当前可用的创意工作流。")
+        if not isinstance(description, str):
+            return self._error(400, "invalid_description", "项目描述格式无效。")
+        try:
+            project = self.project_store.create(
+                project_name.strip(), str(workflow_id), description.strip()
+            )
+        except DomainValidationError as exc:
+            return self._error(400, "invalid_project", str(exc))
+        return BackendResponse(201, {"ok": True, "data": project.to_dict()})
+
+    def _list_projects(self) -> BackendResponse:
+        projects = [project.to_dict() for project in self.project_store.list()]
+        return BackendResponse(
+            200, {"ok": True, "data": {"projectCount": len(projects), "projects": projects}}
+        )
+
+    def _get_project(self, project_id: str) -> BackendResponse:
+        try:
+            project = self.project_store.get(project_id)
+        except (DomainValidationError, RecordNotFoundError):
+            return self._error(404, "project_not_found", "没有找到这个项目。")
+        return BackendResponse(200, {"ok": True, "data": project.to_dict()})
+
+    def _import_project_asset(self, project_id: str, body: JsonObject) -> BackendResponse:
+        if body.get("confirmImport") is not True and body.get("confirm_import") is not True:
+            return self._error(
+                400,
+                "confirmation_required",
+                "把素材复制到 StarBridge 项目目录前需要明确确认。",
+            )
+        source_path = body.get("inputPath") or body.get("input_path")
+        if not isinstance(source_path, str) or not source_path.strip():
+            return self._error(400, "input_required", "请选择一个要导入的文件。")
+        try:
+            project = self.project_store.get(project_id)
+            asset = self.asset_store.import_source(project_id, source_path, confirm_import=True)
+            updated = self.project_store.save(
+                replace(project, source_assets=(*project.source_assets, asset))
+            )
+        except RecordNotFoundError:
+            return self._error(404, "project_not_found", "没有找到这个项目。")
+        except (ConfirmationRequiredError, DomainValidationError, OSError) as exc:
+            return self._error(400, "asset_import_failed", str(exc))
+        return BackendResponse(
+            201,
+            {
+                "ok": True,
+                "data": {"asset": asset.to_dict(), "project": updated.to_dict()},
+            },
+        )
+
+    def _create_creative_job(self, body: JsonObject) -> BackendResponse:
+        project_id = body.get("projectId") or body.get("project_id")
+        workflow_id = body.get("workflowId") or body.get("workflow_id")
+        if not all(isinstance(value, str) for value in (project_id, workflow_id)):
+            return self._error(
+                400,
+                "job_fields_required",
+                "创建任务需要项目和工作流。",
+            )
+        try:
+            project = self.project_store.get(str(project_id))
+            if workflow_id == VECTOR_DELIVERY_WORKFLOW_ID:
+                asset_id = body.get("sourceAssetId") or body.get("source_asset_id")
+                drawing_mode = body.get("drawingMode") or body.get("drawing_mode") or "artisan"
+                parameters = body.get("parameters") or {}
+                if not isinstance(asset_id, str):
+                    return self._error(
+                        400, "source_asset_required", "图片矢量工作流需要一个已导入的源素材。"
+                    )
+                if not isinstance(parameters, dict):
+                    return self._error(400, "invalid_parameters", "任务参数格式无效。")
+                source_asset = next(
+                    (asset for asset in project.source_assets if asset.asset_id == asset_id), None
+                )
+                if source_asset is None:
+                    return self._error(404, "source_asset_not_found", "项目中没有这个源素材。")
+                workflow_inputs = {
+                    "sourceAssetRelativePath": source_asset.relative_path,
+                    "drawingMode": drawing_mode,
+                    "parameters": parameters,
+                }
+            elif workflow_id == COMFYUI_GENERATION_WORKFLOW_ID:
+                workflow_inputs = {
+                    "prompt": body.get("prompt"),
+                    "negativePrompt": body.get("negativePrompt") or body.get("negative_prompt"),
+                    "checkpointName": body.get("checkpointName") or body.get("checkpoint_name"),
+                    "width": body.get("width"),
+                    "height": body.get("height"),
+                    "seed": body.get("seed"),
+                    "steps": body.get("steps"),
+                    "cfg": body.get("cfg"),
+                    "sampler": body.get("sampler"),
+                    "scheduler": body.get("scheduler"),
+                    "timeout": body.get("timeout"),
+                    "waitSeconds": (
+                        body.get("waitSeconds")
+                        if "waitSeconds" in body
+                        else body.get("wait_seconds")
+                    ),
+                }
+            else:
+                return self._error(400, "workflow_not_available", "这个工作流当前不可用。")
+            job = self.workflow_engine.create_job(
+                str(project_id),
+                str(workflow_id),
+                workflow_inputs,
+            )
+        except RecordNotFoundError:
+            return self._error(404, "project_not_found", "没有找到这个项目。")
+        except (DomainValidationError, KeyError, ValueError) as exc:
+            return self._error(400, "job_plan_invalid", str(exc))
+        return BackendResponse(201, {"ok": True, "data": job.to_dict()})
+
+    def _list_creative_jobs(self) -> BackendResponse:
+        jobs = [job.to_dict() for job in self.job_store.list()]
+        with self._vector_lock:
+            legacy = [self._vector_job_public(dict(job)) for job in self._vector_jobs.values()]
+        combined = [*jobs, *legacy]
+        return BackendResponse(
+            200, {"ok": True, "data": {"jobCount": len(combined), "jobs": combined}}
+        )
+
+    def _get_creative_job(self, job_id: str) -> BackendResponse:
+        try:
+            job = self.job_store.get(job_id)
+        except (DomainValidationError, RecordNotFoundError):
+            with self._vector_lock:
+                legacy = self._vector_jobs.get(job_id)
+            if legacy is None:
+                return self._error(404, "job_not_found", "没有找到这项任务。")
+            return BackendResponse(200, {"ok": True, "data": self._vector_job_public(dict(legacy))})
+        return BackendResponse(200, {"ok": True, "data": job.to_dict()})
+
+    def _run_creative_job(self, job_id: str, body: JsonObject) -> BackendResponse:
+        approval_ref = body.get("approvalRef") or body.get("approval_ref")
+        confirm_execute = body.get("confirmExecute") is True or body.get("confirm_execute") is True
+        try:
+            result = self.workflow_engine.run(
+                job_id,
+                approval_ref=str(approval_ref) if isinstance(approval_ref, str) else None,
+                confirm_execute=confirm_execute,
+            )
+        except RecordNotFoundError:
+            return self._error(404, "job_not_found", "没有找到这项任务。")
+        except DomainValidationError as exc:
+            return self._error(409, "job_state_invalid", str(exc))
+        status_code = 202 if result.job.status == "needs_user" else 200
+        return BackendResponse(status_code, {"ok": True, "data": result.to_dict()})
+
+    def _cancel_creative_job(self, job_id: str, body: JsonObject) -> BackendResponse:
+        if body.get("confirmCancel") is not True and body.get("confirm_cancel") is not True:
+            return self._error(400, "confirmation_required", "取消任务前需要明确确认。")
+        try:
+            job = self.workflow_engine.cancel(job_id)
+        except RecordNotFoundError:
+            return self._error(404, "job_not_found", "没有找到这项任务。")
+        return BackendResponse(200, {"ok": True, "data": job.to_dict()})
+
+    def _creative_job_events(self, job_id: str) -> BackendResponse:
+        try:
+            self.job_store.get(job_id)
+        except (DomainValidationError, RecordNotFoundError):
+            return self._error(404, "job_not_found", "没有找到这项任务。")
+        events = [event.to_dict() for event in self.job_store.events(job_id)]
+        return BackendResponse(
+            200, {"ok": True, "data": {"eventCount": len(events), "events": events}}
+        )
+
+    def _project_delivery(self, project_id: str) -> BackendResponse:
+        try:
+            project = self.project_store.get(project_id)
+        except (DomainValidationError, RecordNotFoundError):
+            return self._error(404, "project_not_found", "没有找到这个项目。")
+        artifacts = [artifact.to_dict() for artifact in project.artifacts]
+        return BackendResponse(
+            200,
+            {
+                "ok": True,
+                "data": {
+                    "projectId": project.project_id,
+                    "projectName": project.project_name,
+                    "artifacts": artifacts,
+                    "evidenceIds": list(project.evidence),
+                    "formats": sorted(
+                        {
+                            Path(artifact.basename).suffix.lower().lstrip(".").upper()
+                            for artifact in project.artifacts
+                            if Path(artifact.basename).suffix
+                        }
+                    ),
+                    "fabricatedOutputs": False,
                 },
             },
         )
@@ -1192,6 +1470,43 @@ class StarBridgeBackend:
                     },
                 },
             )
+
+        if method == "GET" and path == "/api/workflows":
+            return self._workflow_catalog()
+
+        if path == "/api/projects":
+            if method == "GET":
+                return self._list_projects()
+            if method == "POST":
+                return self._create_project(body)
+
+        if path.startswith("/api/projects/"):
+            parts = [unquote(part) for part in path.split("/") if part]
+            if len(parts) == 3 and parts[:2] == ["api", "projects"] and method == "GET":
+                return self._get_project(parts[2])
+            if len(parts) == 4 and parts[:2] == ["api", "projects"]:
+                if parts[3] == "assets" and method == "POST":
+                    return self._import_project_asset(parts[2], body)
+                if parts[3] == "delivery" and method == "GET":
+                    return self._project_delivery(parts[2])
+
+        if path == "/api/jobs":
+            if method == "GET":
+                return self._list_creative_jobs()
+            if method == "POST":
+                return self._create_creative_job(body)
+
+        if path.startswith("/api/jobs/"):
+            parts = [unquote(part) for part in path.split("/") if part]
+            if len(parts) == 3 and parts[:2] == ["api", "jobs"] and method == "GET":
+                return self._get_creative_job(parts[2])
+            if len(parts) == 4 and parts[:2] == ["api", "jobs"]:
+                if parts[3] == "run" and method == "POST":
+                    return self._run_creative_job(parts[2], body)
+                if parts[3] == "cancel" and method == "POST":
+                    return self._cancel_creative_job(parts[2], body)
+                if parts[3] == "events" and method == "GET":
+                    return self._creative_job_events(parts[2])
 
         if method == "POST" and path == "/api/vectorization/selections":
             return self._create_vector_selection(body)

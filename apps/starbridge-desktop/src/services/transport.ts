@@ -5,6 +5,7 @@ import type {
   CreativeApplicationConnection,
   LicenseRequestReceipt,
   LicenseStatus,
+  Project,
   RuntimeStatus,
   SoftwareUpdateProgress,
   SoftwareUpdateStatus,
@@ -65,6 +66,10 @@ export interface StarBridgeTransport {
   getLicenseStatus(): Promise<LicenseStatus>;
   createLicenseRequest(): Promise<LicenseRequestReceipt>;
   importLicenseFile(contents: string): Promise<LicenseStatus>;
+  importProjectAsset(
+    projectId: string,
+    confirmImport: boolean,
+  ): Promise<TransportResponse<ApiEnvelope<{ asset: unknown; project: Project }>> | null>;
   chooseVectorInput(): Promise<TransportResponse<ApiEnvelope<VectorSelection>> | null>;
   startVectorization(
     request: VectorizationStart,

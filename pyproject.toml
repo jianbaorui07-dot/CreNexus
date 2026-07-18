@@ -23,7 +23,9 @@ classifiers = [
   "Topic :: Software Development :: Libraries :: Application Frameworks",
   "Topic :: Multimedia :: Graphics",
 ]
-dependencies = []
+dependencies = [
+  "tomli>=2; python_version < '3.11'",
+]
 
 [project.urls]
 Homepage = "https://github.com/jianbaorui07-dot/Codex-Integration-with-Creative-Industry-Software"

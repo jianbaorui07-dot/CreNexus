@@ -157,19 +157,27 @@ $proxyRoots = @(
     (Join-Path $repoRoot "node_proxy\photoshop-bridge"),
     (Join-Path $repoRoot "node_proxy\illustrator-bridge")
 )
+$desktopRoot = Join-Path $repoRoot "apps\starbridge-desktop"
 $node = Get-Command "node" -ErrorAction SilentlyContinue
 $npm = Get-Command "npm.cmd" -ErrorAction SilentlyContinue
-if (-not $SkipNode -and ($effectiveProfile -in @("standard", "all"))) {
+if (-not $SkipNode) {
     if ($node -and $npm) {
-        foreach ($proxyRoot in $proxyRoots) {
-            if (Test-Path -LiteralPath (Join-Path $proxyRoot "package.json")) {
-                Invoke-Checked $steps "install Node bridge $(Split-Path $proxyRoot -Leaf)" $npm.Source @(
-                    "install", "--prefix", $proxyRoot, "--no-package-lock", "--no-audit", "--no-fund"
-                )
+        if (Test-Path -LiteralPath (Join-Path $desktopRoot "package-lock.json")) {
+            Invoke-Checked $steps "install desktop dependencies" $npm.Source @(
+                "ci", "--prefix", $desktopRoot, "--no-audit", "--no-fund"
+            )
+        }
+        if ($effectiveProfile -in @("standard", "all")) {
+            foreach ($proxyRoot in $proxyRoots) {
+                if (Test-Path -LiteralPath (Join-Path $proxyRoot "package.json")) {
+                    Invoke-Checked $steps "install Node bridge $(Split-Path $proxyRoot -Leaf)" $npm.Source @(
+                        "install", "--prefix", $proxyRoot, "--no-package-lock", "--no-audit", "--no-fund"
+                    )
+                }
             }
         }
     } else {
-        [void]$warnings.Add("Node.js/npm not found; UXP Node proxies were not installed. Python/MCP flows remain available.")
+        [void]$warnings.Add("Node.js/npm not found; desktop dependencies and UXP Node proxies were not installed. Python/MCP flows remain available.")
     }
 }
 

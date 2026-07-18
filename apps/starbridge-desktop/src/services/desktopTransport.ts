@@ -7,6 +7,7 @@ import type {
   CreativeApplicationConnection,
   LicenseRequestReceipt,
   LicenseStatus,
+  Project,
   RuntimeStatus,
   SoftwareUpdateProgress,
   SoftwareUpdateStatus,
@@ -170,6 +171,13 @@ export class DesktopTransport implements StarBridgeTransport {
 
   importLicenseFile(contents: string): Promise<LicenseStatus> {
     return this.callLicense<LicenseStatus>("import_license_file", { contents });
+  }
+
+  importProjectAsset(
+    projectId: string,
+    confirmImport: boolean,
+  ): Promise<TransportResponse<ApiEnvelope<{ asset: unknown; project: Project }>> | null> {
+    return this.call("import_project_asset", { projectId, confirmImport });
   }
 
   chooseVectorInput(): Promise<TransportResponse<ApiEnvelope<VectorSelection>> | null> {
