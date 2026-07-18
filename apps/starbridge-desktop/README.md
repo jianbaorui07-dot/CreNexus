@@ -1,16 +1,16 @@
-# StarBridge Desktop（P1 安全运行基座）
+# StarBridge Desktop（本地创意工作台）
 
-这个目录是正式桌面应用工程，不再放在 `examples/`。它保留 React、Vite 和 TypeScript 前端，并使用 Tauri 2 管理一个由 PyInstaller 打包的 Python sidecar（随桌面程序运行的本地后台程序）。
+这个目录是正式桌面应用工程。React、Vite 和 TypeScript 提供产品界面，Tauri 2 管理由 PyInstaller 打包的 Python sidecar（随桌面程序运行的本地后台程序）。
 
-P1 只实现启动、连接、恢复和诊断基座，不代表安装器、完整工作流界面或真实创意软件控制已经验收。
+当前桌面 Shell 已按首页、图片矢量化、批量处理、软件联动、任务记录、版本与授权、设置与诊断拆分。Community 图片矢量化可通过受限 Tauri 命令完成选择、确认、本机执行、进度、预览、质量指标、打开输出目录和任务记录；批量与新的商业增强仍只显示规划状态。
 
-P2 已开始建立公开的离线授权基础：桌面端可以导出脱敏设备申请，并在 Rust 层导入和验证 Ed25519 签名授权。当前 Community 构建没有生产验签公钥，也不包含 Pro 功能代码。商业边界、建议价格和签发流程以 [`docs/OFFLINE_COMMERCIALIZATION.md`](../../docs/OFFLINE_COMMERCIALIZATION.md) 为准。
+桌面端可以导出脱敏设备申请，并在 Rust 层导入和验证 Ed25519 签名授权。Community 无需激活；当前 Community 构建没有生产验签公钥，也不包含 Pro 功能代码。商业边界、建议价格和签发流程以 [`docs/OFFLINE_COMMERCIALIZATION.md`](../../docs/OFFLINE_COMMERCIALIZATION.md) 为准。
 
 ## 目录职责
 
 ```text
 apps/starbridge-desktop/
-├─ src/                    # 最小 React 状态界面与统一 API 客户端
+├─ src/                    # 桌面 Shell、页面组件与统一 API 客户端
 ├─ src-tauri/              # Tauri 2、最小 capabilities 和 sidecar 生命周期
 ├─ scripts/                # PyInstaller 构建、依赖检查与 sidecar 验收
 └─ README.md
@@ -57,7 +57,7 @@ npm.cmd run build --prefix apps\starbridge-desktop
 powershell -ExecutionPolicy Bypass -File apps\starbridge-desktop\scripts\Build-Sidecar.ps1
 ```
 
-它使用固定的 PyInstaller 版本，将核心 HTTP/MCP 后端打成 one-folder，并明确排除 PySide6、OpenCV、NumPy、Pillow 和 `starbridge_mcp.vectorization`。`.spec` 明确列出核心 hidden imports，数据文件列表保持为空。构建脚本优先使用 `CARGO_BUILD_TARGET` 或 Rust host triple；原生工具链缺失时按当前 Windows 架构推导，也可用 `-TargetTriple` 显式指定。构建产物会暂存到符合 Tauri target triple 命名的 `src-tauri/binaries/`，且不会被 Git 跟踪。
+它使用固定的 PyInstaller、Pillow、NumPy 和 OpenCV headless 版本，将核心 HTTP/MCP 后端与 Community 矢量引擎打成 one-folder；PySide6 GUI 仍明确排除。`.spec` 明确列出 Community 工作流需要的 hidden imports，数据文件列表保持为空。构建脚本优先使用 `CARGO_BUILD_TARGET` 或 Rust host triple；原生工具链缺失时按当前 Windows 架构推导，也可用 `-TargetTriple` 显式指定。构建产物会暂存到符合 Tauri target triple 命名的 `src-tauri/binaries/`，且不会被 Git 跟踪。
 
 真实验证 sidecar 的随机端口、鉴权、bootstrap、优雅退出和端口释放：
 

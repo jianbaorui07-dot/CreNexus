@@ -356,9 +356,7 @@ class MainWindow(QMainWindow):
         self.quality_preset_input.addItem("High-fidelity art", "high-fidelity")
         self.quality_preset_input.addItem("Balanced editing", "balanced")
         self.quality_preset_input.addItem("Minimal anchors", "minimal")
-        self.quality_preset_input.currentIndexChanged.connect(
-            self._quality_preset_changed
-        )
+        self.quality_preset_input.currentIndexChanged.connect(self._quality_preset_changed)
         self.target_difference_input = QDoubleSpinBox()
         self.target_difference_input.setRange(5.0, 30.0)
         self.target_difference_input.setDecimals(1)

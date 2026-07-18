@@ -151,4 +151,84 @@ describe("desktop runtime status", () => {
     await waitFor(() => expect(client.createLicenseRequest).toHaveBeenCalledOnce());
     expect(await screen.findByText(/文件夹已打开/)).toBeInTheDocument();
   });
+
+  it("explains how to recover from an invalid license while keeping Community available", async () => {
+    const client = makeClient({ state: "connected", message: "connected", recoveryAttempts: 0 });
+    client.getLicenseStatus = vi.fn().mockResolvedValue({
+      state: "invalid",
+      edition: "community",
+      message: "授权签名未通过验证。",
+      deviceLimit: 0,
+      features: [],
+      commercialVerifierConfigured: true,
+      reason: "signature_invalid",
+    });
+    render(<App client={client} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "版本与授权" }));
+    expect(screen.getByText("授权文件未生效")).toBeInTheDocument();
+    expect(screen.getByText(/授权签名未通过验证/)).toBeInTheDocument();
+    expect(screen.getByText(/Community 免费功能仍可继续使用/)).toBeInTheDocument();
+  });
+
+  it("runs the Community vectorization flow through selection, confirmation and result", async () => {
+    const client = makeClient({
+      state: "connected",
+      message: "运行正常。",
+      recoveryAttempts: 0,
+    });
+    client.chooseVectorInput = vi.fn().mockResolvedValue({
+      selectionId: "selection-test",
+      fileName: "example.png",
+      width: 320,
+      height: 240,
+      sourceHash: "abc123",
+      previewDataUrl: "data:image/png;base64,AA==",
+    });
+    client.startVectorization = vi.fn().mockResolvedValue({
+      jobId: "vector-test",
+      status: "queued",
+      progress: 6,
+      stage: "已确认，正在准备",
+      mode: "smart",
+      createdAt: "2026-07-17T08:00:00Z",
+    });
+    client.getVectorizationJob = vi.fn().mockResolvedValue({
+      jobId: "vector-test",
+      status: "completed",
+      progress: 100,
+      stage: "处理完成",
+      mode: "smart",
+      createdAt: "2026-07-17T08:00:00Z",
+      completedAt: "2026-07-17T08:00:01Z",
+      result: {
+        modeLabel: "智能矢量",
+        sourceHash: "abc123",
+        sourcePreviewDataUrl: "data:image/png;base64,AA==",
+        resultPreviewDataUrl: "data:image/png;base64,AA==",
+        metrics: { colors: 8, subpaths: 12, points: 36, svgBytes: 2048, elapsedSeconds: 1.2 },
+        warnings: [],
+        outputAvailable: true,
+      },
+    });
+
+    render(<App client={client} />);
+    fireEvent.click(await screen.findByRole("button", { name: "开始图片矢量化" }));
+    fireEvent.click(screen.getByRole("button", { name: "选择图片" }));
+    expect(await screen.findByText("example.png")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "开始本机矢量化" }));
+
+    await waitFor(() => expect(client.startVectorization).toHaveBeenCalledWith(
+      expect.objectContaining({
+        selectionId: "selection-test",
+        confirmRun: true,
+        confirmWrite: true,
+        confirmExport: true,
+      }),
+    ));
+    expect(await screen.findByText("任务记录已保存，输出位于 StarBridge 本机应用数据目录。", {}, { timeout: 2000 })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "打开输出文件夹" }));
+    await waitFor(() => expect(client.openVectorOutput).toHaveBeenCalledWith("vector-test"));
+  });
 });

@@ -1,10 +1,12 @@
 import { useState, type ChangeEvent } from "react";
 
+import { ErrorState } from "../components/ErrorState/ErrorState";
 import type { StarBridgeClient } from "../services/client";
 import type { LicenseStatus, VersionInfo } from "../types/api";
 
 const FEATURE_LABELS: Record<string, string> = {
   "vectorization.advanced": "公开矢量模式兼容项",
+  "workflow.production_vector": "生产级矢量工作流",
   "batch.processing": "生产级批量处理",
   "integration.adobe": "Adobe 商业工作流增强",
   "integration.comfyui": "ComfyUI 商业工作流增强",
@@ -90,6 +92,7 @@ export function LicensePage({ client, license, version, onLicenseChanged }: Lice
       <header className="page-intro"><div><span className="page-kicker">版本与授权</span><h2>{license.state === "active" ? `${license.edition === "enterprise" ? "Enterprise 企业版" : "Pro 专业版"}已激活` : "Community 免费版"}</h2><p>{license.state === "active" ? license.message : "你可以直接使用免费功能，无需登录、无需联网，也不需要授权文件。"}</p></div><span className={`large-edition edition-${license.edition}`}>{license.edition === "community" ? "Community" : license.edition === "pro" ? "Pro" : "Enterprise"}</span></header>
 
       {license.state !== "active" ? <>
+        {license.state === "invalid" ? <ErrorState title="授权文件未生效" message={`${license.message || "当前授权文件没有通过本机验证。"} Community 免费功能仍可继续使用。`} nextSteps={["重新导入从人工购买渠道取得的原始授权文件。", "如更换过设备，请保留购买确认单并联系人工支持。"]} /> : null}
         <section className="community-summary">
           <div><span className="summary-icon" aria-hidden="true">✓</span><div><h3>免费功能可直接使用</h3><p>当前版本 {version?.desktop ?? "—"} · 四种公开矢量模式 · 本机处理 · 无需激活</p></div></div>
           <ul><li>不使用授权服务器</li><li>不收集遥测</li><li>图片与设计文件留在本机</li></ul>

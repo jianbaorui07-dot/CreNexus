@@ -14,7 +14,7 @@ from .svg_verify import SvgArtifactError, verify_svg_artifact
 
 RENDERER_VERSION = "starbridge-path-renderer-v2"
 NUMBER = r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?"
-PATH_TOKEN = re.compile(rf"[MmLlCcZz]|{NUMBER}")
+PATH_LEXEME = re.compile(rf"[MmLlCcZz]|{NUMBER}")
 HEX_COLOR = re.compile(r"#([0-9a-fA-F]{6})\Z")
 
 
@@ -84,7 +84,7 @@ def _cubic(
 
 
 def _parse_path(value: str) -> list[tuple[list[tuple[float, float]], bool]]:
-    tokens = PATH_TOKEN.findall(value.replace(",", " "))
+    lexemes = PATH_LEXEME.findall(value.replace(",", " "))
     paths: list[tuple[list[tuple[float, float]], bool]] = []
     points: list[tuple[float, float]] = []
     current = (0.0, 0.0)
@@ -94,14 +94,14 @@ def _parse_path(value: str) -> list[tuple[list[tuple[float, float]], bool]]:
 
     def coordinate(offset: int) -> float:
         try:
-            return float(tokens[index + offset])
+            return float(lexemes[index + offset])
         except (IndexError, ValueError) as exc:
             raise SvgRenderError("SVG path data is incomplete.") from exc
 
-    while index < len(tokens):
-        token = tokens[index]
-        if token.isalpha():
-            command = token
+    while index < len(lexemes):
+        lexeme = lexemes[index]
+        if lexeme.isalpha():
+            command = lexeme
             index += 1
             if command in {"Z", "z"}:
                 if points:

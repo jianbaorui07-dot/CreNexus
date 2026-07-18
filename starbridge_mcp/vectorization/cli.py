@@ -151,9 +151,7 @@ def compact_result(result: dict[str, object]) -> dict[str, object]:
         [
             {"role": item["role"], "path": item["path"]}
             for item in artifacts
-            if isinstance(item, dict)
-            and item.get("role") in compact_roles
-            and "path" in item
+            if isinstance(item, dict) and item.get("role") in compact_roles and "path" in item
         ]
         if isinstance(artifacts, list)
         else []

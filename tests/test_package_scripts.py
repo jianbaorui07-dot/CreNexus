@@ -102,6 +102,8 @@ class PackageScriptsTest(unittest.TestCase):
                 "desktop:prerequisites",
                 "desktop:sidecar:build",
                 "desktop:sidecar:test",
+                "brand:build",
+                "site:build",
                 "app:dev",
                 "test",
                 "test:pytest",

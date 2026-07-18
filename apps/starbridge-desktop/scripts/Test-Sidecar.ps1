@@ -110,6 +110,70 @@ try {
     if (-not $bootstrap.ok) {
         throw "The authenticated bootstrap request failed."
     }
+
+    $sourceFile = Join-Path $temporaryRoot "community-vector-source.png"
+    $sourceBytes = [Convert]::FromBase64String(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+    )
+    [IO.File]::WriteAllBytes($sourceFile, $sourceBytes)
+    $selectionBody = @{ input_path = $sourceFile } | ConvertTo-Json -Compress
+    $selection = Invoke-RestMethod `
+        -Uri "http://127.0.0.1:$($ready.port)/api/vectorization/selections" `
+        -Method Post `
+        -Headers $headers `
+        -ContentType "application/json" `
+        -Body $selectionBody `
+        -TimeoutSec 10
+    if (-not $selection.ok -or -not $selection.data.selectionId) {
+        throw "The packaged sidecar could not select a Community vector input."
+    }
+    if (($selection | ConvertTo-Json -Depth 12).Contains($temporaryRoot)) {
+        throw "The vector selection response exposed the source path."
+    }
+
+    $jobBody = @{
+        selection_id = $selection.data.selectionId
+        mode = "exact"
+        parameters = @{}
+        confirm_run = $true
+        confirm_write = $true
+        confirm_export = $true
+    } | ConvertTo-Json -Depth 5 -Compress
+    $startedJob = Invoke-RestMethod `
+        -Uri "http://127.0.0.1:$($ready.port)/api/vectorization/jobs" `
+        -Method Post `
+        -Headers $headers `
+        -ContentType "application/json" `
+        -Body $jobBody `
+        -TimeoutSec 10
+    if (-not $startedJob.ok -or -not $startedJob.data.jobId) {
+        throw "The packaged sidecar did not start the Community vector job."
+    }
+    $jobDeadline = [DateTime]::UtcNow.AddSeconds(20)
+    $completedJob = $startedJob
+    while ([DateTime]::UtcNow -lt $jobDeadline) {
+        $completedJob = Invoke-RestMethod `
+            -Uri "http://127.0.0.1:$($ready.port)/api/vectorization/jobs/$($startedJob.data.jobId)" `
+            -Headers $headers `
+            -TimeoutSec 10
+        if ($completedJob.data.status -in @("completed", "failed")) {
+            break
+        }
+        Start-Sleep -Milliseconds 100
+    }
+    if ($completedJob.data.status -ne "completed") {
+        throw "The packaged Community vector job did not complete: $($completedJob.data.status)"
+    }
+    if (-not $completedJob.data.result.metrics.pixelMatch) {
+        throw "The packaged exact-vector workflow did not report a pixel match."
+    }
+    if (($completedJob | ConvertTo-Json -Depth 12).Contains($temporaryRoot)) {
+        throw "The vector job response exposed an absolute source path."
+    }
+    if (-not (Get-ChildItem -LiteralPath (Join-Path $temporaryRoot "data\vectorization") -Filter "vector.svg" -Recurse -File -ErrorAction SilentlyContinue)) {
+        throw "The packaged Community vector workflow did not create its controlled SVG output."
+    }
+
     Invoke-RestMethod `
         -Uri "http://127.0.0.1:$($ready.port)/api/lifecycle/shutdown" `
         -Method Post `
@@ -232,6 +296,8 @@ $child.Dispose()
         loopback_only = $true
         wrong_credential_rejected = $true
         authenticated_bootstrap = $true
+        community_vectorization = $true
+        vector_path_redacted = $true
         graceful_shutdown = $true
         process_exited = $process.HasExited
         port_released = $true

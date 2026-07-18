@@ -55,89 +55,88 @@ DEFAULT_DEV_ORIGINS = (
 
 CATALOG_BRIDGE_TIERS: dict[str, dict[str, str]] = {
     "photoshop": {
-        "tier": "Pro",
-        "price_signal": "Paid recipe pack",
-        "buyer": "E-commerce retouching and brand design teams",
+        "tier": "Community / Open core",
+        "price_signal": "MIT published capability",
+        "buyer": "Local creative workflows",
     },
     "comfyui": {
-        "tier": "Compute",
-        "price_signal": "Credits or GPU minutes",
-        "buyer": "AI image generation studios",
+        "tier": "Community / Open core",
+        "price_signal": "MIT published capability",
+        "buyer": "Local ComfyUI workflows",
     },
     "autocad_dxf": {
-        "tier": "Studio",
-        "price_signal": "Per-seat or project pack",
-        "buyer": "CAD drafting and manufacturing teams",
+        "tier": "Community / Open core",
+        "price_signal": "MIT published capability",
+        "buyer": "Local CAD workflows",
     },
     "illustrator": {
-        "tier": "Pro",
-        "price_signal": "Vector workflow pack",
-        "buyer": "Packaging and illustration teams",
+        "tier": "Community / Open core",
+        "price_signal": "MIT published capability",
+        "buyer": "Local vector workflows",
     },
     "blender": {
-        "tier": "Studio",
-        "price_signal": "Scene automation pack",
-        "buyer": "3D product visualization teams",
+        "tier": "Community / Open core",
+        "price_signal": "MIT published capability",
+        "buyer": "Local 3D workflows",
     },
 }
 
 PRODUCT_TIERS: list[JsonObject] = [
     {
-        "id": "free",
-        "name": "Free",
-        "audience": "Developers and integration testers",
+        "id": "community",
+        "name": "Community 免费版",
+        "audience": "Creators and developers",
         "included": [
             "Local backend",
             "safe capability discovery",
             "dry-run recipe plan",
             "Evidence preview",
         ],
-        "limits": ["No cloud queue", "No shared team history", "Sandbox output only"],
+        "limits": ["Local-only", "No telemetry", "Explicit confirmation for writes"],
     },
     {
         "id": "pro",
-        "name": "Pro",
-        "audience": "Individual creators",
+        "name": "Pro 专业版（规划中）",
+        "audience": "Production creators",
         "included": [
-            "Photoshop and Illustrator recipe packs",
-            "local audit history",
-            "confirmed sandbox runs",
+            "Batch and folder processing",
+            "Project history and recoverable tasks",
+            "New private workflow enhancements",
         ],
-        "limits": ["Single local workstation", "Cloud compute billed separately"],
+        "limits": ["Not on sale", "No private implementation in Community builds"],
     },
     {
-        "id": "team",
-        "name": "Team",
-        "audience": "Studios and company teams",
+        "id": "enterprise",
+        "name": "Enterprise 企业版（规划中）",
+        "audience": "Studios and organizations",
         "included": [
-            "Studio recipe packs",
-            "shared approval workflow",
-            "cloud GPU lane",
-            "admin policy",
+            "Contract-scoped deployment",
+            "Professional delivery support",
+            "Enterprise customization",
         ],
-        "limits": ["Requires organization policy and billing setup"],
+        "limits": ["Requires a separate contract", "Not on sale"],
     },
 ]
 
 HYBRID_EXECUTION: JsonObject = {
-    "architecture_version": "starbridge.hybrid.v1",
-    "policy": "Desktop software stays local; GPU generation may use a metered cloud lane after explicit confirmation.",
+    "architecture_version": "starbridge.local-execution.v1",
+    "policy": "All StarBridge execution remains on the user's computer; no cloud execution lane is provided.",
     "lanes": [
         {
             "id": "local_desktop",
             "label": "Local desktop lane",
             "bridges": ["photoshop", "illustrator", "blender", "autocad_dxf", "jianying_capcut"],
             "execution_target": "local",
-            "billing_unit": "seat",
+            "billing_unit": "none",
             "safety": "Never uploads PSD, AI, DWG, blend, video drafts, or local project files.",
         },
         {
-            "id": "cloud_gpu",
-            "label": "Cloud GPU lane",
+            "id": "local_comfyui",
+            "label": "Local ComfyUI lane",
             "bridges": ["comfyui"],
-            "execution_target": "cloud",
-            "billing_unit": "credits_or_gpu_minutes",
-            "safety": "Only public prompts, reviewed workflow JSON, and redacted asset manifests may be queued.",
+            "execution_target": "local",
+            "billing_unit": "none",
+            "safety": "ComfyUI requests stay on the user-configured local loopback endpoint.",
         },
     ],
 }
@@ -680,7 +679,9 @@ class StarBridgeBackend:
 
     def _vector_history(self) -> BackendResponse:
         stored = [
-            event for event in reversed(self._load_history()) if event.get("kind") == "vectorization"
+            event
+            for event in reversed(self._load_history())
+            if event.get("kind") == "vectorization"
         ][:20]
         events = [
             {
@@ -783,9 +784,9 @@ class StarBridgeBackend:
                     "item_count": len(cards),
                     "items": cards,
                     "monetization_model": [
-                        "Core recipes stay bundled for discovery.",
-                        "Pro and Studio recipe packs can be licensed per user or per team.",
-                        "Compute recipes can later attach credit or GPU-minute billing.",
+                        "Published recipe implementations remain Community / MIT capabilities.",
+                        "Future Pro value must come from new private production workflow enhancements.",
+                        "No cloud execution or metered compute billing is provided.",
                     ],
                 },
             },
@@ -842,9 +843,7 @@ class StarBridgeBackend:
             return BackendResponse(404, {"ok": False, "error": "unknown recipe_id"})
 
         bridge = str(plan_data.get("bridge") or "unknown")
-        requested_target = str(
-            body.get("execution_target") or ("cloud" if bridge == "comfyui" else "local")
-        )
+        requested_target = str(body.get("execution_target") or "local")
         lane = self._lane_for_bridge(bridge, requested_target)
         if lane is None:
             return BackendResponse(
@@ -883,7 +882,7 @@ class StarBridgeBackend:
                 ],
                 "billing_preview": {
                     "unit": lane["billing_unit"],
-                    "billable": requested_target == "cloud",
+                    "billable": False,
                     "metered_quantity": 0,
                 },
                 "next_steps": [

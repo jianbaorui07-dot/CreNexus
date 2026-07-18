@@ -87,10 +87,7 @@ def translate_path_data(
                 raise CurveCandidateError("VTracer emitted an incomplete coordinate pair.")
             if lexemes[index].upper() in coordinate_pairs or lexemes[index].upper() == "Z":
                 raise CurveCandidateError("VTracer emitted an invalid coordinate pair.")
-            if (
-                lexemes[index + 1].upper() in coordinate_pairs
-                or lexemes[index + 1].upper() == "Z"
-            ):
+            if lexemes[index + 1].upper() in coordinate_pairs or lexemes[index + 1].upper() == "Z":
                 raise CurveCandidateError("VTracer emitted an invalid coordinate pair.")
             x = min(max(float(lexemes[index]) + translate_x, 0.0), float(width))
             y = min(max(float(lexemes[index + 1]) + translate_y, 0.0), float(height))

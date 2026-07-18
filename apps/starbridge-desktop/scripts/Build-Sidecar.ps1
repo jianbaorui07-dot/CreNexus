@@ -129,6 +129,7 @@ $result = [ordered]@{
     executable = "src-tauri/binaries/starbridge-sidecar-$TargetTriple.exe"
     support_directory = "src-tauri/binaries/_internal"
     pyinstaller_environment = ".venv-build"
-    vectorflow_included = $false
+    community_vectorization_included = $true
+    vectorflow_gui_included = $false
 }
 $result | ConvertTo-Json

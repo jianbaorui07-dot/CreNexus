@@ -88,6 +88,7 @@
     "desktop:sidecar:build": "powershell -ExecutionPolicy Bypass -File apps/starbridge-desktop/scripts/Build-Sidecar.ps1",
     "desktop:sidecar:test": "powershell -ExecutionPolicy Bypass -File apps/starbridge-desktop/scripts/Test-Sidecar.ps1",
     "brand:build": "node brand/scripts/build-brand-assets.mjs",
+    "site:build": "node apps/starbridge-site/scripts/build.mjs",
     "app:dev": "powershell -ExecutionPolicy Bypass -File scripts/start_starbridge_app.ps1",
     "test": "python -m unittest discover -s tests",
     "test:pytest": "python -m pytest",

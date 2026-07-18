@@ -82,6 +82,8 @@ examples/output/vectorization/**
 
 # 不属于 GitHub 发布范围的本地 demo、报告脚本和研究素材
 src/
+!apps/starbridge-site/src/
+!apps/starbridge-site/src/**
 !uxp/**/src/
 !uxp/**/src/**
 !examples/starbridge_frontend/src/

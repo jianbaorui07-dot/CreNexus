@@ -14,6 +14,7 @@ use uuid::Uuid;
 
 const LICENSE_SCHEMA: &str = "starbridge-license/v1";
 const REQUEST_SCHEMA: &str = "starbridge-license-request/v1";
+const PRODUCT_ID: &str = "starbridge-desktop";
 const MAX_LICENSE_BYTES: usize = 64 * 1024;
 const MAX_DEVICES: u8 = 2;
 const ACTIVE_LICENSE_FILE: &str = "active.starbridge-license";
@@ -47,6 +48,7 @@ impl LicenseEdition {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 struct LicensePayload {
+    product_id: String,
     license_id: String,
     edition: LicenseEdition,
     issued_on: String,
@@ -203,10 +205,7 @@ fn active_license_path(root: &Path) -> PathBuf {
     license_directory(root).join(ACTIVE_LICENSE_FILE)
 }
 
-fn configured_verifier() -> Result<Option<LicenseVerifier>, LicenseError> {
-    let Some(encoded) = option_env!("STARBRIDGE_LICENSE_PUBLIC_KEY_B64") else {
-        return Ok(None);
-    };
+fn decode_verifier(key_id: &str, encoded: &str) -> Result<LicenseVerifier, LicenseError> {
     let decoded = URL_SAFE_NO_PAD
         .decode(encoded)
         .map_err(|_| LicenseError("commercial_verifier_not_configured"))?;
@@ -215,12 +214,35 @@ fn configured_verifier() -> Result<Option<LicenseVerifier>, LicenseError> {
         .map_err(|_| LicenseError("commercial_verifier_not_configured"))?;
     let key = VerifyingKey::from_bytes(&bytes)
         .map_err(|_| LicenseError("commercial_verifier_not_configured"))?;
-    Ok(Some(LicenseVerifier {
-        key_id: option_env!("STARBRIDGE_LICENSE_KEY_ID")
-            .unwrap_or("starbridge-production-v1")
-            .to_owned(),
+    Ok(LicenseVerifier {
+        key_id: key_id.to_owned(),
         key,
-    }))
+    })
+}
+
+fn configured_verifiers() -> Result<Vec<LicenseVerifier>, LicenseError> {
+    let mut verifiers = Vec::new();
+    if let Some(encoded) = option_env!("STARBRIDGE_LICENSE_PUBLIC_KEY_B64") {
+        verifiers.push(decode_verifier(
+            option_env!("STARBRIDGE_LICENSE_KEY_ID").unwrap_or("starbridge-production-v1"),
+            encoded,
+        )?);
+    }
+    if let Some(encoded) = option_env!("STARBRIDGE_LICENSE_PREVIOUS_PUBLIC_KEY_B64") {
+        verifiers.push(decode_verifier(
+            option_env!("STARBRIDGE_LICENSE_PREVIOUS_KEY_ID")
+                .unwrap_or("starbridge-production-previous"),
+            encoded,
+        )?);
+    }
+    let unique = verifiers
+        .iter()
+        .map(|verifier| verifier.key_id.as_str())
+        .collect::<BTreeSet<_>>();
+    if unique.len() != verifiers.len() {
+        return Err(LicenseError("commercial_verifier_not_configured"));
+    }
+    Ok(verifiers)
 }
 
 fn valid_identifier(value: &str, max_len: usize) -> bool {
@@ -243,7 +265,8 @@ fn valid_issued_on(value: &str) -> bool {
 }
 
 fn validate_payload(payload: &LicensePayload) -> Result<(), LicenseError> {
-    if !valid_identifier(&payload.license_id, 64)
+    if payload.product_id != PRODUCT_ID
+        || !valid_identifier(&payload.license_id, 64)
         || !valid_issued_on(&payload.issued_on)
         || !payload.perpetual
         || payload.device_limit == 0
@@ -278,10 +301,19 @@ fn validate_payload(payload: &LicensePayload) -> Result<(), LicenseError> {
     Ok(())
 }
 
+#[cfg(test)]
 fn verify_contents(
     contents: &str,
     current_device: &str,
     verifier: &LicenseVerifier,
+) -> Result<LicensePayload, LicenseError> {
+    verify_contents_with_keyring(contents, current_device, std::slice::from_ref(verifier))
+}
+
+fn verify_contents_with_keyring(
+    contents: &str,
+    current_device: &str,
+    verifiers: &[LicenseVerifier],
 ) -> Result<LicensePayload, LicenseError> {
     if contents.len() > MAX_LICENSE_BYTES {
         return Err(LicenseError("license_too_large"));
@@ -291,9 +323,13 @@ fn verify_contents(
     if envelope.schema != LICENSE_SCHEMA {
         return Err(LicenseError("license_schema_unsupported"));
     }
-    if envelope.signature.algorithm != "ed25519" || envelope.signature.key_id != verifier.key_id {
+    if envelope.signature.algorithm != "ed25519" {
         return Err(LicenseError("license_key_unknown"));
     }
+    let verifier = verifiers
+        .iter()
+        .find(|candidate| candidate.key_id == envelope.signature.key_id)
+        .ok_or(LicenseError("license_key_unknown"))?;
     validate_payload(&envelope.payload)?;
 
     let signature_bytes = URL_SAFE_NO_PAD
@@ -394,18 +430,56 @@ fn replace_active_license(root: &Path, contents: &str) -> Result<(), LicenseErro
     Ok(())
 }
 
+fn recover_interrupted_license_write(root: &Path) -> Result<(), LicenseError> {
+    let directory = license_directory(root);
+    if !directory.is_dir() {
+        return Ok(());
+    }
+    let target = active_license_path(root);
+    let mut backups = Vec::new();
+    let mut temporary_files = Vec::new();
+    for entry in fs::read_dir(&directory).map_err(|_| LicenseError("license_storage_failed"))? {
+        let entry = entry.map_err(|_| LicenseError("license_storage_failed"))?;
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
+        if name.starts_with(".license-") && name.ends_with(".backup") {
+            backups.push(entry.path());
+        } else if name.starts_with(".license-") && name.ends_with(".tmp") {
+            temporary_files.push(entry.path());
+        }
+    }
+    if !target.exists() && !backups.is_empty() {
+        backups.sort_by_key(|path| {
+            fs::metadata(path)
+                .and_then(|metadata| metadata.modified())
+                .unwrap_or(UNIX_EPOCH)
+        });
+        let newest = backups.pop().expect("non-empty backup list");
+        fs::rename(newest, &target).map_err(|_| LicenseError("license_storage_failed"))?;
+    }
+    if target.exists() {
+        for stale in backups.into_iter().chain(temporary_files) {
+            let _ = fs::remove_file(stale);
+        }
+    }
+    Ok(())
+}
+
 pub(crate) fn installed_status(root: &Path) -> LicenseStatus {
-    let verifier = match configured_verifier() {
-        Ok(verifier) => verifier,
+    let verifiers = match configured_verifiers() {
+        Ok(verifiers) => verifiers,
         Err(error) => return invalid_status(error.0, false),
     };
+    if let Err(error) = recover_interrupted_license_write(root) {
+        return invalid_status(error.0, !verifiers.is_empty());
+    }
     let target = active_license_path(root);
     if !target.is_file() {
-        return community_status(verifier.is_some());
+        return community_status(!verifiers.is_empty());
     }
-    let Some(verifier) = verifier else {
+    if verifiers.is_empty() {
         return invalid_status("commercial_verifier_not_configured", false);
-    };
+    }
     let device = match current_device_fingerprint() {
         Ok(device) => device,
         Err(error) => return invalid_status(error.0, true),
@@ -414,19 +488,21 @@ pub(crate) fn installed_status(root: &Path) -> LicenseStatus {
         Ok(contents) => contents,
         Err(_) => return invalid_status("license_read_failed", true),
     };
-    match verify_contents(&contents, &device, &verifier) {
+    match verify_contents_with_keyring(&contents, &device, &verifiers) {
         Ok(payload) => active_status(payload),
         Err(error) => invalid_status(error.0, true),
     }
 }
 
 pub(crate) fn import_license(root: &Path, contents: &str) -> Result<LicenseStatus, String> {
-    let verifier = configured_verifier()
-        .map_err(LicenseError::user_message)?
-        .ok_or_else(|| LicenseError("commercial_verifier_not_configured").user_message())?;
+    let verifiers = configured_verifiers().map_err(LicenseError::user_message)?;
+    if verifiers.is_empty() {
+        return Err(LicenseError("commercial_verifier_not_configured").user_message());
+    }
+    recover_interrupted_license_write(root).map_err(LicenseError::user_message)?;
     let device = current_device_fingerprint().map_err(LicenseError::user_message)?;
-    let payload =
-        verify_contents(contents, &device, &verifier).map_err(LicenseError::user_message)?;
+    let payload = verify_contents_with_keyring(contents, &device, &verifiers)
+        .map_err(LicenseError::user_message)?;
     replace_active_license(root, contents).map_err(LicenseError::user_message)?;
     Ok(active_status(payload))
 }
@@ -482,8 +558,9 @@ mod tests {
     use ed25519_dalek::{Signer, SigningKey};
     use rand_core::OsRng;
 
-    fn signed_license(signing_key: &SigningKey, device: &str) -> String {
-        let payload = LicensePayload {
+    fn test_payload(device: &str) -> LicensePayload {
+        LicensePayload {
+            product_id: PRODUCT_ID.into(),
             license_id: "SB-PRO-TEST-001".into(),
             edition: LicenseEdition::Pro,
             issued_on: "2026-07-17".into(),
@@ -491,7 +568,10 @@ mod tests {
             device_limit: 1,
             device_fingerprints: vec![device.into()],
             features: vec!["batch.processing".into(), "vectorization.advanced".into()],
-        };
+        }
+    }
+
+    fn sign_payload(signing_key: &SigningKey, payload: LicensePayload, key_id: &str) -> String {
         let canonical = serde_jcs::to_vec(&payload).expect("canonical payload");
         let signature = signing_key.sign(&canonical);
         serde_json::to_string_pretty(&LicenseEnvelope {
@@ -499,11 +579,15 @@ mod tests {
             payload,
             signature: LicenseSignature {
                 algorithm: "ed25519".into(),
-                key_id: "test-key".into(),
+                key_id: key_id.into(),
                 value: URL_SAFE_NO_PAD.encode(signature.to_bytes()),
             },
         })
         .expect("license JSON")
+    }
+
+    fn signed_license(signing_key: &SigningKey, device: &str) -> String {
+        sign_payload(signing_key, test_payload(device), "test-key")
     }
 
     fn test_verifier(signing_key: &SigningKey) -> LicenseVerifier {
@@ -567,6 +651,148 @@ mod tests {
                 .0,
             "license_payload_invalid"
         );
+    }
+
+    #[test]
+    fn rejects_wrong_product_schema_and_unknown_key() {
+        let signing_key = SigningKey::generate(&mut OsRng);
+        let device = hash_device_material("windows-machine-guid-005").expect("device");
+
+        let mut wrong_product = test_payload(&device);
+        wrong_product.product_id = "another-product".into();
+        let wrong_product = sign_payload(&signing_key, wrong_product, "test-key");
+        assert_eq!(
+            verify_contents(&wrong_product, &device, &test_verifier(&signing_key))
+                .expect_err("wrong product must fail")
+                .0,
+            "license_payload_invalid"
+        );
+
+        let wrong_schema =
+            signed_license(&signing_key, &device).replace(LICENSE_SCHEMA, "starbridge-license/v99");
+        assert_eq!(
+            verify_contents(&wrong_schema, &device, &test_verifier(&signing_key))
+                .expect_err("wrong schema must fail")
+                .0,
+            "license_schema_unsupported"
+        );
+
+        let unknown_key = sign_payload(&signing_key, test_payload(&device), "unknown-key");
+        assert_eq!(
+            verify_contents(&unknown_key, &device, &test_verifier(&signing_key))
+                .expect_err("unknown key id must fail")
+                .0,
+            "license_key_unknown"
+        );
+    }
+
+    #[test]
+    fn rejects_duplicate_unknown_and_unicode_feature_fields() {
+        let signing_key = SigningKey::generate(&mut OsRng);
+        let device = hash_device_material("windows-machine-guid-006").expect("device");
+
+        for (label, mutate) in [
+            ("duplicate", vec!["batch.processing", "batch.processing"]),
+            ("unknown", vec!["batch.processing", "feature.not-known"]),
+            ("unicode", vec!["batch.processing", "批量处理"]),
+        ] {
+            let mut payload = test_payload(&device);
+            payload.features = mutate.into_iter().map(str::to_owned).collect();
+            let contents = sign_payload(&signing_key, payload, "test-key");
+            assert_eq!(
+                verify_contents(&contents, &device, &test_verifier(&signing_key))
+                    .expect_err(label)
+                    .0,
+                "license_payload_invalid"
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_empty_non_json_and_oversized_files() {
+        let signing_key = SigningKey::generate(&mut OsRng);
+        let device = hash_device_material("windows-machine-guid-007").expect("device");
+        for contents in ["", "not-json", "{\"schema\":"] {
+            assert_eq!(
+                verify_contents(contents, &device, &test_verifier(&signing_key))
+                    .expect_err("invalid JSON must fail")
+                    .0,
+                "license_json_invalid"
+            );
+        }
+        let oversized = " ".repeat(MAX_LICENSE_BYTES + 1);
+        assert_eq!(
+            verify_contents(&oversized, &device, &test_verifier(&signing_key))
+                .expect_err("oversized license must fail")
+                .0,
+            "license_too_large"
+        );
+    }
+
+    #[test]
+    fn keyring_accepts_current_and_previous_keys_only() {
+        let current = SigningKey::generate(&mut OsRng);
+        let previous = SigningKey::generate(&mut OsRng);
+        let unknown = SigningKey::generate(&mut OsRng);
+        let device = hash_device_material("windows-machine-guid-008").expect("device");
+        let keyring = vec![
+            LicenseVerifier {
+                key_id: "current-key".into(),
+                key: current.verifying_key(),
+            },
+            LicenseVerifier {
+                key_id: "previous-key".into(),
+                key: previous.verifying_key(),
+            },
+        ];
+
+        for (key, id) in [(&current, "current-key"), (&previous, "previous-key")] {
+            let contents = sign_payload(key, test_payload(&device), id);
+            verify_contents_with_keyring(&contents, &device, &keyring)
+                .expect("configured rotation key must verify");
+        }
+        let contents = sign_payload(&unknown, test_payload(&device), "unknown-key");
+        assert_eq!(
+            verify_contents_with_keyring(&contents, &device, &keyring)
+                .expect_err("unconfigured key must fail")
+                .0,
+            "license_key_unknown"
+        );
+    }
+
+    #[test]
+    fn interrupted_atomic_write_restores_backup_and_removes_staging_file() {
+        let root = std::env::temp_dir().join(format!(
+            "starbridge-license-recovery-test-{}",
+            Uuid::new_v4().simple()
+        ));
+        let directory = license_directory(&root);
+        fs::create_dir_all(&directory).expect("license directory");
+        let backup = directory.join(".license-test.backup");
+        let temporary = directory.join(".license-test.tmp");
+        fs::write(&backup, b"previous-valid-license").expect("backup");
+        fs::write(&temporary, b"interrupted-new-license").expect("temporary");
+
+        recover_interrupted_license_write(&root).expect("recovery");
+
+        assert_eq!(
+            fs::read_to_string(active_license_path(&root)).expect("restored active license"),
+            "previous-valid-license"
+        );
+        assert!(!backup.exists());
+        assert!(!temporary.exists());
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn active_status_returns_only_a_masked_license_identifier() {
+        let payload = test_payload("sb-device-v1:test-device");
+        let full = payload.license_id.clone();
+        let status = active_status(payload);
+        let masked = status.license_id.expect("masked id");
+        assert_ne!(masked, full);
+        assert!(masked.contains("••••"));
+        assert!(!masked.contains("TEST-001"));
     }
 
     #[cfg(windows)]

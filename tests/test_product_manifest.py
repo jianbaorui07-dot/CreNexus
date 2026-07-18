@@ -26,8 +26,8 @@ class ProductManifestTests(unittest.TestCase):
 
     def test_public_and_private_source_boundary_is_machine_readable(self) -> None:
         boundary = self.manifest["sourceBoundary"]
-        self.assertEqual(boundary["communitySource"], "public")
-        self.assertEqual(boundary["commercialSource"], "private")
+        self.assertEqual(boundary["communitySource"], "public-mit")
+        self.assertEqual(boundary["commercialSource"], "private-planned")
         self.assertFalse(boundary["commercialRepositoryCreated"])
         self.assertFalse(boundary["premiumImplementationsAllowedInCommunityRepository"])
 
@@ -36,9 +36,23 @@ class ProductManifestTests(unittest.TestCase):
         self.assertEqual(editions["community"]["status"], "available-local")
         self.assertEqual(editions["pro"]["status"], "planned")
         self.assertEqual(editions["pro"]["earlyBirdPriceCny"], 399)
-        self.assertEqual(editions["pro"]["priceStatus"], "proposed")
+        self.assertEqual(editions["pro"]["priceStatus"], "proposed-not-for-sale")
         self.assertEqual(editions["pro"]["minimumDevices"], 1)
-        self.assertEqual(editions["pro"]["deviceLimit"], 2)
+        self.assertEqual(editions["pro"]["maximumDevices"], 2)
+        self.assertEqual(editions["pro"]["defaultDeviceLimit"], "owner-decision-pending")
+
+    def test_public_mit_vector_modes_remain_community_features(self) -> None:
+        features = {feature["id"]: feature for feature in self.manifest["features"]}
+        for feature_id in (
+            "vectorization.artisan",
+            "vectorization.smart",
+            "vectorization.lightweight",
+            "vectorization.exact",
+        ):
+            self.assertEqual(features[feature_id]["edition"], "community")
+            self.assertEqual(features[feature_id]["status"], "available-local")
+        self.assertNotIn("vectorization.advanced", features)
+        self.assertEqual(features["workflow.production_vector"]["status"], "planned")
 
     def test_feature_statuses_and_document_links_are_valid(self) -> None:
         for feature in self.manifest["features"]:
@@ -53,6 +67,9 @@ class ProductManifestTests(unittest.TestCase):
         self.assertFalse(licensing["productionPrivateKeyInApplication"])
         self.assertFalse(licensing["productionPublicKeyConfigured"])
         self.assertFalse(self.manifest["download"]["publicInstallerAvailable"])
+        self.assertFalse(self.manifest["releaseReadiness"]["authenticodeSigned"])
+        self.assertFalse(self.manifest["releaseReadiness"]["paidReleaseReady"])
+        self.assertFalse(self.manifest["website"]["published"])
 
 
 if __name__ == "__main__":
