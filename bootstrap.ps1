@@ -8,15 +8,24 @@ param(
     [switch]$Json
 )
 
+$ErrorActionPreference = "Stop"
+
 $quickstart = Join-Path $PSScriptRoot "scripts\quickstart.ps1"
 if (-not (Test-Path -LiteralPath $quickstart)) {
     throw "Missing scripts\quickstart.ps1"
 }
 
-$arguments = @("-Profile", $Profile)
-if ($SkipNode) { $arguments += "-SkipNode" }
-if ($SkipCodexConfig) { $arguments += "-SkipCodexConfig" }
-if ($DryRun) { $arguments += "-DryRun" }
-if ($Json) { $arguments += "-Json" }
-& $quickstart @arguments
-exit $LASTEXITCODE
+$quickstartParameters = @{ Profile = $Profile }
+if ($SkipNode) { $quickstartParameters.SkipNode = $true }
+if ($SkipCodexConfig) { $quickstartParameters.SkipCodexConfig = $true }
+if ($DryRun) { $quickstartParameters.DryRun = $true }
+if ($Json) { $quickstartParameters.Json = $true }
+
+try {
+    & $quickstart @quickstartParameters
+    exit 0
+}
+catch {
+    [Console]::Error.WriteLine("StarBridge bootstrap failed: $($_.Exception.Message)")
+    exit 1
+}

@@ -22,7 +22,11 @@ if ([string]::IsNullOrWhiteSpace($TargetTriple)) {
 $desktopRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $executable = Join-Path $desktopRoot "src-tauri\binaries\starbridge-sidecar-$TargetTriple.exe"
 if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) {
-    throw "The staged sidecar was not found. Run Build-Sidecar.ps1 first."
+    $buildScript = Join-Path $PSScriptRoot "Build-Sidecar.ps1"
+    & $buildScript -TargetTriple $TargetTriple
+    if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $executable -PathType Leaf)) {
+        throw "The staged sidecar could not be built for $TargetTriple."
+    }
 }
 
 $temporaryRoot = [IO.Path]::GetFullPath(

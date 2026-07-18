@@ -1,21 +1,27 @@
 # Roadmap
 
-本路线图记录 StarBridge 公开仓库的下一步方向。当前项目定位是 **Codex Computer Use + StarBridge MCP + Safety Verification Layer**：Computer Use 负责 GUI 观察和复现，MCP tools 负责结构化生产操作，Safety layer 负责脱敏、权限边界和发布前验证。
+本路线图记录 StarBridge 公开仓库的下一步方向。当前产品版本是 `0.1.0-alpha.0`。产品事实以 [PRODUCT_FACTS](docs/PRODUCT_FACTS.md) 为准，目标架构以 [工作流架构 v2](docs/ARCHITECTURE_V2.md) 为准。
 
-## 产品化升级 P0–P3
+## 工作流产品化 P0–P10
 
-本轮 Windows 桌面、GitHub 文档和产品界面升级以 [P0 产品化审计](docs/PRODUCTIZATION_AUDIT.md) 为事实基线，按以下顺序实施：
+旧版 [P0 产品化审计](docs/PRODUCTIZATION_AUDIT.md) 已更新为历史审计说明，不再把早期“桌面端不存在”的结论作为当前事实。实施顺序如下：
 
 | 阶段 | 范围 | 完成证据 |
 | --- | --- | --- |
-| P0 | 仓库审计、能力分级、启动关系、安全边界和实施计划 | 审计文档、基线命令和未运行项记录 |
-| P1 | Tauri 2 桌面 MVP、PyInstaller sidecar、会话保护、首页/连接/诊断 | 本地开发构建、sidecar 生命周期和 health 测试 |
-| P2 | README/文档、官网多路由、桌面工作流/任务/证据、设计系统 | 页面/路由/可访问性/截图测试和统一文案 |
-| P3 | 安装器、版本、构建校验、签名/更新方案和发布流程 | 真实 Windows 安装、升级、卸载和回滚记录 |
+| P0（本分支完成） | 修复 bootstrap、CI、安全扫描，统一版本和产品事实 | 所有规定命令在干净工作树可运行，main required checks 为绿 |
+| P1（本分支完成） | Project、CreativeJob、应用数据持久化 | 原子写入、事件历史、路径脱敏、旧 VectorJob 兼容测试 |
+| P2（本分支完成） | Workflow Engine、状态机和 Adapter 接口 | 六状态转换、确认绑定、取消、重试、回滚和 soft-exit 测试 |
+| P3（实验实现完成） | `vector-delivery-v1` | 精确重建先行、绘制模式、质量报告、Evidence；Illustrator AI 副本仍属 P6–P7 |
+| P4（本分支完成） | 项目页、工作流页、任务详情页和交付页 | 普通用户入口、技术详情折叠、统一任务中心 |
+| P5（模拟闭环完成） | `comfyui-generation-v1` | dry-run、确认、队列结果、真实字节/哈希和 Evidence 进入通用任务系统；真实本机验收待完成 |
+| P6–P7 | 有限 Photoshop、Illustrator 工作流 | 当前授权会话实测、失败回滚、脱敏证据 |
+| P8 | 统一交付打包 | 只打包真实存在产物，不泄露绝对路径 |
+| P9 | Pro 批量 | 明确选择输入、并发、重试、恢复和安全检查点 |
+| P10 | Blender、CAD、视频完整工作流 | 各软件真实授权验收后逐项开放 |
 
 在安装包完成真实构建与首次启动验证前，不把“下载 Windows 版”描述为已经可用。
 
-## v0.1.0
+## 历史能力里程碑 A
 
 - Adobe sandbox demo bridge
 - Safe MCP tool registration
@@ -23,7 +29,7 @@
 - Smoke test documentation
 - Release notes draft
 
-## v0.2.0
+## 历史能力里程碑 B（能力 schema，不是产品版本）
 
 - EvidenceManifest: 统一记录 plan、job、output files、screenshots、validation、warnings、safety decision。
 - JobStatus: 统一使用 `queued / running / completed / failed / cancelled / needs_user` 状态词汇。
@@ -87,8 +93,13 @@
 发布前至少运行：
 
 ```powershell
+powershell -ExecutionPolicy Bypass -File .\bootstrap.ps1 -Profile auto
 npm.cmd test
 npm.cmd run preflight
+npm.cmd run desktop:test
+npm.cmd run desktop:build
+npm.cmd run desktop:sidecar:test
+python scripts\security_check.py
 python examples\bridge_status.py --json --redact-paths --soft-exit
 ```
 

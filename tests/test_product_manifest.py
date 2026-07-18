@@ -7,12 +7,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PATH = ROOT / "product" / "product-manifest.json"
 ALLOWED_STATUSES = {
-    "available-local",
+    "stable",
     "experimental",
-    "implemented-not-live",
     "planned",
-    "unsupported",
+    "not_implemented",
 }
+ALLOWED_EVIDENCE_LEVELS = {"none", "schema", "unit", "integration", "local_app", "release"}
 
 
 class ProductManifestTests(unittest.TestCase):
@@ -39,8 +39,8 @@ class ProductManifestTests(unittest.TestCase):
 
     def test_pro_offer_is_proposed_not_claimed_as_launched(self) -> None:
         editions = {edition["id"]: edition for edition in self.manifest["editions"]}
-        self.assertEqual(editions["community"]["status"], "available-local")
-        self.assertEqual(editions["pro"]["status"], "planned")
+        self.assertEqual(editions["community"]["capabilityStatus"], "stable")
+        self.assertEqual(editions["pro"]["capabilityStatus"], "planned")
         self.assertEqual(editions["pro"]["earlyBirdPriceCny"], 399)
         self.assertEqual(editions["pro"]["priceStatus"], "proposed-not-for-sale")
         self.assertEqual(editions["pro"]["minimumDevices"], 1)
@@ -56,13 +56,27 @@ class ProductManifestTests(unittest.TestCase):
             "vectorization.exact",
         ):
             self.assertEqual(features[feature_id]["edition"], "community")
-            self.assertEqual(features[feature_id]["status"], "available-local")
+            self.assertEqual(features[feature_id]["capabilityStatus"], "stable")
         self.assertNotIn("vectorization.advanced", features)
-        self.assertEqual(features["workflow.production_vector"]["status"], "planned")
+
+    def test_basic_project_job_and_delivery_foundation_remain_community(self) -> None:
+        features = {feature["id"]: feature for feature in self.manifest["features"]}
+        for feature_id in (
+            "projects.basic",
+            "jobs.creative_job",
+            "workflow.vector_delivery_v1",
+            "delivery.basic",
+        ):
+            self.assertEqual("community", features[feature_id]["edition"])
+        self.assertEqual("pro", features["batch.processing"]["edition"])
+        self.assertEqual("pro", features["projects.advanced_recovery"]["edition"])
 
     def test_feature_statuses_and_document_links_are_valid(self) -> None:
         for feature in self.manifest["features"]:
-            self.assertIn(feature["status"], ALLOWED_STATUSES)
+            self.assertIn(feature["capabilityStatus"], ALLOWED_STATUSES)
+            self.assertIn(feature["evidenceLevel"], ALLOWED_EVIDENCE_LEVELS)
+            self.assertIsInstance(feature["recommended"], bool)
+            self.assertIsInstance(feature["deprecated"], bool)
             documentation = ROOT / feature["documentation"]
             self.assertTrue(documentation.is_file(), feature["id"])
 
@@ -81,7 +95,7 @@ class ProductManifestTests(unittest.TestCase):
         features = {feature["id"]: feature for feature in self.manifest["features"]}
         updater = features["updates.github_signed_release"]
         self.assertEqual(updater["edition"], "community")
-        self.assertEqual(updater["status"], "implemented-not-live")
+        self.assertEqual(updater["capabilityStatus"], "experimental")
         self.assertTrue(updater["requiresUserConfirmation"])
         readiness = self.manifest["releaseReadiness"]
         self.assertTrue(readiness["inAppUpdaterImplemented"])

@@ -54,8 +54,21 @@ SENSITIVE_PATTERNS = [
     re.compile(re.escape(HOME), re.IGNORECASE),
     re.compile(WINDOWS_USER_BACKSLASH + r"(?!用户名|<USER_HOME>)[^\\\s]+", re.IGNORECASE),
     re.compile(WINDOWS_USER_SLASH + r"(?!用户名|<USER_HOME>)[^/\s]+", re.IGNORECASE),
-    re.compile(r"(password|token|cookie|oauth_secret)\s*[:=]\s*['\"]?[^'\"\s]+", re.IGNORECASE),
 ]
+SENSITIVE_ASSIGNMENT_PATTERN = re.compile(
+    r"(password|token|cookie|oauth_secret)\s*[:=]\s*['\"]?[^'\"\s]+",
+    re.IGNORECASE,
+)
+GITHUB_SECRET_REFERENCE_LINE = re.compile(
+    r"^\s*[A-Z0-9_]*(?:PASSWORD|TOKEN|COOKIE|OAUTH_SECRET)[A-Z0-9_]*\s*:\s*"
+    r"\$\{\{\s*secrets\.[A-Z0-9_]+\s*\}\}\s*$",
+    re.IGNORECASE,
+)
+POWERSHELL_PROTECTED_VALUE_LINE = re.compile(
+    r"^\s*\$?(?:password|token|cookie|oauth_secret)\s*=\s*"
+    r"ConvertTo-SecureString\s+\$env:[A-Z0-9_]+(?:\s+-[A-Za-z]+(?::\$[A-Za-z]+)?)*\s*$",
+    re.IGNORECASE,
+)
 
 
 def git_files(root: Path = REPO_ROOT) -> list[Path]:
@@ -100,6 +113,12 @@ def is_allowed_example(path: Path) -> bool:
     return path.name.endswith(".example.json")
 
 
+def is_protected_secret_reference(line: str, relative: str) -> bool:
+    if relative.startswith(".github/workflows/") and GITHUB_SECRET_REFERENCE_LINE.fullmatch(line):
+        return True
+    return bool(POWERSHELL_PROTECTED_VALUE_LINE.fullmatch(line))
+
+
 def find_failures(files: list[Path], root: Path = REPO_ROOT) -> list[str]:
     failures: list[str] = []
     for path in files:
@@ -119,6 +138,16 @@ def find_failures(files: list[Path], root: Path = REPO_ROOT) -> list[str]:
         for pattern in SENSITIVE_PATTERNS:
             if pattern.search(text):
                 failures.append(f"sensitive pattern in {relative}: {pattern.pattern}")
+        for line_number, line in enumerate(text.splitlines(), start=1):
+            if not SENSITIVE_ASSIGNMENT_PATTERN.search(line):
+                continue
+            if is_protected_secret_reference(line, relative):
+                continue
+            failures.append(
+                f"sensitive assignment in {relative}:{line_number}: "
+                f"{SENSITIVE_ASSIGNMENT_PATTERN.pattern}"
+            )
+            break
     return failures
 
 

@@ -1,13 +1,40 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
+  "capabilityModel": {
+    "allowedStatuses": [
+      "stable",
+      "experimental",
+      "planned",
+      "not_implemented"
+    ],
+    "allowedEvidenceLevels": [
+      "none",
+      "schema",
+      "unit",
+      "integration",
+      "local_app",
+      "release"
+    ],
+    "allowedConnectionStates": [
+      "unknown",
+      "not_installed",
+      "available",
+      "not_running",
+      "connected",
+      "error"
+    ],
+    "connectionStateDefault": "unknown",
+    "connectionStateSource": "runtime-probe-only",
+    "stableDesktopWriteRequiresReviewedLocalAppEvidence": true
+  },
   "product": {
     "name": "StarBridge",
     "descriptionZhCn": "本地创意工作台",
-    "version": "0.1.0",
-    "positioning": "Windows 本地创意工作台：在用户明确确认后执行图片矢量化与创意软件联动，用户素材始终留在本机。",
+    "version": "0.1.0-alpha.0",
+    "positioning": "Windows 本地创意工作台：Codex 负责理解与调度，StarBridge MCP 负责受控执行、安全验证和脱敏证据，创意软件负责实际生产。",
     "serverRequired": false,
-    "desktopValidation": "available-local",
-    "installerValidation": "available-local",
+    "desktopValidation": "experimental",
+    "installerValidation": "experimental",
     "commercialLaunch": "planned"
   },
   "brand": {
@@ -29,7 +56,7 @@
     {
       "id": "community",
       "publicName": "Community 免费版",
-      "status": "available-local",
+      "capabilityStatus": "stable",
       "priceCny": 0,
       "licenseTerm": "free",
       "activationRequired": false,
@@ -39,7 +66,7 @@
     {
       "id": "pro",
       "publicName": "Pro 专业版",
-      "status": "planned",
+      "capabilityStatus": "planned",
       "earlyBirdPriceCny": 399,
       "priceStatus": "proposed-not-for-sale",
       "licenseTerm": "perpetual-proposed",
@@ -51,7 +78,7 @@
     {
       "id": "enterprise",
       "publicName": "Enterprise 企业版",
-      "status": "planned",
+      "capabilityStatus": "planned",
       "priceStatus": "custom-quote",
       "licenseTerm": "contract",
       "deviceLimit": null,
@@ -63,8 +90,10 @@
       "id": "desktop.local_runtime",
       "publicName": "Windows 本地桌面运行",
       "edition": "community",
-      "status": "available-local",
-      "evidenceLevel": "real-desktop-validation",
+      "capabilityStatus": "experimental",
+      "evidenceLevel": "local_app",
+      "recommended": true,
+      "deprecated": false,
       "requiresUserConfirmation": false,
       "requiresThirdPartySoftware": false,
       "documentation": "docs/P1_PREREQUISITES.md"
@@ -73,8 +102,10 @@
       "id": "vectorization.artisan",
       "publicName": "匠心矢量",
       "edition": "community",
-      "status": "available-local",
-      "evidenceLevel": "automated-local-workflow",
+      "capabilityStatus": "stable",
+      "evidenceLevel": "integration",
+      "recommended": true,
+      "deprecated": false,
       "requiresUserConfirmation": true,
       "requiresThirdPartySoftware": false,
       "documentation": "docs/artisan-vector-mode.md"
@@ -83,8 +114,10 @@
       "id": "vectorization.smart",
       "publicName": "智能矢量",
       "edition": "community",
-      "status": "available-local",
-      "evidenceLevel": "automated-local-workflow",
+      "capabilityStatus": "stable",
+      "evidenceLevel": "integration",
+      "recommended": false,
+      "deprecated": false,
       "requiresUserConfirmation": true,
       "requiresThirdPartySoftware": false,
       "documentation": "docs/vectorization-modes.md"
@@ -93,8 +126,10 @@
       "id": "vectorization.lightweight",
       "publicName": "轻量矢量",
       "edition": "community",
-      "status": "available-local",
-      "evidenceLevel": "automated-local-workflow",
+      "capabilityStatus": "stable",
+      "evidenceLevel": "integration",
+      "recommended": false,
+      "deprecated": false,
       "requiresUserConfirmation": true,
       "requiresThirdPartySoftware": false,
       "documentation": "docs/vectorization-modes.md"
@@ -103,48 +138,106 @@
       "id": "vectorization.exact",
       "publicName": "精确重建",
       "edition": "community",
-      "status": "available-local",
-      "evidenceLevel": "automated-local-workflow",
+      "capabilityStatus": "stable",
+      "evidenceLevel": "integration",
+      "recommended": true,
+      "deprecated": false,
       "requiresUserConfirmation": true,
       "requiresThirdPartySoftware": false,
       "documentation": "docs/exact-pixel-vectorization.md"
     },
     {
+      "id": "projects.basic",
+      "publicName": "基础项目与单任务历史",
+      "edition": "community",
+      "capabilityStatus": "experimental",
+      "evidenceLevel": "integration",
+      "recommended": true,
+      "deprecated": false,
+      "requiresUserConfirmation": true,
+      "requiresThirdPartySoftware": false,
+      "documentation": "docs/ARCHITECTURE_V2.md"
+    },
+    {
+      "id": "jobs.creative_job",
+      "publicName": "统一创意任务中心",
+      "edition": "community",
+      "capabilityStatus": "experimental",
+      "evidenceLevel": "integration",
+      "recommended": true,
+      "deprecated": false,
+      "requiresUserConfirmation": true,
+      "requiresThirdPartySoftware": false,
+      "documentation": "docs/ARCHITECTURE_V2.md"
+    },
+    {
+      "id": "workflow.vector_delivery_v1",
+      "publicName": "图片矢量交付工作流",
+      "edition": "community",
+      "capabilityStatus": "experimental",
+      "evidenceLevel": "integration",
+      "recommended": true,
+      "deprecated": false,
+      "requiresUserConfirmation": true,
+      "requiresThirdPartySoftware": false,
+      "documentation": "docs/workflows/vector-delivery-v1.md"
+    },
+    {
+      "id": "workflow.comfyui_generation_v1",
+      "publicName": "ComfyUI 图片生成工作流",
+      "edition": "community",
+      "capabilityStatus": "experimental",
+      "evidenceLevel": "integration",
+      "recommended": false,
+      "deprecated": false,
+      "requiresUserConfirmation": true,
+      "requiresThirdPartySoftware": true,
+      "documentation": "docs/workflows/comfyui-generation-v1.md"
+    },
+    {
+      "id": "delivery.basic",
+      "publicName": "基础交付与脱敏证据",
+      "edition": "community",
+      "capabilityStatus": "experimental",
+      "evidenceLevel": "integration",
+      "recommended": true,
+      "deprecated": false,
+      "requiresUserConfirmation": true,
+      "requiresThirdPartySoftware": false,
+      "documentation": "docs/ARCHITECTURE_V2.md"
+    },
+    {
       "id": "licensing.offline_import",
       "publicName": "离线授权文件导入",
       "edition": "pro",
-      "status": "experimental",
-      "evidenceLevel": "unit-and-build-validation",
+      "capabilityStatus": "experimental",
+      "evidenceLevel": "unit",
+      "recommended": false,
+      "deprecated": false,
       "requiresUserConfirmation": true,
       "requiresThirdPartySoftware": false,
       "documentation": "docs/OFFLINE_COMMERCIALIZATION.md"
     },
     {
-      "id": "workflow.production_vector",
-      "publicName": "生产级矢量工作流",
-      "edition": "pro",
-      "status": "planned",
-      "evidenceLevel": "none",
-      "requiresUserConfirmation": true,
-      "requiresThirdPartySoftware": false,
-      "documentation": "docs/COMMERCIAL_FEATURE_BOUNDARY_AUDIT.md"
-    },
-    {
       "id": "batch.processing",
       "publicName": "批量队列与文件夹处理",
       "edition": "pro",
-      "status": "planned",
+      "capabilityStatus": "planned",
       "evidenceLevel": "none",
+      "recommended": false,
+      "deprecated": false,
       "requiresUserConfirmation": true,
       "requiresThirdPartySoftware": false,
       "documentation": "docs/PRIVATE_PRO_ARCHITECTURE.md"
     },
     {
-      "id": "projects.history_and_recovery",
-      "publicName": "项目历史与可恢复任务",
+      "id": "projects.advanced_recovery",
+      "publicName": "高级任务恢复、检查点与保留策略",
       "edition": "pro",
-      "status": "planned",
+      "capabilityStatus": "planned",
       "evidenceLevel": "none",
+      "recommended": false,
+      "deprecated": false,
       "requiresUserConfirmation": true,
       "requiresThirdPartySoftware": false,
       "documentation": "docs/PRIVATE_PRO_ARCHITECTURE.md"
@@ -153,8 +246,10 @@
       "id": "integration.private_workflow_enhancements",
       "publicName": "商业创意软件工作流增强",
       "edition": "pro",
-      "status": "planned",
+      "capabilityStatus": "planned",
       "evidenceLevel": "none",
+      "recommended": false,
+      "deprecated": false,
       "requiresUserConfirmation": true,
       "requiresThirdPartySoftware": true,
       "documentation": "docs/COMMERCIAL_FEATURE_BOUNDARY_AUDIT.md"
@@ -163,8 +258,10 @@
       "id": "updates.github_signed_release",
       "publicName": "GitHub 正式版本检查与签名更新",
       "edition": "community",
-      "status": "implemented-not-live",
-      "evidenceLevel": "unit-and-build-validation",
+      "capabilityStatus": "experimental",
+      "evidenceLevel": "integration",
+      "recommended": false,
+      "deprecated": false,
       "requiresUserConfirmation": true,
       "requiresThirdPartySoftware": false,
       "documentation": "docs/SOFTWARE_UPDATE_CHANNEL.md"
@@ -173,8 +270,10 @@
       "id": "updates.offline_signed_packages",
       "publicName": "签名离线更新包",
       "edition": "pro",
-      "status": "planned",
-      "evidenceLevel": "architecture-and-ui-only",
+      "capabilityStatus": "planned",
+      "evidenceLevel": "none",
+      "recommended": false,
+      "deprecated": false,
       "requiresUserConfirmation": true,
       "requiresThirdPartySoftware": false,
       "documentation": "docs/PRIVATE_PRO_ARCHITECTURE.md"
@@ -183,15 +282,17 @@
       "id": "support.enterprise_customization",
       "publicName": "专业支持与企业定制",
       "edition": "enterprise",
-      "status": "planned",
+      "capabilityStatus": "planned",
       "evidenceLevel": "none",
+      "recommended": false,
+      "deprecated": false,
       "requiresUserConfirmation": true,
       "requiresThirdPartySoftware": false,
       "documentation": "docs/PRO_COMMERCIAL_TERMS_DRAFT.md"
     }
   ],
   "licensing": {
-    "status": "experimental",
+    "capabilityStatus": "experimental",
     "productId": "starbridge-desktop",
     "activation": "manual-offline-file-import",
     "signatureAlgorithm": "Ed25519",
@@ -220,6 +321,7 @@
     "updateDownloadAndInstall": "explicit-confirmation-only"
   },
   "website": {
+    "capabilityStatus": "planned",
     "candidateSource": "apps/starbridge-site",
     "editableChatgptSiteSourceLocated": false,
     "published": false,
@@ -231,7 +333,7 @@
     "cleanWindowsValidated": false,
     "defenderValidated": false,
     "defenderLocalCustomScan": {
-      "status": "passed",
+      "result": "passed",
       "date": "2026-07-18",
       "target": "unsigned-local-nsis-candidate",
       "detections": 0,
@@ -240,12 +342,12 @@
     "smartScreenValidated": false,
     "inAppUpdaterImplemented": true,
     "updaterProductionPublicKeyConfigured": false,
-    "signedReleaseWorkflow": "configured-fail-closed-not-executed",
+    "signedReleaseWorkflowState": "configured-fail-closed-not-executed",
     "paidReleaseReady": false
   },
   "download": {
-    "status": "planned",
+    "capabilityStatus": "planned",
     "publicInstallerAvailable": false,
-    "reason": "本机 NSIS 安装、启动、关闭与卸载曾通过，但 Authenticode、干净 Windows、Defender 与 SmartScreen 验收尚未完成。"
+    "reason": "本机 NSIS 安装、启动、关闭与卸载曾通过，但 Authenticode、干净 Windows、完整 Defender 与 SmartScreen 验收尚未完成。"
   }
 }

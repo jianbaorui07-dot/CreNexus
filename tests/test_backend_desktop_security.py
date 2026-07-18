@@ -77,6 +77,10 @@ class DesktopBackendSecurityTests(unittest.TestCase):
 
         self.assertTrue(server.wait(timeout=2))
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+            # The listener must be gone, but an accepted connection can remain in
+            # TIME_WAIT on Linux. SO_REUSEADDR distinguishes that kernel state
+            # from an active StarBridge listener without weakening the assertion.
+            probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             probe.bind(("127.0.0.1", port))
 
     def test_non_loopback_bind_is_rejected(self) -> None:
@@ -225,7 +229,18 @@ class DesktopBackendSecurityTests(unittest.TestCase):
 
         self.assertEqual(target.resolve(), paths.root)
         self.assertEqual(
-            {"data", "history", "logs", "cache", "diagnostics"},
+            {
+                "data",
+                "history",
+                "logs",
+                "cache",
+                "diagnostics",
+                "projects",
+                "jobs",
+                "artifacts",
+                "evidence",
+                "deliveries",
+            },
             {item.name for item in paths.root.iterdir()},
         )
 

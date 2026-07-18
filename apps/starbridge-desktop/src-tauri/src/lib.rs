@@ -371,9 +371,6 @@ fn loopback_client() -> Result<reqwest::Client, &'static str> {
 }
 
 fn p1_request_allowed(request: &ApiRequest) -> bool {
-    if request.method != "GET" || request.body.is_some() {
-        return false;
-    }
     if !request.path.starts_with("/api/")
         || request.path.contains("..")
         || request.path.contains('%')
@@ -393,10 +390,32 @@ fn p1_request_allowed(request: &ApiRequest) -> bool {
         "/api/tiers",
         "/api/hybrid",
         "/api/audit/history",
+        "/api/workflows",
+        "/api/projects",
+        "/api/jobs",
     ];
-    SAFE_ROUTES
-        .iter()
-        .any(|route| request.path == *route || request.path.starts_with(&format!("{route}?")))
+    if request.method == "GET" && request.body.is_none() {
+        if SAFE_ROUTES
+            .iter()
+            .any(|route| request.path == *route || request.path.starts_with(&format!("{route}?")))
+        {
+            return true;
+        }
+        let parts: Vec<&str> = request.path.trim_matches('/').split('/').collect();
+        return matches!(parts.as_slice(), ["api", "projects", id] if valid_vector_id(id, "project-"))
+            || matches!(parts.as_slice(), ["api", "projects", id, "delivery"] if valid_vector_id(id, "project-"))
+            || matches!(parts.as_slice(), ["api", "jobs", id] if valid_vector_id(id, "job-"))
+            || matches!(parts.as_slice(), ["api", "jobs", id, "events"] if valid_vector_id(id, "job-"));
+    }
+    if request.method == "POST" && request.body.as_ref().is_some_and(Value::is_object) {
+        if matches!(request.path.as_str(), "/api/projects" | "/api/jobs") {
+            return true;
+        }
+        let parts: Vec<&str> = request.path.trim_matches('/').split('/').collect();
+        return matches!(parts.as_slice(), ["api", "jobs", id, action]
+            if valid_vector_id(id, "job-") && matches!(*action, "run" | "cancel"));
+    }
+    false
 }
 
 fn backend_connection(manager: &BackendManager) -> Result<(u16, String), String> {
@@ -467,40 +486,9 @@ async fn backend_request(
     manager: State<'_, BackendManager>,
 ) -> Result<ApiResponse, String> {
     if !p1_request_allowed(&request) {
-        return Err("P1 桌面代理只允许读取状态与安全启动数据。".into());
+        return Err("桌面代理拒绝了未列入白名单的本机请求。".into());
     }
-    let (port, session_credential) = {
-        let inner = manager.lock();
-        if !matches!(inner.phase, RuntimePhase::Connected) {
-            return Err("本地服务尚未连接。".into());
-        }
-        (
-            inner.port.ok_or("本地服务端口尚未就绪。")?,
-            inner
-                .session_credential
-                .clone()
-                .ok_or("桌面会话尚未就绪。")?,
-        )
-    };
-    let client = loopback_client().map_err(str::to_owned)?;
-    let url = format!("http://127.0.0.1:{port}{}", request.path);
-    let response = client
-        .get(url)
-        .header(SESSION_HEADER, session_credential)
-        .send()
-        .await
-        .map_err(|_| "本地服务没有响应。".to_string())?;
-    let status = response.status().as_u16();
-    let bytes = response
-        .bytes()
-        .await
-        .map_err(|_| "无法读取本地服务响应。".to_string())?;
-    if bytes.len() > 2 * 1024 * 1024 {
-        return Err("本地服务响应超过桌面端允许的大小。".into());
-    }
-    let body =
-        serde_json::from_slice(&bytes).map_err(|_| "本地服务返回了无法识别的结果。".to_string())?;
-    Ok(ApiResponse { status, body })
+    call_backend_json(&manager, &request.method, &request.path, request.body).await
 }
 
 #[tauri::command]
@@ -523,6 +511,42 @@ async fn choose_vector_input(
         "POST",
         "/api/vectorization/selections",
         Some(serde_json::json!({ "input_path": path.to_string_lossy() })),
+    )
+    .await?;
+    Ok(Some(response))
+}
+
+#[tauri::command]
+async fn import_project_asset(
+    project_id: String,
+    confirm_import: bool,
+    manager: State<'_, BackendManager>,
+) -> Result<Option<ApiResponse>, String> {
+    if !valid_vector_id(&project_id, "project-") {
+        return Err("项目编号无效；请返回项目页后重试。".into());
+    }
+    if !confirm_import {
+        return Err("复制素材到 StarBridge 项目目录前需要明确确认。".into());
+    }
+    let selected = tauri::async_runtime::spawn_blocking(|| {
+        rfd::FileDialog::new()
+            .add_filter("图片", &["png", "jpg", "jpeg"])
+            .set_title("选择一张要导入项目的图片")
+            .pick_file()
+    })
+    .await
+    .map_err(|_| "无法打开文件选择窗口；请重新尝试。".to_string())?;
+    let Some(path) = selected else {
+        return Ok(None);
+    };
+    let response = call_backend_json(
+        &manager,
+        "POST",
+        &format!("/api/projects/{project_id}/assets"),
+        Some(serde_json::json!({
+            "inputPath": path.to_string_lossy(),
+            "confirmImport": true
+        })),
     )
     .await?;
     Ok(Some(response))
@@ -743,6 +767,7 @@ pub fn run() {
             backend_status,
             backend_request,
             choose_vector_input,
+            import_project_asset,
             start_vectorization,
             vectorization_job,
             vectorization_history,
@@ -797,12 +822,27 @@ mod tests {
     }
 
     #[test]
-    fn p1_proxy_allows_only_read_only_routes() {
+    fn p1_proxy_allows_product_reads_and_narrow_workflow_writes() {
         assert!(p1_request_allowed(&request("GET", "/api/bootstrap", None)));
         assert!(p1_request_allowed(&request(
             "GET",
             "/api/recipes?bridge=all",
             None
+        )));
+        assert!(p1_request_allowed(&request(
+            "POST",
+            "/api/projects",
+            Some(serde_json::json!({}))
+        )));
+        assert!(p1_request_allowed(&request(
+            "POST",
+            "/api/jobs/job-123/run",
+            Some(serde_json::json!({}))
+        )));
+        assert!(!p1_request_allowed(&request(
+            "POST",
+            "/api/projects/project-123/assets",
+            Some(serde_json::json!({ "inputPath": "private" }))
         )));
         assert!(!p1_request_allowed(&request(
             "POST",

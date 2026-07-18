@@ -22,6 +22,11 @@ class AppDataPaths:
     logs: Path
     cache: Path
     diagnostics: Path
+    projects: Path
+    jobs: Path
+    artifacts: Path
+    evidence: Path
+    deliveries: Path
 
     @property
     def history_file(self) -> Path:
@@ -39,6 +44,11 @@ class AppDataPaths:
             self.logs,
             self.cache,
             self.diagnostics,
+            self.projects,
+            self.jobs,
+            self.artifacts,
+            self.evidence,
+            self.deliveries,
         ):
             path.mkdir(parents=True, exist_ok=True)
         return self
@@ -71,6 +81,11 @@ def resolve_app_data_paths(
         logs=root / "logs",
         cache=root / "cache",
         diagnostics=root / "diagnostics",
+        projects=root / "projects",
+        jobs=root / "jobs",
+        artifacts=root / "artifacts",
+        evidence=root / "evidence",
+        deliveries=root / "deliveries",
     )
     return paths.ensure() if create else paths
 

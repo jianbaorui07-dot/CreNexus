@@ -100,6 +100,7 @@ jobs:
           python -m ruff check .
           python -m ruff format --check .
           python scripts/security_check.py
+          python scripts/check_product_facts.py
           python -m unittest discover -s tests
           npm test --prefix apps/starbridge-desktop
           npm run build --prefix apps/starbridge-desktop

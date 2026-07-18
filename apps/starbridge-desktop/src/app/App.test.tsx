@@ -58,6 +58,17 @@ function makeClient(status: RuntimeStatus | Promise<RuntimeStatus>): StarBridgeC
       features: ["batch.processing"],
       commercialVerifierConfigured: true,
     }),
+    getWorkflows: vi.fn().mockResolvedValue([]),
+    getProjects: vi.fn().mockResolvedValue([]),
+    createProject: vi.fn(),
+    importProjectAsset: vi.fn().mockResolvedValue(null),
+    getCreativeJobs: vi.fn().mockResolvedValue([]),
+    createCreativeJob: vi.fn(),
+    getCreativeJob: vi.fn(),
+    runCreativeJob: vi.fn(),
+    cancelCreativeJob: vi.fn(),
+    getCreativeJobEvents: vi.fn().mockResolvedValue([]),
+    getProjectDelivery: vi.fn(),
     chooseVectorInput: vi.fn().mockResolvedValue(null),
     startVectorization: vi.fn(),
     getVectorizationJob: vi.fn(),
@@ -71,9 +82,9 @@ describe("desktop runtime status", () => {
     const pending = new Promise<RuntimeStatus>(() => undefined);
     render(<App client={makeClient(pending)} />);
 
-    expect(screen.getByText("StarBridge 已准备好")).toBeInTheDocument();
+    expect(screen.getByText("从项目开始一次可审计的创作")).toBeInTheDocument();
     expect(screen.getByText("正在启动")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "开始图片矢量化" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "新建或打开项目" })).toBeDisabled();
   });
 
   it("shows a connected state in ordinary language", async () => {
@@ -89,7 +100,7 @@ describe("desktop runtime status", () => {
     );
 
     expect(await screen.findByText("运行正常 · 仅本机")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "开始图片矢量化" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "新建或打开项目" })).toBeEnabled();
     expect(screen.queryByText(/49152/)).not.toBeInTheDocument();
   });
 
@@ -197,7 +208,7 @@ describe("desktop runtime status", () => {
     });
     render(<App client={client} />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "版本与授权" }));
+    fireEvent.click(await screen.findByRole("button", { name: "授权" }));
     expect(screen.getByText("你可以直接使用免费功能，无需登录、无需联网，也不需要授权文件。"))
       .toBeInTheDocument();
     expect(screen.queryByText("授权有效")).not.toBeInTheDocument();
@@ -220,70 +231,163 @@ describe("desktop runtime status", () => {
     });
     render(<App client={client} />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "版本与授权" }));
+    fireEvent.click(await screen.findByRole("button", { name: "授权" }));
     expect(screen.getByText("授权文件未生效")).toBeInTheDocument();
     expect(screen.getByText(/授权签名未通过验证/)).toBeInTheDocument();
     expect(screen.getByText(/Community 免费功能仍可继续使用/)).toBeInTheDocument();
   });
 
-  it("runs the Community vectorization flow through selection, confirmation and result", async () => {
+  it("builds a Community workflow task from an imported project asset", async () => {
     const client = makeClient({
       state: "connected",
       message: "运行正常。",
       recoveryAttempts: 0,
     });
-    client.chooseVectorInput = vi.fn().mockResolvedValue({
-      selectionId: "selection-test",
-      fileName: "example.png",
-      width: 320,
-      height: 240,
-      sourceHash: "abc123",
-      previewDataUrl: "data:image/png;base64,AA==",
-    });
-    client.startVectorization = vi.fn().mockResolvedValue({
-      jobId: "vector-test",
+    const project = {
+      schemaVersion: 1,
+      projectId: "project-test",
+      projectName: "品牌图标",
+      workflowId: "vector-delivery-v1",
+      description: "",
+      sourceAssets: [{
+        assetId: "asset-test",
+        basename: "example.png",
+        relativePath: "projects/project-test/source/example.png",
+        sha256: "a".repeat(64),
+        mediaType: "image/png",
+        sizeBytes: 2048,
+        importedAt: "2026-07-17T08:00:00Z",
+      }],
+      currentJob: null,
+      jobHistory: [],
+      artifacts: [],
+      qualityReports: [],
+      evidence: [],
+      createdAt: "2026-07-17T08:00:00Z",
+      updatedAt: "2026-07-17T08:00:00Z",
+    } as const;
+    const job = {
+      schemaVersion: 1,
+      jobId: "job-test",
+      projectId: "project-test",
+      workflowId: "vector-delivery-v1",
       status: "queued",
-      progress: 6,
-      stage: "已确认，正在准备",
-      mode: "smart",
+      currentStep: "validate-source",
+      progress: 0,
       createdAt: "2026-07-17T08:00:00Z",
-    });
-    client.getVectorizationJob = vi.fn().mockResolvedValue({
-      jobId: "vector-test",
-      status: "completed",
-      progress: 100,
-      stage: "处理完成",
-      mode: "smart",
-      createdAt: "2026-07-17T08:00:00Z",
-      completedAt: "2026-07-17T08:00:01Z",
-      result: {
-        modeLabel: "智能矢量",
-        sourceHash: "abc123",
-        sourcePreviewDataUrl: "data:image/png;base64,AA==",
-        resultPreviewDataUrl: "data:image/png;base64,AA==",
-        metrics: { colors: 8, subpaths: 12, points: 36, svgBytes: 2048, elapsedSeconds: 1.2 },
-        warnings: [],
-        outputAvailable: true,
-      },
-    });
+      updatedAt: "2026-07-17T08:00:00Z",
+      completedAt: null,
+      artifacts: [],
+      warnings: [],
+      error: null,
+      evidenceId: null,
+    } as const;
+    client.getProjects = vi.fn().mockResolvedValue([project]);
+    client.getWorkflows = vi.fn().mockResolvedValue([{
+      workflowId: "vector-delivery-v1",
+      name: "图片 → 精确重建 → 绘制型矢量 → 交付",
+      capabilityStatus: "experimental",
+      recommended: true,
+      ordinaryCustomerRoute: true,
+      requiresConfirmation: true,
+      drawingModes: ["artisan", "smart", "lightweight"],
+      imageTraceFallback: false,
+    }]);
+    client.createCreativeJob = vi.fn().mockResolvedValue(job);
+    client.getCreativeJob = vi.fn().mockResolvedValue(job);
+    client.getCreativeJobEvents = vi.fn().mockResolvedValue([]);
 
     render(<App client={client} />);
-    fireEvent.click(await screen.findByRole("button", { name: "开始图片矢量化" }));
-    fireEvent.click(screen.getByRole("button", { name: "选择图片" }));
+    fireEvent.click(await screen.findByRole("button", { name: "图片矢量化" }));
     expect(await screen.findByText("example.png")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("checkbox"));
-    fireEvent.click(screen.getByRole("button", { name: "开始本机矢量化" }));
+    const createButton = screen.getByRole("button", { name: "建立任务计划" });
+    await waitFor(() => expect(createButton).toBeEnabled());
+    fireEvent.click(createButton);
 
-    await waitFor(() => expect(client.startVectorization).toHaveBeenCalledWith(
+    await waitFor(() => expect(client.createCreativeJob).toHaveBeenCalledWith(
       expect.objectContaining({
-        selectionId: "selection-test",
-        confirmRun: true,
-        confirmWrite: true,
-        confirmExport: true,
+        projectId: "project-test",
+        sourceAssetId: "asset-test",
+        drawingMode: "artisan",
       }),
     ));
-    expect(await screen.findByText("任务记录已保存，输出位于 StarBridge 本机应用数据目录。", {}, { timeout: 2000 })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "打开输出文件夹" }));
-    await waitFor(() => expect(client.openVectorOutput).toHaveBeenCalledWith("vector-test"));
+    expect((await screen.findAllByText("等待开始")).length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "运行到下一确认点" })).toBeInTheDocument();
+  });
+
+  it("builds a single confirmed ComfyUI task plan from temporary inputs", async () => {
+    const client = makeClient({
+      state: "connected",
+      message: "运行正常。",
+      recoveryAttempts: 0,
+    });
+    const project = {
+      schemaVersion: 1,
+      projectId: "project-comfy",
+      projectName: "夏季海报概念图",
+      workflowId: "comfyui-generation-v1",
+      description: "",
+      sourceAssets: [],
+      currentJob: null,
+      jobHistory: [],
+      artifacts: [],
+      qualityReports: [],
+      evidence: [],
+      createdAt: "2026-07-17T08:00:00Z",
+      updatedAt: "2026-07-17T08:00:00Z",
+    } as const;
+    const job = {
+      schemaVersion: 1,
+      jobId: "job-comfy",
+      projectId: "project-comfy",
+      workflowId: "comfyui-generation-v1",
+      status: "queued",
+      currentStep: "validate-workflow",
+      progress: 0,
+      createdAt: "2026-07-17T08:00:00Z",
+      updatedAt: "2026-07-17T08:00:00Z",
+      completedAt: null,
+      artifacts: [],
+      warnings: [],
+      error: null,
+      evidenceId: null,
+    } as const;
+    client.getProjects = vi.fn().mockResolvedValue([project]);
+    client.createCreativeJob = vi.fn().mockResolvedValue(job);
+    client.getCreativeJob = vi.fn().mockResolvedValue(job);
+    client.getCreativeJobEvents = vi.fn().mockResolvedValue([]);
+
+    render(<App client={client} />);
+    fireEvent.click(await screen.findByRole("button", { name: "AI 图片生成" }));
+    await screen.findByRole("option", { name: "夏季海报概念图" });
+    fireEvent.change(screen.getByLabelText("正向提示词"), {
+      target: { value: "minimal summer poster, warm light" },
+    });
+    fireEvent.change(screen.getByLabelText("负向提示词（可选）"), {
+      target: { value: "watermark" },
+    });
+    fireEvent.change(screen.getByLabelText("Checkpoint 文件名"), {
+      target: { value: "local-model.safetensors" },
+    });
+    const createButton = screen.getByRole("button", { name: "建立生成任务计划" });
+    await waitFor(() => expect(createButton).toBeEnabled());
+    fireEvent.click(createButton);
+
+    await waitFor(() => expect(client.createCreativeJob).toHaveBeenCalledTimes(1));
+    expect(client.createCreativeJob).toHaveBeenCalledWith({
+      projectId: "project-comfy",
+      workflowId: "comfyui-generation-v1",
+      prompt: "minimal summer poster, warm light",
+      negativePrompt: "watermark",
+      checkpointName: "local-model.safetensors",
+      width: 512,
+      height: 512,
+      steps: 24,
+      cfg: 7,
+      sampler: "dpmpp_2m",
+      scheduler: "karras",
+      waitSeconds: 0,
+    });
+    expect((await screen.findAllByText("等待开始")).length).toBeGreaterThan(0);
   });
 });

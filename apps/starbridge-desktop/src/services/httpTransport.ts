@@ -2,6 +2,7 @@ import type {
   ApiEnvelope,
   LicenseRequestReceipt,
   LicenseStatus,
+  Project,
   RuntimeStatus,
   SoftwareUpdateProgress,
   SoftwareUpdateStatus,
@@ -156,6 +157,16 @@ export class HttpTransport implements StarBridgeTransport {
     throw new TransportError(
       "desktop_required",
       "请在 StarBridge Windows 桌面版中导入授权文件。",
+    );
+  }
+
+  async importProjectAsset(
+    _projectId: string,
+    _confirmImport: boolean,
+  ): Promise<TransportResponse<ApiEnvelope<{ asset: unknown; project: Project }>> | null> {
+    throw new TransportError(
+      "desktop_required",
+      "浏览器预览不能读取本机文件路径，请在 StarBridge Windows 桌面版中导入素材。",
     );
   }
 

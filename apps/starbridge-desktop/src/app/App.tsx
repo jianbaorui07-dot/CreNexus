@@ -1,19 +1,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { BatchPage } from "../pages/BatchPage";
+import { ComfyUiGenerationPage } from "../pages/ComfyUiGenerationPage";
+import { DeliveryPage } from "../pages/DeliveryPage";
 import { DiagnosticsPage } from "../pages/DiagnosticsPage";
 import { HomePage } from "../pages/HomePage";
 import { IntegrationsPage } from "../pages/IntegrationsPage";
+import { JobDetailPage } from "../pages/JobDetailPage";
 import { LicensePage } from "../pages/LicensePage";
+import { ProjectsPage } from "../pages/ProjectsPage";
 import { TasksPage } from "../pages/TasksPage";
 import { VectorizationPage } from "../pages/VectorizationPage";
+import { WorkflowsPage } from "../pages/WorkflowsPage";
 import { StarBridgeApiClient, UserFacingError, type StarBridgeClient } from "../services/client";
 import type {
   LicenseStatus,
+  CreativeJob,
   RuntimeStatus,
   SoftwareUpdateProgress,
   SoftwareUpdateStatus,
-  VectorHistoryEvent,
   VersionInfo,
 } from "../types/api";
 import { AppShell } from "./AppShell";
@@ -37,7 +42,7 @@ const INITIAL_LICENSE: LicenseStatus = {
 const INITIAL_UPDATE_STATUS: SoftwareUpdateStatus = {
   configured: false,
   source: "GitHub Releases",
-  currentVersion: "0.1.0",
+  currentVersion: "0.1.0-alpha.0",
   available: false,
   signatureRequired: true,
   automaticChecksSupported: false,
@@ -72,7 +77,9 @@ export function App({ client: providedClient }: AppProps) {
   const [status, setStatus] = useState<RuntimeStatus>(INITIAL_STATUS);
   const [version, setVersion] = useState<VersionInfo | null>(null);
   const [license, setLicense] = useState<LicenseStatus>(INITIAL_LICENSE);
-  const [tasks, setTasks] = useState<VectorHistoryEvent[]>([]);
+  const [tasks, setTasks] = useState<CreativeJob[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>();
+  const [selectedJobId, setSelectedJobId] = useState<string>();
   const [updateStatus, setUpdateStatus] = useState<SoftwareUpdateStatus>(INITIAL_UPDATE_STATUS);
   const [automaticUpdateChecks, setAutomaticUpdateChecks] = useState(
     () => window.localStorage.getItem(UPDATE_CHECK_PREFERENCE) !== "false",
@@ -151,8 +158,8 @@ export function App({ client: providedClient }: AppProps) {
 
   const refreshTasks = useCallback(async () => {
     try {
-      const history = await client.getVectorizationHistory();
-      if (mounted.current) setTasks(history.events);
+      const jobs = await client.getCreativeJobs();
+      if (mounted.current) setTasks(jobs);
     } catch {
       // History is secondary; an offline state is already visible in the shell.
     }
@@ -196,17 +203,41 @@ export function App({ client: providedClient }: AppProps) {
   }, [client]);
 
   const renderPage = () => {
+    const openWorkflow = (projectId?: string, workflowId = "vector-delivery-v1") => {
+      setSelectedProjectId(projectId);
+      setPage(workflowId === "comfyui-generation-v1" ? "ai-generation" : "workflows");
+    };
+    const openJob = (jobId: string, projectId: string) => {
+      setSelectedJobId(jobId);
+      setSelectedProjectId(projectId);
+      setPage("job-detail");
+    };
+    const openDelivery = (projectId: string) => {
+      setSelectedProjectId(projectId);
+      setPage("delivery");
+    };
     switch (page) {
       case "home":
         return <HomePage status={status} recentTasks={tasks} onNavigate={setPage} />;
+      case "projects":
+        return <ProjectsPage client={client} runtimeReady={status.state === "connected"} onOpenWorkflow={openWorkflow} />;
+      case "workflows":
       case "vectorization":
+        return <WorkflowsPage client={client} runtimeReady={status.state === "connected"} initialProjectId={selectedProjectId} onOpenProjects={() => setPage("projects")} onOpenJob={openJob} />;
+      case "ai-generation":
+        return <ComfyUiGenerationPage client={client} runtimeReady={status.state === "connected"} initialProjectId={selectedProjectId} onOpenJob={openJob} />;
+      case "legacy-vectorization":
         return <VectorizationPage client={client} runtimeReady={status.state === "connected"} onTaskSaved={() => void refreshTasks()} />;
       case "batch":
         return <BatchPage />;
       case "integrations":
         return <IntegrationsPage />;
       case "tasks":
-        return <TasksPage tasks={tasks} onStart={() => setPage("vectorization")} />;
+        return <TasksPage tasks={tasks} onStart={() => openWorkflow()} onOpenJob={openJob} />;
+      case "job-detail":
+        return <JobDetailPage client={client} jobId={selectedJobId} onOpenDelivery={openDelivery} onBack={() => setPage("tasks")} onJobChanged={() => void refreshTasks()} />;
+      case "delivery":
+        return <DeliveryPage client={client} initialProjectId={selectedProjectId} />;
       case "license":
         return <LicensePage client={client} license={license} version={version} onLicenseChanged={setLicense} />;
       case "diagnostics":

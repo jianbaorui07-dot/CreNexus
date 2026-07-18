@@ -1,8 +1,8 @@
-# StarBridge v0.1.0 draft release notes
+# StarBridge v0.1.0-alpha.0 draft release notes
 
 ## Summary
 
-StarBridge v0.1.0 is a local-first MCP bridge for creative desktop software. This release focuses on safe probes, dry-run workflows, Action Plan recipes, and enhanced Photoshop tools (get_preview, get_state) for AI agents like Codex/Cursor/Claude.
+StarBridge v0.1.0-alpha.0 is a local-first MCP bridge for creative desktop software. This release focuses on safe probes, dry-run workflows, Action Plan recipes, and guarded creative software protocols. It is not a signed public desktop release.
 
 ## Highlights
 
@@ -34,4 +34,4 @@ npm.cmd run photoshop:recipe:plan -- --recipe_id remove_background --action_plan
 * No private PSD / AI files
 * No generated binary demo assets
 * No customer material
-* No Image Trace automation yet
+* Ordinary customer delivery never uses or falls back to Image Trace; a retained guarded experimental protocol exists only for explicit technical workflows
