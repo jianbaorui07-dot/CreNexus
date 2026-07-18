@@ -66,6 +66,8 @@ class PackageScriptsTest(unittest.TestCase):
                 "photoshop:demo:plan",
                 "photoshop:demo",
                 "photoshop:manifest",
+                "photoshop:layers",
+                "photoshop:layers:regression",
                 "photoshop:camera-raw:tune",
                 "photoshop:camera-raw:export",
                 "illustrator:info",
@@ -169,6 +171,7 @@ class PackageScriptsTest(unittest.TestCase):
             "cad",
             "comfy",
             "adobe",
+            "image-to-psd",
             "illustrator-trace",
             "illustrator-vector",
         ):

@@ -1,9 +1,11 @@
 import http from "node:http";
 import { URL } from "node:url";
 import { WebSocketServer } from "ws";
+import { createLiveSessionStore, rpcLiveSession } from "../live-session.js";
 
 const PORT = Number(process.env.STARBRIDGE_ILLUSTRATOR_PROXY_PORT || 8972);
 const MAX_FRAME_BYTES = 4 * 1024 * 1024;
+const MAX_SESSION_BYTES = 32 * 1024;
 const DEFAULT_STATE_MAX_AGE_MS = 2000;
 const WRITE_METHODS = new Set([
   "illustrator.select_object",
@@ -19,6 +21,9 @@ const METHODS = new Set([
 ]);
 
 let adapter = null;
+const liveSession = createLiveSessionStore("illustrator", update => {
+  if (adapter?.readyState === 1) adapter.send(JSON.stringify(update));
+});
 let latestStateRecord = null;
 let latestFrame = null;
 let stateRevision = 0;
@@ -201,6 +206,7 @@ function health() {
     state_age_ms: ageMs,
     state_stale: ageMs === null || ageMs > DEFAULT_STATE_MAX_AGE_MS,
     has_frame: Boolean(latestFrame),
+    live_session: liveSession.summary(),
   };
 }
 
@@ -227,6 +233,11 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
       return res.end(`<!doctype html><meta charset="utf-8"><title>StarBridge Illustrator Preview</title><style>html,body{margin:0;background:#111;color:#ddd;font:14px system-ui;height:100%}body{display:grid;grid-template-rows:auto 1fr}header{padding:8px 12px;background:#202020}img{width:100%;height:100%;object-fit:contain;min-height:0}</style><header>Illustrator 窗口实时预览 · <span id="status">连接中</span></header><img id="frame" alt="Illustrator window preview"><script>const image=document.querySelector('#frame'),status=document.querySelector('#status');let last='';async function tick(){try{const meta=await fetch('/frame/meta',{cache:'no-store'}).then(r=>r.json());if(meta.ok&&meta.frame.at!==last){last=meta.frame.at;image.src='/frame/latest?t='+encodeURIComponent(last);status.textContent=meta.frame.width+'×'+meta.frame.height+' · '+new Date(last).toLocaleTimeString();}}catch(e){status.textContent='等待代理';}}setInterval(tick,250);tick();</script>`);
     }
+    if (req.method === "GET" && url.pathname === "/session") return json(res, 200, liveSession.snapshot());
+    if (req.method === "POST" && url.pathname === "/session") {
+      const update = liveSession.publish(JSON.parse((await body(req, MAX_SESSION_BYTES)).toString("utf8") || "{}"));
+      return json(res, 202, { ok: true, update });
+    }
     if (req.method === "GET" && url.pathname === "/state") return json(res, 200, stateEnvelope(maxStateAge(url.searchParams.get("max_age_ms"))));
     if (req.method === "GET" && url.pathname === "/frame/meta") return json(res, 200, { ok: Boolean(latestFrame), frame: latestFrame ? { ...latestFrame, data: undefined } : null });
     if (req.method === "GET" && url.pathname === "/frame/latest") {
@@ -248,7 +259,10 @@ const server = http.createServer(async (req, res) => {
       const message = JSON.parse((await body(req, 256 * 1024)).toString("utf8"));
       const invalid = validate(message);
       if (invalid) return json(res, 200, invalid);
-      return json(res, 200, await forward(message));
+      liveSession.publish(rpcLiveSession({ bridge: "illustrator", message, phase: "running" }));
+      const reply = await forward(message);
+      liveSession.publish(rpcLiveSession({ bridge: "illustrator", message, phase: reply.error ? "failed" : "completed", errorMessage: reply.error?.message }));
+      return json(res, 200, reply);
     }
     return json(res, 404, { ok: false, message: "not_found" });
   } catch (caught) {
@@ -269,6 +283,7 @@ server.on("upgrade", (req, socket, head) => {
 wss.on("connection", ws => {
   adapter = ws;
   status.adapter_connected = true;
+  if (liveSession.current()) ws.send(JSON.stringify(liveSession.current()));
   let lastSequence = 0;
   ws.on("message", raw => {
     let message;

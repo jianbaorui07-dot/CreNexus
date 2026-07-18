@@ -1,8 +1,8 @@
 import { rpcError, rpcResult, validateRequest } from "./protocol.js";
 
 export class BridgeClient {
-  constructor({adapter, url = "ws://127.0.0.1:8972/illustrator", intervalMs = 500, onStatus = () => {}}) {
-    this.adapter = adapter; this.url = url; this.intervalMs = Math.max(200, intervalMs); this.onStatus = onStatus;
+  constructor({adapter, url = "ws://127.0.0.1:8972/illustrator", intervalMs = 500, onStatus = () => {}, onSession = () => {}}) {
+    this.adapter = adapter; this.url = url; this.intervalMs = Math.max(200, intervalMs); this.onStatus = onStatus; this.onSession = onSession;
     this.socket = null; this.timer = null; this.reconnectTimer = null;
   }
   connect() {
@@ -12,6 +12,7 @@ export class BridgeClient {
       socket.addEventListener("open", () => { this.onStatus("connected"); this.startStateLoop(); this.pushState(); });
       socket.addEventListener("message", async (event) => {
         let message; try { message = JSON.parse(String(event.data || "{}")); } catch (_error) { this.send(rpcError(null, -32700, "parse_error")); return; }
+        if (message?.type === "codex_session") { this.onSession(message); return; }
         const invalid = validateRequest(message); if (invalid) { this.send(rpcError(message?.id, -32602, invalid)); return; }
         try { const result = await this.adapter.execute(message.method, message.params); this.send(rpcResult(message.id, result)); await this.pushState(); }
         catch (error) { this.send(rpcError(message.id, -32000, String(error?.message || error))); }

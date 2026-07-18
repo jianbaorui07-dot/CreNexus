@@ -1,0 +1,31 @@
+{
+  "schema_version": "starbridge.public_image_dataset_request.v1",
+  "provider": "wikimedia_commons",
+  "max_width": 1280,
+  "items": [
+    {
+      "id": "animal_line_art_pd",
+      "file_title": "File:Animal line art drawing.jpg",
+      "expected_license_family": "public_domain",
+      "use_case": "line_art"
+    },
+    {
+      "id": "perfume_product_cc0",
+      "file_title": "File:Product photo.jpg",
+      "expected_license_family": "cc0",
+      "use_case": "product"
+    },
+    {
+      "id": "petrole_stella_poster_pd",
+      "file_title": "File:Pétrole Stella, advertising poster, 1897.jpg",
+      "expected_license_family": "public_domain",
+      "use_case": "poster"
+    },
+    {
+      "id": "white_background_portrait_cc0",
+      "file_title": "File:Eric Lundgren - White Background.jpg",
+      "expected_license_family": "cc0",
+      "use_case": "portrait"
+    }
+  ]
+}

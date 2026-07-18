@@ -2,6 +2,19 @@
 
 这个目录只保存可公开的 Photoshop 接入示例。脚本不包含个人路径、素材路径、账号信息或授权信息；运行时请通过参数传入输入和输出路径。
 
+图片自动重建为可编辑 PSD 的本地优先流水线见
+[`docs/image-to-editable-psd.md`](../../docs/image-to-editable-psd.md)。它支持内容哈希缓存、低置信局部复审、线稿纹理图分层和 Photoshop COM 组装；生成物只写入忽略目录。
+
+该流水线先生成客户问题，再按版本化 Layer Intent Profile 执行，避免围绕示例图写死规则。公开起点是 [`layer_intent.example.json`](layer_intent.example.json)；生产运行建议同时传入 `--intent-json` 和 `--require-intent`。客户未明确许可时，不记录任何学习样本。
+
+客户还可以单独同意 metrics-only GitHub 反馈：任务完成后向固定 Issue 或 Discussion 追加匿名指标评论。上传默认关闭，且发送前拒绝原图、像素、OCR/语义内容、文件名、源哈希、本机路径和账号信息。配置和真实 collector 验证见 [`docs/image-to-editable-psd.md`](../../docs/image-to-editable-psd.md)。
+
+公开跨类型研究使用逐项列明、许可核验的 Wikimedia Commons 请求文件
+[`public_dataset.example.json`](public_dataset.example.json)。下载需要 `--confirm-network` 和
+`--confirm-write`，图片与实验结果只写入已忽略的 `examples/output/photoshop/`。自动结果不作为训练
+标签；主体候选经过人工复核后只记录无像素数值特征。训练不足 20 个样本、8 个独立源图组或任一
+类别不足 5 个时只生成不足报告，不生成模型；达到门槛后也只能产生人工复审用候选模型。
+
 ## 区域零：统一安全 probe
 
 安全 probe 只检查 Windows、`PHOTOSHOP_EXE` 和 `Photoshop.Application` COM 类型，不打开 PSD，不保存图片：

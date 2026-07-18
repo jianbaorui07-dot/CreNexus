@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://starbridge.local/schemas/layer_review_patch.v1.schema.json",
+  "title": "StarBridge Layer Review Patch v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version"],
+  "properties": {
+    "schema_version": {
+      "const": "starbridge.layer_review_patch.v1"
+    },
+    "text_regions": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["region_id"],
+        "properties": {
+          "region_id": {"type": "string", "minLength": 1, "maxLength": 128},
+          "content": {"type": "string", "maxLength": 512},
+          "font_candidates": {
+            "type": "array",
+            "items": {"type": "string", "maxLength": 128},
+            "maxItems": 5
+          },
+          "color": {"type": "string", "maxLength": 32},
+          "confidence": {"type": "number", "minimum": 0, "maximum": 1}
+        }
+      }
+    },
+    "subject_masks": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["mask_id", "accepted"],
+        "properties": {
+          "mask_id": {"type": "string", "minLength": 1, "maxLength": 128},
+          "accepted": {"type": "boolean"},
+          "quality_score": {"type": "number", "minimum": 0, "maximum": 1},
+          "failure_modes": {
+            "type": "array",
+            "maxItems": 4,
+            "uniqueItems": true,
+            "items": {
+              "enum": ["over_selection", "under_selection", "wrong_subject", "edge_quality"]
+            }
+          },
+          "confidence": {"type": "number", "minimum": 0, "maximum": 1}
+        }
+      }
+    },
+    "semantic_regions": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["region_id"],
+        "properties": {
+          "region_id": {"type": "string", "minLength": 1, "maxLength": 128},
+          "name": {"type": "string", "maxLength": 128},
+          "semantic_label": {"type": "string", "maxLength": 128},
+          "accepted": {"type": "boolean"},
+          "confidence": {"type": "number", "minimum": 0, "maximum": 1}
+        }
+      }
+    },
+    "stroke_assignments": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["component_id", "target_region_id"],
+        "properties": {
+          "component_id": {"type": "string", "minLength": 1, "maxLength": 128},
+          "target_region_id": {"type": "string", "minLength": 1, "maxLength": 128},
+          "confidence": {"type": "number", "minimum": 0, "maximum": 1}
+        }
+      }
+    }
+  },
+  "anyOf": [
+    {"required": ["text_regions"]},
+    {"required": ["subject_masks"]},
+    {"required": ["semantic_regions"]},
+    {"required": ["stroke_assignments"]}
+  ]
+}

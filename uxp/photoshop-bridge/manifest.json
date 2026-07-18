@@ -2,8 +2,8 @@
   "manifestVersion": 5,
   "id": "com.starbridge.photoshop.bridge",
   "name": "StarBridge Photoshop Bridge",
-  "version": "1.2.0",
-  "main": "src/index.js",
+  "version": "1.3.0",
+  "main": "index.html",
   "host": {
     "app": "PS",
     "minVersion": "25.0.0"
@@ -18,6 +18,14 @@
     }
   },
   "entrypoints": [
+    {
+      "type": "panel",
+      "id": "starbridgePhotoshopLivePanel",
+      "label": {"default": "Codex Live"},
+      "minimumSize": {"width": 260, "height": 220},
+      "preferredDockedSize": {"width": 300, "height": 360},
+      "preferredFloatingSize": {"width": 340, "height": 400}
+    },
     {
       "type": "command",
       "id": "starbridgePing",
