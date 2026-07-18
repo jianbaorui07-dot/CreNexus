@@ -53,6 +53,10 @@ class VectorAppModelTests(unittest.TestCase):
         self.assertIsNone(exact.simplify_ratio)
         self.assertEqual(artisan.colors, 16)
         self.assertGreater(artisan.simplify_ratio or 0, smart.simplify_ratio or 0)
+        self.assertEqual(artisan.quality_preset, "high-fidelity")
+        self.assertEqual(artisan.anchor_budget, "auto")
+        self.assertEqual(artisan.resource_budget, "auto")
+        self.assertTrue(artisan.auto_minimize_anchors)
 
         config = build_run_config(
             self.source,
@@ -148,6 +152,16 @@ class VectorAppGuiTests(unittest.TestCase):
         self.assertEqual(self.window.selected_mode, "artisan")
         self.assertEqual(self.window.colors_input.value(), 16)
         self.assertTrue(self.window.colors_input.isEnabled())
+        self.assertEqual(self.window.quality_preset_input.currentData(), "high-fidelity")
+        self.assertEqual(self.window.target_difference_input.value(), 15.0)
+        self.assertTrue(self.window.auto_minimize_input.isChecked())
+        self.assertTrue(self.window.auto_anchor_budget_input.isChecked())
+        self.assertFalse(self.window.anchor_budget_input.isEnabled())
+
+        self.window.auto_anchor_budget_input.setChecked(False)
+        self.window.anchor_budget_input.setValue(1000)
+        parameters = self.window._current_parameters()
+        self.assertEqual(parameters.anchor_budget, 120_000)
 
     def test_window_completes_a_background_lightweight_job(self) -> None:
         from starbridge_mcp.vectorization import engine

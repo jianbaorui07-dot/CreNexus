@@ -1,0 +1,20 @@
+{
+  "name": "starbridge-local",
+  "interface": {
+    "displayName": "Starbridge Local"
+  },
+  "plugins": [
+    {
+      "name": "starbridge-version-coordinator",
+      "source": {
+        "source": "local",
+        "path": "./plugins/starbridge-version-coordinator"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

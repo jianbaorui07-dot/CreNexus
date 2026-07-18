@@ -1,0 +1,232 @@
+name: StarBridge Desktop signed release
+
+on:
+  push:
+    tags:
+      - "starbridge-desktop-v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: starbridge-desktop-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  signed-windows-release:
+    name: Build, sign, verify, and publish Windows release
+    runs-on: windows-latest
+    environment: starbridge-release
+    env:
+      PYTHONUTF8: "1"
+      PYTHONIOENCODING: "utf-8"
+      STARBRIDGE_UPDATE_PUBLIC_KEY: ${{ secrets.STARBRIDGE_UPDATE_PUBLIC_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_KEY_PASSPHRASE: ${{ secrets.TAURI_SIGNING_KEY_PASSPHRASE }}
+      WINDOWS_SIGNING_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE_BASE64 }}
+      WINDOWS_SIGNING_CERTIFICATE_PASSPHRASE: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE_PASSPHRASE }}
+      WINDOWS_SIGNING_SUBJECT: ${{ vars.WINDOWS_SIGNING_SUBJECT }}
+      WINDOWS_TIMESTAMP_URL: ${{ vars.WINDOWS_TIMESTAMP_URL }}
+    steps:
+      - name: Checkout the tagged source
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Fail closed unless every signing input is configured
+        shell: pwsh
+        run: |
+          $required = @(
+            "STARBRIDGE_UPDATE_PUBLIC_KEY",
+            "TAURI_SIGNING_PRIVATE_KEY",
+            "WINDOWS_SIGNING_CERTIFICATE_BASE64",
+            "WINDOWS_SIGNING_CERTIFICATE_PASSPHRASE",
+            "WINDOWS_SIGNING_SUBJECT",
+            "WINDOWS_TIMESTAMP_URL"
+          )
+          $missing = $required | Where-Object { [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($_)) }
+          if ($missing.Count -gt 0) {
+            throw "Signed release is blocked because required protected configuration is missing: $($missing -join ', ')"
+          }
+
+      - name: Derive and validate the release version
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          if ($tag -notmatch '^starbridge-desktop-v(?<version>\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$') {
+            throw "Tag must be starbridge-desktop-v<semver>."
+          }
+          $version = $Matches.version
+          $packageVersion = (Get-Content apps/starbridge-desktop/package.json -Raw | ConvertFrom-Json).version
+          $tauriVersion = (Get-Content apps/starbridge-desktop/src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+          $manifestVersion = (Get-Content product/product-manifest.json -Raw | ConvertFrom-Json).product.version
+          $cargoVersion = (Select-String -Path apps/starbridge-desktop/src-tauri/Cargo.toml -Pattern '^version\s*=\s*"([^"]+)"$' | Select-Object -First 1).Matches.Groups[1].Value
+          $versions = @($packageVersion, $tauriVersion, $manifestVersion, $cargoVersion) | Select-Object -Unique
+          if ($versions.Count -ne 1 -or $versions[0] -ne $version) {
+            throw "Tag, npm, Tauri, Cargo, and product manifest versions must match exactly."
+          }
+          git fetch origin main --no-tags
+          git merge-base --is-ancestor $env:GITHUB_SHA origin/main
+          if ($LASTEXITCODE -ne 0) { throw "Desktop releases must point to a commit on origin/main." }
+          "STARBRIDGE_RELEASE_VERSION=$version" >> $env:GITHUB_ENV
+          "STARBRIDGE_RELEASE_TAG=$tag" >> $env:GITHUB_ENV
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/starbridge-desktop/package-lock.json
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install test and build dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,illustrator-trace,vectorization]"
+          npm ci --prefix apps/starbridge-desktop
+
+      - name: Run release-gate tests
+        shell: pwsh
+        run: |
+          python -m ruff check .
+          python -m ruff format --check .
+          python scripts/security_check.py
+          python scripts/check_product_facts.py
+          python -m unittest discover -s tests
+          npm test --prefix apps/starbridge-desktop
+          npm run build --prefix apps/starbridge-desktop
+          cargo fmt --manifest-path apps/starbridge-desktop/src-tauri/Cargo.toml --all -- --check
+          cargo test --manifest-path apps/starbridge-desktop/src-tauri/Cargo.toml
+
+      - name: Build the packaged Python sidecar
+        shell: pwsh
+        run: apps/starbridge-desktop/scripts/Build-Sidecar.ps1
+
+      - name: Import the approved Authenticode identity
+        id: certificate
+        shell: pwsh
+        run: |
+          $pfxPath = Join-Path $env:RUNNER_TEMP "starbridge-signing.pfx"
+          [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:WINDOWS_SIGNING_CERTIFICATE_BASE64))
+          $certificatePassphrase = ConvertTo-SecureString $env:WINDOWS_SIGNING_CERTIFICATE_PASSPHRASE -AsPlainText -Force
+          $certificate = Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $certificatePassphrase -Exportable:$false
+          if (-not $certificate -or $certificate.Subject -notlike "*$env:WINDOWS_SIGNING_SUBJECT*") {
+            throw "Imported certificate does not match the approved publishing identity."
+          }
+          "STARBRIDGE_CERT_THUMBPRINT=$($certificate.Thumbprint)" >> $env:GITHUB_ENV
+          Remove-Item -LiteralPath $pfxPath -Force
+
+      - name: Authenticode-sign staged sidecar binaries
+        shell: pwsh
+        run: |
+          $signTool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" |
+            Sort-Object FullName -Descending | Select-Object -First 1
+          if (-not $signTool) { throw "SignTool was not found." }
+          $patterns = @("*.exe", "*.dll", "*.pyd")
+          $files = foreach ($pattern in $patterns) {
+            Get-ChildItem apps/starbridge-desktop/src-tauri/binaries -Recurse -File -Filter $pattern
+          }
+          foreach ($file in $files | Sort-Object FullName -Unique) {
+            $status = Get-AuthenticodeSignature -LiteralPath $file.FullName
+            if ($status.Status -eq "NotSigned") {
+              & $signTool.FullName sign /sha1 $env:STARBRIDGE_CERT_THUMBPRINT /fd SHA256 /tr $env:WINDOWS_TIMESTAMP_URL /td SHA256 $file.FullName
+              if ($LASTEXITCODE -ne 0) { throw "Failed to sign a staged PE file." }
+            }
+          }
+          $invalid = $files | Sort-Object FullName -Unique | Where-Object {
+            (Get-AuthenticodeSignature -LiteralPath $_.FullName).Status -ne "Valid"
+          }
+          if ($invalid.Count -gt 0) {
+            throw "Every staged executable, DLL, and Python extension must have a valid Authenticode signature."
+          }
+
+      - name: Build signed NSIS and mandatory updater signature
+        shell: pwsh
+        run: |
+          $tauriPassphraseVariable = "TAURI_SIGNING_PRIVATE_KEY_" + "PASSWORD"
+          [Environment]::SetEnvironmentVariable(
+            $tauriPassphraseVariable,
+            $env:TAURI_SIGNING_KEY_PASSPHRASE,
+            [EnvironmentVariableTarget]::Process
+          )
+          $releaseConfig = Join-Path $env:RUNNER_TEMP "starbridge-release-config.json"
+          @{
+            bundle = @{
+              createUpdaterArtifacts = $true
+              windows = @{
+                certificateThumbprint = $env:STARBRIDGE_CERT_THUMBPRINT
+                digestAlgorithm = "sha256"
+                timestampUrl = $env:WINDOWS_TIMESTAMP_URL
+              }
+            }
+            plugins = @{ updater = @{ windows = @{ installMode = "passive" } } }
+          } | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $releaseConfig -Encoding utf8NoBOM
+          Push-Location apps/starbridge-desktop
+          try {
+            npm run tauri -- build --bundles nsis --config $releaseConfig
+          }
+          finally { Pop-Location }
+
+      - name: Assemble and verify public release assets
+        shell: pwsh
+        run: |
+          $bundle = "apps/starbridge-desktop/src-tauri/target/release/bundle/nsis"
+          $installer = Get-ChildItem $bundle -File -Filter "*.exe" | Select-Object -First 1
+          if (-not $installer) { throw "NSIS installer was not produced." }
+          $signature = Get-Item "$($installer.FullName).sig" -ErrorAction Stop
+          $desktopExecutable = Get-Item "apps/starbridge-desktop/src-tauri/target/release/starbridge-desktop.exe" -ErrorAction Stop
+          if ((Get-AuthenticodeSignature -LiteralPath $desktopExecutable.FullName).Status -ne "Valid") {
+            throw "The main StarBridge executable is not Authenticode-valid."
+          }
+          $releaseDirectory = Join-Path $env:RUNNER_TEMP "starbridge-release"
+          New-Item -ItemType Directory -Path $releaseDirectory -Force | Out-Null
+          $assetName = "StarBridge-Desktop_$($env:STARBRIDGE_RELEASE_VERSION)_x64-setup.exe"
+          $publicInstaller = Join-Path $releaseDirectory $assetName
+          $publicSignature = "$publicInstaller.sig"
+          Copy-Item -LiteralPath $installer.FullName -Destination $publicInstaller
+          Copy-Item -LiteralPath $signature.FullName -Destination $publicSignature
+          $manifest = Join-Path $releaseDirectory "latest.json"
+          & ./apps/starbridge-desktop/scripts/New-StarBridgeUpdateManifest.ps1 `
+            -Version $env:STARBRIDGE_RELEASE_VERSION `
+            -Tag $env:STARBRIDGE_RELEASE_TAG `
+            -InstallerAssetName $assetName `
+            -SignaturePath $publicSignature `
+            -OutputPath $manifest `
+            -Notes "See the GitHub release notes for verified changes in this StarBridge version."
+          & ./apps/starbridge-desktop/scripts/Test-StarBridgeReleaseArtifacts.ps1 `
+            -InstallerPath $publicInstaller `
+            -SignaturePath $publicSignature `
+            -ManifestPath $manifest `
+            -ExpectedVersion $env:STARBRIDGE_RELEASE_VERSION `
+            -ExpectedTag $env:STARBRIDGE_RELEASE_TAG `
+            -ExpectedSignerSubject $env:WINDOWS_SIGNING_SUBJECT
+          "STARBRIDGE_RELEASE_DIRECTORY=$releaseDirectory" >> $env:GITHUB_ENV
+
+      - name: Upload verified release evidence
+        uses: actions/upload-artifact@v6
+        with:
+          name: StarBridge-Desktop-${{ env.STARBRIDGE_RELEASE_VERSION }}-verified
+          path: ${{ env.STARBRIDGE_RELEASE_DIRECTORY }}
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish the signed GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ env.STARBRIDGE_RELEASE_TAG }}
+          name: StarBridge Desktop v${{ env.STARBRIDGE_RELEASE_VERSION }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            ${{ env.STARBRIDGE_RELEASE_DIRECTORY }}/StarBridge-Desktop_${{ env.STARBRIDGE_RELEASE_VERSION }}_x64-setup.exe
+            ${{ env.STARBRIDGE_RELEASE_DIRECTORY }}/StarBridge-Desktop_${{ env.STARBRIDGE_RELEASE_VERSION }}_x64-setup.exe.sig
+            ${{ env.STARBRIDGE_RELEASE_DIRECTORY }}/latest.json

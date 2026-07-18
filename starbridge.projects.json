@@ -1,0 +1,79 @@
+{
+  "schema_version": "starbridge.subprojects.v1",
+  "question": "基础环境已安装。你这次需要启用哪个子项目？",
+  "selection_policy": "one-at-a-time",
+  "subprojects": [
+    {
+      "id": "vectorization",
+      "label": "图片矢量化 CLI",
+      "description": "四模式 SVG 转换、验证和报告，不要求 Adobe 软件。",
+      "python_extras": ["vectorization"],
+      "node_projects": [],
+      "smoke_test": ["-m", "starbridge_mcp.vectorization.cli", "--help"]
+    },
+    {
+      "id": "vector-app",
+      "label": "图片矢量化桌面版",
+      "description": "安装 PySide6 桌面界面和完整矢量化运行时。",
+      "python_extras": ["vector-app"],
+      "node_projects": [],
+      "smoke_test": ["-c", "import PySide6; import starbridge_mcp.vectorization.app"]
+    },
+    {
+      "id": "photoshop",
+      "label": "Photoshop 桥",
+      "description": "安装 Adobe Python 依赖和 Photoshop 本地 Node 代理。",
+      "python_extras": ["adobe"],
+      "node_projects": ["node_proxy/photoshop-bridge"],
+      "smoke_test": ["-m", "starbridge_mcp.server", "tools", "--json", "--safe-only"]
+    },
+    {
+      "id": "illustrator",
+      "label": "Illustrator 桥",
+      "description": "安装 Illustrator 矢量依赖和本地 Node 代理。",
+      "python_extras": ["adobe", "illustrator-vector"],
+      "node_projects": ["node_proxy/illustrator-bridge"],
+      "smoke_test": ["-m", "starbridge_mcp.server", "tools", "--json", "--safe-only"]
+    },
+    {
+      "id": "cad",
+      "label": "CAD / AutoCAD 桥",
+      "description": "安装 DXF 与 Windows COM 可选运行时。",
+      "python_extras": ["cad"],
+      "node_projects": [],
+      "smoke_test": ["scripts/test_autocad_mcp.py"]
+    },
+    {
+      "id": "comfyui",
+      "label": "ComfyUI 桥",
+      "description": "安装 loopback API 与 WebSocket 工作流依赖。",
+      "python_extras": ["comfy"],
+      "node_projects": [],
+      "smoke_test": ["examples/comfy_bridge/comfy_probe.py", "--soft-exit"]
+    },
+    {
+      "id": "blender",
+      "label": "Blender 桥",
+      "description": "启用 Blender 计划与 CLI 探针；不安装 Blender 本体。",
+      "python_extras": [],
+      "node_projects": [],
+      "smoke_test": ["examples/blender_bridge/scene_plan.py", "--json"]
+    },
+    {
+      "id": "capcut",
+      "label": "CapCut / 剪映桥",
+      "description": "启用草稿结构探针与脱敏摘要；不读取客户草稿内容。",
+      "python_extras": [],
+      "node_projects": [],
+      "smoke_test": ["examples/capcut_jianying_bridge/draft_structure.py", "--json"]
+    },
+    {
+      "id": "canvas",
+      "label": "StarBridge Canvas",
+      "description": "安装 Web Canvas 子项目的 Node 依赖。",
+      "python_extras": [],
+      "node_projects": ["examples/starbridge_canvas"],
+      "smoke_test": ["-m", "starbridge_mcp.server", "tools", "--json", "--safe-only"]
+    }
+  ]
+}

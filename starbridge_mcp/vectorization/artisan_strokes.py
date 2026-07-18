@@ -7,6 +7,9 @@ from typing import Any
 import cv2
 import numpy as np
 
+from .curve_geometry import interior_angle as _interior_angle
+from .curve_geometry import open_path as _open_path
+from .curve_geometry import unit as _unit
 from .presets import VectorPreset
 
 Pixel = tuple[int, int]
@@ -39,124 +42,8 @@ class StrokeBatch:
     smooth_anchors: int
     source_points: int
     length_px: float
-
-
-def _format_coordinate(value: float) -> str:
-    if math.isclose(value, round(value), abs_tol=0.0005):
-        return str(int(round(value)))
-    return f"{value:.3f}".rstrip("0").rstrip(".")
-
-
-def _point_text(point: Point) -> str:
-    return f"{_format_coordinate(point[0])} {_format_coordinate(point[1])}"
-
-
-def _interior_angle(previous: Point, current: Point, following: Point) -> float:
-    first = (previous[0] - current[0], previous[1] - current[1])
-    second = (following[0] - current[0], following[1] - current[1])
-    first_length = math.hypot(*first)
-    second_length = math.hypot(*second)
-    if first_length == 0 or second_length == 0:
-        return 0.0
-    cosine = (first[0] * second[0] + first[1] * second[1]) / (first_length * second_length)
-    return math.degrees(math.acos(max(-1.0, min(1.0, cosine))))
-
-
-def _unit(vector_x: float, vector_y: float) -> tuple[float, float]:
-    length = math.hypot(vector_x, vector_y)
-    if length == 0:
-        return 0.0, 0.0
-    return vector_x / length, vector_y / length
-
-
-def _open_path(
-    points: list[Point],
-    *,
-    corner_angle: float,
-    smoothing: float,
-) -> tuple[str, dict[str, Any]]:
-    tangents: list[tuple[float, float]] = []
-    smooth: list[bool] = []
-    for index, current in enumerate(points):
-        if index == 0:
-            tangent = _unit(points[1][0] - current[0], points[1][1] - current[1])
-            tangents.append(tangent)
-            smooth.append(True)
-        elif index == len(points) - 1:
-            tangent = _unit(current[0] - points[index - 1][0], current[1] - points[index - 1][1])
-            tangents.append(tangent)
-            smooth.append(True)
-        else:
-            tangent = _unit(
-                points[index + 1][0] - points[index - 1][0],
-                points[index + 1][1] - points[index - 1][1],
-            )
-            tangents.append(tangent)
-            smooth.append(
-                _interior_angle(points[index - 1], current, points[index + 1]) >= corner_angle
-            )
-
-    minimum_x = min(point[0] for point in points)
-    maximum_x = max(point[0] for point in points)
-    minimum_y = min(point[1] for point in points)
-    maximum_y = max(point[1] for point in points)
-    commands = [f"M {_point_text(points[0])}"]
-    sampled = [points[0]]
-    curves = 0
-    lines = 0
-    controls = 0
-    for index, current in enumerate(points[:-1]):
-        following = points[index + 1]
-        chord = math.dist(current, following)
-        if chord > 1.0 and (smooth[index] or smooth[index + 1]):
-            handle = chord * smoothing / 3.0
-            control_1 = (
-                max(minimum_x, min(maximum_x, current[0] + tangents[index][0] * handle)),
-                max(minimum_y, min(maximum_y, current[1] + tangents[index][1] * handle)),
-            )
-            control_2 = (
-                max(
-                    minimum_x,
-                    min(maximum_x, following[0] - tangents[index + 1][0] * handle),
-                ),
-                max(
-                    minimum_y,
-                    min(maximum_y, following[1] - tangents[index + 1][1] * handle),
-                ),
-            )
-            commands.append(
-                f"C {_point_text(control_1)} {_point_text(control_2)} {_point_text(following)}"
-            )
-            curves += 1
-            controls += 2
-            for sample_index in range(1, 9):
-                t = sample_index / 8.0
-                inverse = 1.0 - t
-                sampled.append(
-                    (
-                        inverse**3 * current[0]
-                        + 3 * inverse**2 * t * control_1[0]
-                        + 3 * inverse * t**2 * control_2[0]
-                        + t**3 * following[0],
-                        inverse**3 * current[1]
-                        + 3 * inverse**2 * t * control_1[1]
-                        + 3 * inverse * t**2 * control_2[1]
-                        + t**3 * following[1],
-                    )
-                )
-        else:
-            commands.append(f"L {_point_text(following)}")
-            lines += 1
-            sampled.append(following)
-    return " ".join(commands), {
-        "anchors": len(points),
-        "control_points": controls,
-        "curve_segments": curves,
-        "line_segments": lines,
-        "corner_anchors": sum(not value for value in smooth),
-        "smooth_anchors": sum(smooth),
-        "sampled_points": sampled,
-    }
+    intent: str = "unclassified"
+    preview_paths: tuple[Any, ...] = ()
 
 
 def _zhang_suen_thinning(mask: Any) -> tuple[Any, int]:
@@ -333,6 +220,86 @@ def _path_extent(path: list[Point]) -> float:
     return sum(math.dist(path[index - 1], path[index]) for index in range(1, len(path)))
 
 
+def _classify_path_intent(points: list[Point], *, closed: bool = False) -> str:
+    """Classify editable strokes by geometry without claiming content recognition."""
+
+    extent = _path_extent(points)
+    if closed and len(points) >= 4:
+        return "ornament"
+    if extent <= 4.0:
+        return "micro-detail"
+    turn_energy = sum(
+        abs(180.0 - _interior_angle(points[index - 1], points[index], points[index + 1]))
+        for index in range(1, len(points) - 1)
+    )
+    turn_density = turn_energy / max(1.0, extent)
+    if extent >= 48.0 and turn_density <= 10.0:
+        return "flow-contour"
+    if extent >= 16.0 or turn_density >= 10.0:
+        return "ornament"
+    return "detail"
+
+
+def _intent_profile(
+    intent: str,
+    base_epsilon: float,
+    preset: VectorPreset,
+) -> tuple[float, float]:
+    epsilon_scale, smoothing_limit = {
+        "flow-contour": (1.4, 0.72),
+        "ornament": (1.08, 0.64),
+        "detail": (1.06, 0.56),
+        "micro-detail": (1.0, 0.44),
+    }.get(intent, (1.0, 0.72))
+    return (
+        max(0.65, min(2.25, base_epsilon * epsilon_scale)),
+        min(smoothing_limit, preset.curve_smoothing),
+    )
+
+
+def _draw_entry(rendered: Any, entry: dict[str, Any]) -> None:
+    render_points = np.rint(np.asarray(entry["sampled_points"], dtype=np.float32)).astype(np.int32)
+    cv2.polylines(
+        rendered,
+        [render_points.reshape((-1, 1, 2))],
+        False,
+        1,
+        max(1, round(float(entry["stroke_width"]))),
+        cv2.LINE_8,
+    )
+
+
+def _micro_path_novelty(entry: dict[str, Any], rendered: Any, binary: Any) -> float:
+    points = np.asarray(entry["sampled_points"], dtype=np.float32)
+    radius = max(2, math.ceil(float(entry["stroke_width"]) / 2.0) + 1)
+    height, width = binary.shape
+    minimum_x = max(0, math.floor(float(points[:, 0].min())) - radius)
+    maximum_x = min(width, math.ceil(float(points[:, 0].max())) + radius + 1)
+    minimum_y = max(0, math.floor(float(points[:, 1].min())) - radius)
+    maximum_y = min(height, math.ceil(float(points[:, 1].max())) + radius + 1)
+    if minimum_x >= maximum_x or minimum_y >= maximum_y:
+        return 0.0
+    local = np.zeros((maximum_y - minimum_y, maximum_x - minimum_x), dtype=np.uint8)
+    shifted = np.rint(points - np.asarray([minimum_x, minimum_y], dtype=np.float32)).astype(
+        np.int32
+    )
+    cv2.polylines(
+        local,
+        [shifted.reshape((-1, 1, 2))],
+        False,
+        1,
+        max(1, round(float(entry["stroke_width"]))),
+        cv2.LINE_8,
+    )
+    source_ink = local.astype(bool) & binary[minimum_y:maximum_y, minimum_x:maximum_x].astype(bool)
+    source_pixels = int(np.count_nonzero(source_ink))
+    if not source_pixels:
+        return 0.0
+    covered = rendered[minimum_y:maximum_y, minimum_x:maximum_x].astype(bool)
+    novel_pixels = int(np.count_nonzero(source_ink & ~covered))
+    return novel_pixels / source_pixels
+
+
 def _endpoint_direction(path: list[Point], endpoint: int) -> tuple[float, float]:
     origin = path[0] if endpoint == 0 else path[-1]
     candidates = path[1:] if endpoint == 0 else reversed(path[:-1])
@@ -502,17 +469,33 @@ def _trace_paths(
     distance: Any,
     preset: VectorPreset,
     batch_limit: int,
+    *,
+    semantic_profiles: bool = False,
 ) -> tuple[tuple[StrokeBatch, ...], dict[str, Any]]:
     height, width = binary.shape
     rendered = np.zeros_like(binary)
-    simplify_epsilon = max(0.8, min(1.5, preset.simplify_ratio * 90.0))
-    grouped: dict[float, list[dict[str, Any]]] = {}
+    base_epsilon = max(0.8, min(1.5, preset.simplify_ratio * 90.0))
+    entries: list[dict[str, Any]] = []
     raw_anchor_count = 0
-    anchor_count = 0
     for raw_path in paths:
         coordinates = np.asarray(
             [(x + 0.5, y + 0.5) for y, x in raw_path], dtype=np.float32
         ).reshape((-1, 1, 2))
+        preview_approximation = cv2.approxPolyDP(coordinates, base_epsilon, False).reshape((-1, 2))
+        preview_points = [(float(x), float(y)) for x, y in preview_approximation]
+        if len(preview_points) < 2:
+            continue
+        closed = raw_path[0] == raw_path[-1]
+        intent = (
+            _classify_path_intent(preview_points, closed=closed)
+            if semantic_profiles
+            else "unclassified"
+        )
+        simplify_epsilon, smoothing = (
+            _intent_profile(intent, base_epsilon, preset)
+            if semantic_profiles
+            else (base_epsilon, min(0.72, preset.curve_smoothing))
+        )
         approximation = cv2.approxPolyDP(coordinates, simplify_epsilon, False).reshape((-1, 2))
         points = [(float(x), float(y)) for x, y in approximation]
         if len(points) < 2:
@@ -520,22 +503,12 @@ def _trace_paths(
         path_data, path_metrics = _open_path(
             points,
             corner_angle=preset.corner_angle,
-            smoothing=min(0.72, preset.curve_smoothing),
+            smoothing=smoothing,
         )
         sampled_points = path_metrics.pop("sampled_points")
         stroke_width = _distance_width(raw_path, distance, height, width)
-        render_points = np.rint(np.asarray(sampled_points, dtype=np.float32)).astype(np.int32)
-        cv2.polylines(
-            rendered,
-            [render_points.reshape((-1, 1, 2))],
-            False,
-            1,
-            max(1, round(stroke_width)),
-            cv2.LINE_8,
-        )
         raw_anchor_count += len(raw_path)
-        anchor_count += int(path_metrics["anchors"])
-        grouped.setdefault(stroke_width, []).append(
+        entries.append(
             {
                 "path_data": path_data,
                 "metrics": path_metrics,
@@ -543,8 +516,34 @@ def _trace_paths(
                 "raw_anchors": len(raw_path),
                 "source_points": len(raw_path),
                 "length_px": _path_extent(points),
+                "stroke_width": stroke_width,
+                "intent": intent,
+                "simplify_epsilon": simplify_epsilon,
             }
         )
+
+    selected_entries: list[dict[str, Any]] = []
+    pruned_entries: list[dict[str, Any]] = []
+    if semantic_profiles:
+        for entry in entries:
+            if entry["intent"] != "micro-detail":
+                selected_entries.append(entry)
+                _draw_entry(rendered, entry)
+        for entry in (item for item in entries if item["intent"] == "micro-detail"):
+            if _micro_path_novelty(entry, rendered, binary) <= 0.0:
+                pruned_entries.append(entry)
+                continue
+            selected_entries.append(entry)
+            _draw_entry(rendered, entry)
+    else:
+        selected_entries = entries
+        for entry in selected_entries:
+            _draw_entry(rendered, entry)
+
+    grouped: dict[tuple[str, float], list[dict[str, Any]]] = {}
+    for entry in selected_entries:
+        group_intent = str(entry["intent"]) if semantic_profiles else "unclassified"
+        grouped.setdefault((group_intent, float(entry["stroke_width"])), []).append(entry)
 
     original = binary.astype(bool)
     predicted = rendered.astype(bool)
@@ -560,10 +559,10 @@ def _trace_paths(
     )
 
     batches: list[StrokeBatch] = []
-    for stroke_width in sorted(grouped):
-        entries = grouped[stroke_width]
-        for start in range(0, len(entries), batch_limit):
-            batch = entries[start : start + batch_limit]
+    for intent, stroke_width in sorted(grouped):
+        group_entries = grouped[(intent, stroke_width)]
+        for start in range(0, len(group_entries), batch_limit):
+            batch = group_entries[start : start + batch_limit]
             all_points = [point for entry in batch for point in entry["sampled_points"]]
             box = _bbox(all_points, width, height)
             representative = np.asarray(batch[0]["sampled_points"], dtype=np.float32).reshape(
@@ -584,21 +583,87 @@ def _trace_paths(
                     smooth_anchors=sum(int(entry["metrics"]["smooth_anchors"]) for entry in batch),
                     source_points=sum(int(entry["source_points"]) for entry in batch),
                     length_px=sum(float(entry["length_px"]) for entry in batch),
+                    intent=intent,
+                    preview_paths=tuple(
+                        np.rint(np.asarray(entry["sampled_points"], dtype=np.float32))
+                        .astype(np.int32)
+                        .reshape((-1, 1, 2))
+                        for entry in batch
+                    ),
                 )
             )
+    intent_counts = {
+        intent: sum(entry["intent"] == intent for entry in selected_entries)
+        for intent in ("flow-contour", "ornament", "detail", "micro-detail")
+    }
     return tuple(batches), {
         "subpaths": sum(len(batch.path_parts) for batch in batches),
         "batches": len(batches),
         "raw_anchors": raw_anchor_count,
-        "anchors": anchor_count,
+        "anchors": sum(batch.anchors for batch in batches),
         "control_points": sum(batch.control_points for batch in batches),
         "precision": precision,
         "recall": recall,
         "dice": dice,
-        "simplify_epsilon": simplify_epsilon,
+        "simplify_epsilon": base_epsilon,
         "min_stroke_width": min((batch.stroke_width for batch in batches), default=0.0),
         "max_stroke_width": max((batch.stroke_width for batch in batches), default=0.0),
+        "semantic_profiles": semantic_profiles,
+        "semantic_intent_counts": intent_counts,
+        "semantic_pruned_micro_paths": len(pruned_entries),
+        "semantic_pruned_micro_anchors": sum(
+            int(entry["metrics"]["anchors"]) for entry in pruned_entries
+        ),
+        "semantic_minimum_epsilon": round(
+            min((float(entry["simplify_epsilon"]) for entry in selected_entries), default=0.0), 4
+        ),
+        "semantic_maximum_epsilon": round(
+            max((float(entry["simplify_epsilon"]) for entry in selected_entries), default=0.0), 4
+        ),
     }
+
+
+def _semantic_rejection_reasons(
+    baseline: dict[str, Any],
+    candidate: dict[str, Any],
+    *,
+    continuation_used: bool,
+) -> list[str]:
+    reasons: list[str] = []
+    baseline_points = int(baseline["anchors"]) + int(baseline["control_points"])
+    candidate_points = int(candidate["anchors"]) + int(candidate["control_points"])
+    path_reduction = (
+        max(0.0, 1.0 - int(candidate["subpaths"]) / int(baseline["subpaths"]))
+        if baseline["subpaths"]
+        else 0.0
+    )
+    anchor_reduction = (
+        max(0.0, 1.0 - int(candidate["anchors"]) / int(baseline["anchors"]))
+        if baseline["anchors"]
+        else 0.0
+    )
+    point_reduction = max(0.0, 1.0 - candidate_points / baseline_points) if baseline_points else 0.0
+    intent_counts = candidate.get("semantic_intent_counts", {})
+    populated_intents = sum(int(value) > 0 for value in intent_counts.values())
+    if not continuation_used:
+        reasons.append("continuation_not_selected")
+    if populated_intents < 2:
+        reasons.append("insufficient_geometric_intent_diversity")
+    if path_reduction < 0.03:
+        reasons.append("semantic_path_reduction_below_3_percent")
+    if anchor_reduction < 0.03:
+        reasons.append("semantic_anchor_reduction_below_3_percent")
+    if point_reduction < 0.03:
+        reasons.append("semantic_point_reduction_below_3_percent")
+    if int(candidate["batches"]) > int(baseline["batches"]):
+        reasons.append("semantic_edit_batch_count_increased")
+    if float(candidate["precision"]) < float(baseline["precision"]) - 0.006:
+        reasons.append("semantic_precision_regression_over_0_006")
+    if float(candidate["recall"]) < float(baseline["recall"]) - 0.01:
+        reasons.append("semantic_recall_regression_over_0_01")
+    if float(candidate["dice"]) < float(baseline["dice"]) - 0.006:
+        reasons.append("semantic_dice_regression_over_0_006")
+    return reasons
 
 
 def trace_centerline_batches(
@@ -631,6 +696,14 @@ def trace_centerline_batches(
         distance,
         preset,
         batch_limit,
+    )
+    semantic_batches, semantic = _trace_paths(
+        continued_paths,
+        binary,
+        distance,
+        preset,
+        batch_limit,
+        semantic_profiles=True,
     )
     baseline_lengths = [_path_extent(path) for path in raw_paths]
     continued_lengths = [_path_extent(path) for path in continued_paths]
@@ -680,8 +753,34 @@ def trace_centerline_batches(
     if continued["dice"] < baseline["dice"] - 0.01:
         rejection_reasons.append("dice_regression_over_0_01")
     continuation_used = not rejection_reasons
-    batches = continued_batches if continuation_used else baseline_batches
-    selected = continued if continuation_used else baseline
+    continuation_selected = continued if continuation_used else baseline
+    continuation_selected_batches = continued_batches if continuation_used else baseline_batches
+    semantic_rejection_reasons = _semantic_rejection_reasons(
+        continued,
+        semantic,
+        continuation_used=continuation_used,
+    )
+    semantic_used = not semantic_rejection_reasons
+    batches = semantic_batches if semantic_used else continuation_selected_batches
+    selected = semantic if semantic_used else continuation_selected
+    semantic_baseline_points = int(continued["anchors"]) + int(continued["control_points"])
+    semantic_candidate_points = int(semantic["anchors"]) + int(semantic["control_points"])
+    semantic_path_reduction = (
+        max(0.0, 1.0 - semantic["subpaths"] / continued["subpaths"])
+        if continued["subpaths"]
+        else 0.0
+    )
+    semantic_anchor_reduction = (
+        max(0.0, 1.0 - semantic["anchors"] / continued["anchors"]) if continued["anchors"] else 0.0
+    )
+    semantic_point_reduction = (
+        max(0.0, 1.0 - semantic_candidate_points / semantic_baseline_points)
+        if semantic_baseline_points
+        else 0.0
+    )
+    semantic_batch_reduction = (
+        max(0.0, 1.0 - semantic["batches"] / continued["batches"]) if continued["batches"] else 0.0
+    )
     return batches, {
         **graph_metrics,
         **continuation_metrics,
@@ -726,4 +825,34 @@ def trace_centerline_batches(
         ),
         "continuation_recall_delta": round(float(continued["recall"] - baseline["recall"]), 6),
         "continuation_dice_delta": round(float(continued["dice"] - baseline["dice"]), 6),
+        "semantic_candidate_used": semantic_used,
+        "semantic_rejection_reasons": semantic_rejection_reasons,
+        "semantic_intent_counts": semantic["semantic_intent_counts"],
+        "semantic_pruned_micro_paths": semantic["semantic_pruned_micro_paths"],
+        "semantic_pruned_micro_anchors": semantic["semantic_pruned_micro_anchors"],
+        "semantic_baseline_subpaths": continued["subpaths"],
+        "semantic_candidate_subpaths": semantic["subpaths"],
+        "semantic_path_reduction_ratio": round(semantic_path_reduction, 4),
+        "semantic_baseline_anchors": continued["anchors"],
+        "semantic_candidate_anchors": semantic["anchors"],
+        "semantic_anchor_reduction_ratio": round(semantic_anchor_reduction, 4),
+        "semantic_baseline_points": semantic_baseline_points,
+        "semantic_candidate_points": semantic_candidate_points,
+        "semantic_point_reduction_ratio": round(semantic_point_reduction, 4),
+        "semantic_baseline_batches": continued["batches"],
+        "semantic_candidate_batches": semantic["batches"],
+        "semantic_batch_reduction_ratio": round(semantic_batch_reduction, 4),
+        "semantic_precision_delta": round(float(semantic["precision"] - continued["precision"]), 6),
+        "semantic_recall_delta": round(float(semantic["recall"] - continued["recall"]), 6),
+        "semantic_dice_delta": round(float(semantic["dice"] - continued["dice"]), 6),
+        "semantic_minimum_epsilon": semantic["semantic_minimum_epsilon"],
+        "semantic_maximum_epsilon": semantic["semantic_maximum_epsilon"],
+        "semantic_quality_thresholds": {
+            "minimum_path_reduction_ratio": 0.03,
+            "minimum_anchor_reduction_ratio": 0.03,
+            "minimum_point_reduction_ratio": 0.03,
+            "maximum_precision_regression": 0.006,
+            "maximum_recall_regression": 0.01,
+            "maximum_dice_regression": 0.006,
+        },
     }

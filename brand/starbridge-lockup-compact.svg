@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 108" role="img" aria-label="StarBridge">
+  <title>StarBridge</title>
+  <g transform="translate(28 0) scale(1)"><g id="starbridge-symbol">
+    <rect data-role="field" x="4" y="4" width="56" height="56" rx="14" fill="#153A73"/>
+    <path data-role="primary-track" d="M13 17C22 8 40 9 50 17C57 23 55 30 47 34C38 39 24 37 17 44C12 49 13 54 18 57" fill="none" stroke="#FFFFFF" stroke-width="5.5" stroke-linecap="round"/>
+    <path data-role="secondary-track" d="M17 24C26 16 39 16 46 22C50 25 49 29 43 32C35 36 24 35 19 41C15 45 16 49 21 52" fill="none" stroke="#0EA5C6" stroke-width="5.5" stroke-linecap="round"/>
+    <path data-role="star-node" d="M51 10L53.2 15.8L59 18L53.2 20.2L51 26L48.8 20.2L43 18L48.8 15.8Z" fill="#73D6ED" stroke="#153A73" stroke-width="1.5" stroke-linejoin="round"/>
+  </g></g>
+  <text x="60" y="88" text-anchor="middle" fill="#101828" font-family="Segoe UI Variable, Segoe UI, Arial, sans-serif" font-size="19" font-weight="720" letter-spacing="-0.4">StarBridge</text>
+  <text x="60" y="103" text-anchor="middle" fill="#667085" font-family="Microsoft YaHei UI, PingFang SC, sans-serif" font-size="8.5" font-weight="600">本地创意工作台</text>
+</svg>

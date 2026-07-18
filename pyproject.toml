@@ -23,7 +23,9 @@ classifiers = [
   "Topic :: Software Development :: Libraries :: Application Frameworks",
   "Topic :: Multimedia :: Graphics",
 ]
-dependencies = []
+dependencies = [
+  "tomli>=2; python_version < '3.11'",
+]
 
 [project.urls]
 Homepage = "https://github.com/jianbaorui07-dot/Codex-Integration-with-Creative-Industry-Software"
@@ -34,6 +36,8 @@ Documentation = "https://github.com/jianbaorui07-dot/Codex-Integration-with-Crea
 [project.optional-dependencies]
 dev = [
   "Pillow>=10,<13",
+  "numpy>=2,<3",
+  "opencv-python-headless>=4.10,<6",
   "pytest>=8",
   "ruff>=0.4.0",
   "mypy>=1.10",
@@ -70,6 +74,12 @@ vectorization = [
   "opencv-python-headless>=4.10,<6",
   "Pillow>=10,<13",
 ]
+vector-refinement = [
+  "numpy>=2,<3",
+  "opencv-python-headless>=4.10,<6",
+  "Pillow>=10,<13",
+  "vtracer>=0.6.11,<0.7",
+]
 vector-app = [
   "numpy>=2,<3",
   "opencv-python-headless>=4.10,<6",
@@ -82,6 +92,11 @@ starbridge = "starbridge_mcp.server:main"
 starbridge-mcp = "starbridge_mcp.mcp_server:main"
 starbridge-backend = "starbridge_mcp.backend:main"
 starbridge-vectorize = "starbridge_mcp.vectorization.cli:main"
+starbridge-artisan-brief = "starbridge_mcp.vectorization.artisan_brief:main"
+starbridge-artisan-refine = "starbridge_mcp.vectorization.artisan_refine:main"
+starbridge-artisan-paint = "starbridge_mcp.vectorization.artisan_paint:main"
+starbridge-artisan-direction = "starbridge_mcp.vectorization.artisan_direction:main"
+starbridge-artisan-illustrator = "starbridge_mcp.vectorization.artisan_illustrator:main"
 vectorflow-studio = "starbridge_mcp.vectorization.app:main"
 starbridge-image-to-psd = "starbridge_mcp.adapters.photoshop.semantic_layers.cli:main"
 

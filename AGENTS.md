@@ -2,6 +2,16 @@
 
 这个仓库只做一件事：公开协作 **Codex Skill + StarBridge MCP + Adobe UXP / 本地代理接入本地创意软件**。内容要精简、中文清楚、示例可运行；历史 demo、报告脚本、素材图片、临时输出和私有资产不要发到 GitHub。
 
+## Codex 首次接入
+
+当用户把本仓库链接交给 Codex 并要求安装或适配时，先在仓库根目录执行：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\bootstrap.ps1 -Profile auto
+```
+
+脚本会创建隔离 `.venv`、安装 Python/MCP 依赖、生成本机 `.codex/config.toml` 并运行 safe MCP 自检。检测到桌面软件线索时可改用 `-Profile standard`；需要全部可选依赖时使用 `-Profile all`。安装完成后让用户开启新的 Codex task 以重新加载 MCP 配置。版本适配走能力探针，不以正版校验、登录绕过或固定版本白名单阻断。
+
 ## 一图看懂
 
 ```mermaid
@@ -76,6 +86,14 @@ flowchart LR
 - 安全扫描是否保留失败信号，不为过 CI 放宽 forbidden pattern 或扩大公开目录。
 
 PR 结论必须说明：变更范围、已运行验证、未运行原因、是否存在私有资产泄漏风险。
+
+## 普通客户矢量化硬规则
+
+- 普通客户的默认顺序必须是：先做“像素级打印 / 精确重建”，再做“绘制型矢量”。
+- 第一阶段使用 `exact_pixel_vector.py` 重建原始 RGBA 像素并验证无嵌入位图的 SVG，作为可复核基线。
+- 第二阶段只能在第一阶段基线上使用匠心矢量或客户明确选择的智能 / 轻量矢量，生成更适合编辑的绘制型路径。
+- 客户交付流程不得使用 Illustrator Image Trace /“图像描摹”，也不得在精确重建超限或失败时自动回退到图像描摹；应停止并让客户选择缩小尺寸或调整交付目标。
+- 仓库保留的 Image Trace 研究、兼容和 schema 代码不得被普通客户工作流自动选择。
 
 ## 新 MCP tool 准入
 

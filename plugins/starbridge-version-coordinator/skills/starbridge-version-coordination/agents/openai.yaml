@@ -1,0 +1,4 @@
+interface:
+  display_name: "StarBridge 版本协同"
+  short_description: "按创意软件版本选择安全的 StarBridge 桥接配置"
+  default_prompt: "Use $starbridge-version-coordination to generate a safe StarBridge plan for my installed creative-software versions."

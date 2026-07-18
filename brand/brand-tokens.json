@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "brand": {
+    "name": "StarBridge",
+    "descriptorZh": "本地创意工作台",
+    "conceptZh": "星桥轨迹"
+  },
+  "fontFamily": {
+    "ui": "Segoe UI Variable, Segoe UI, Microsoft YaHei UI, PingFang SC, system-ui, sans-serif",
+    "brand": "Segoe UI Variable, Segoe UI, Arial, sans-serif"
+  },
+  "color": {
+    "background": "#F6F8FC",
+    "surface": "#FFFFFF",
+    "text": "#101828",
+    "textMuted": "#667085",
+    "primary": "#2563EB",
+    "primarySoft": "#EAF2FF",
+    "navy": "#153A73",
+    "cyan": "#0EA5C6",
+    "cyanLight": "#73D6ED",
+    "success": "#15805D",
+    "warning": "#B76A00",
+    "danger": "#C7352A",
+    "border": "#DDE3EC",
+    "darkBackground": "#0B1220",
+    "darkSurface": "#111B2D",
+    "darkText": "#EDF4FF",
+    "darkTextMuted": "#A8B4C5",
+    "white": "#FFFFFF"
+  },
+  "radius": {
+    "control": 8,
+    "button": 10,
+    "card": 14
+  },
+  "space": [4, 8, 12, 16, 24, 32],
+  "motion": {
+    "fastMs": 140,
+    "normalMs": 200,
+    "respectReducedMotion": true
+  }
+}

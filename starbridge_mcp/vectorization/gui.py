@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +16,8 @@ from PySide6.QtGui import (
 from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
+    QCheckBox,
+    QComboBox,
     QDoubleSpinBox,
     QFileDialog,
     QFormLayout,
@@ -27,6 +30,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QRadioButton,
     QScrollArea,
+    QSlider,
     QSpinBox,
     QVBoxLayout,
     QWidget,
@@ -95,7 +99,7 @@ QPushButton#primaryButton {
 }
 QPushButton#primaryButton:hover { background: #6a89ff; }
 QPushButton:disabled { background: #172036; color: #596680; border-color: #27324a; }
-QSpinBox, QDoubleSpinBox {
+QSpinBox, QDoubleSpinBox, QComboBox {
     min-height: 32px;
     background: #0e1628;
     border: 1px solid #2b3854;
@@ -342,6 +346,56 @@ class MainWindow(QMainWindow):
         self.exact_note.setObjectName("muted")
         self.exact_note.setWordWrap(True)
         layout.addWidget(self.exact_note)
+
+        advanced_title = QLabel("03  Artisan advanced optimization")
+        advanced_title.setObjectName("sectionTitle")
+        layout.addWidget(advanced_title)
+        advanced_form = QFormLayout()
+        advanced_form.setSpacing(9)
+        self.quality_preset_input = QComboBox()
+        self.quality_preset_input.addItem("High-fidelity art", "high-fidelity")
+        self.quality_preset_input.addItem("Balanced editing", "balanced")
+        self.quality_preset_input.addItem("Minimal anchors", "minimal")
+        self.quality_preset_input.currentIndexChanged.connect(self._quality_preset_changed)
+        self.target_difference_input = QDoubleSpinBox()
+        self.target_difference_input.setRange(5.0, 30.0)
+        self.target_difference_input.setDecimals(1)
+        self.target_difference_input.setSuffix(" %")
+        self.target_difference_input.setValue(15.0)
+        self.auto_minimize_input = QCheckBox("Enabled")
+        self.auto_minimize_input.setChecked(True)
+        self.auto_anchor_budget_input = QCheckBox("Auto")
+        self.auto_anchor_budget_input.setChecked(True)
+        self.anchor_budget_input = QSlider(Qt.Orientation.Horizontal)
+        self.anchor_budget_input.setRange(0, 1000)
+        self.anchor_budget_input.setValue(500)
+        self.anchor_budget_value = QLabel()
+        anchor_row = QWidget()
+        anchor_layout = QHBoxLayout(anchor_row)
+        anchor_layout.setContentsMargins(0, 0, 0, 0)
+        anchor_layout.addWidget(self.auto_anchor_budget_input)
+        anchor_layout.addWidget(self.anchor_budget_input, 1)
+        anchor_layout.addWidget(self.anchor_budget_value)
+        self.anchor_budget_input.valueChanged.connect(self._update_anchor_budget_label)
+        self.auto_anchor_budget_input.toggled.connect(self.anchor_budget_input.setDisabled)
+        self.detail_protection_input = QDoubleSpinBox()
+        self.detail_protection_input.setRange(0.0, 1.0)
+        self.detail_protection_input.setDecimals(2)
+        self.detail_protection_input.setSingleStep(0.05)
+        self.detail_protection_input.setValue(0.75)
+        self.resource_budget_input = QComboBox()
+        for label, value in (("Low", "low"), ("Auto", "auto"), ("High", "high")):
+            self.resource_budget_input.addItem(label, value)
+        self.resource_budget_input.setCurrentIndex(1)
+        advanced_form.addRow("Quality preset", self.quality_preset_input)
+        advanced_form.addRow("Structure target", self.target_difference_input)
+        advanced_form.addRow("Minimum anchors", self.auto_minimize_input)
+        advanced_form.addRow("Anchor budget", anchor_row)
+        advanced_form.addRow("Thin/detail protection", self.detail_protection_input)
+        advanced_form.addRow("Local resources", self.resource_budget_input)
+        layout.addLayout(advanced_form)
+        self._update_anchor_budget_label()
+        self.anchor_budget_input.setDisabled(True)
         layout.addStretch()
 
         choose_button = QPushButton("选择图片")
@@ -479,18 +533,64 @@ class MainWindow(QMainWindow):
         ):
             control.setEnabled(not is_exact)
         self.exact_note.setVisible(is_exact)
+        is_artisan = parameters.mode == "artisan"
+        for control in (
+            self.quality_preset_input,
+            self.target_difference_input,
+            self.auto_minimize_input,
+            self.auto_anchor_budget_input,
+            self.detail_protection_input,
+            self.resource_budget_input,
+        ):
+            control.setEnabled(is_artisan)
+        self.anchor_budget_input.setEnabled(
+            is_artisan and not self.auto_anchor_budget_input.isChecked()
+        )
+
+    @Slot()
+    def _quality_preset_changed(self) -> None:
+        targets = {"high-fidelity": 15.0, "balanced": 20.0, "minimal": 25.0}
+        key = str(self.quality_preset_input.currentData())
+        self.target_difference_input.setValue(targets[key])
+
+    def _anchor_budget_value(self) -> int:
+        minimum = math.log(1_000)
+        maximum = math.log(120_000)
+        ratio = self.anchor_budget_input.value() / self.anchor_budget_input.maximum()
+        return round(math.exp(minimum + (maximum - minimum) * ratio))
+
+    @Slot()
+    def _update_anchor_budget_label(self) -> None:
+        self.anchor_budget_value.setText(f"{self._anchor_budget_value():,}")
 
     def _current_parameters(self) -> AppParameters:
         mode = self.selected_mode
         if mode == "exact":
             return AppParameters(mode="exact")
-        return AppParameters(
+        parameters = AppParameters(
             mode=mode,
             colors=self.colors_input.value(),
             max_dimension=self.dimension_input.value(),
             simplify_ratio=self.simplify_input.value(),
             min_region_area=self.region_input.value(),
             alpha_threshold=self.alpha_input.value(),
+        )
+        if mode != "artisan":
+            return parameters
+        return AppParameters(
+            **{
+                **parameters.__dict__,
+                "quality_preset": str(self.quality_preset_input.currentData()),
+                "target_difference": self.target_difference_input.value(),
+                "anchor_budget": (
+                    "auto"
+                    if self.auto_anchor_budget_input.isChecked()
+                    else self._anchor_budget_value()
+                ),
+                "resource_budget": str(self.resource_budget_input.currentData()),
+                "detail_protection": self.detail_protection_input.value(),
+                "auto_minimize_anchors": self.auto_minimize_input.isChecked(),
+            }
         )
 
     @Slot()

@@ -59,6 +59,12 @@ class AppParameters:
     simplify_ratio: float | None = None
     min_region_area: int | None = None
     alpha_threshold: int | None = None
+    quality_preset: str = "high-fidelity"
+    target_difference: float | None = None
+    anchor_budget: str | int = "auto"
+    resource_budget: str = "auto"
+    detail_protection: float = 0.75
+    auto_minimize_anchors: bool = True
 
 
 def validated_input_path(value: str | Path) -> Path:
@@ -103,6 +109,12 @@ def build_run_config(input_path: str | Path, parameters: AppParameters) -> RunCo
         simplify_ratio=parameters.simplify_ratio if mode != "exact" else None,
         min_region_area=parameters.min_region_area if mode != "exact" else None,
         alpha_threshold=parameters.alpha_threshold if mode != "exact" else None,
+        quality_preset=parameters.quality_preset,
+        target_difference=parameters.target_difference,
+        anchor_budget=parameters.anchor_budget,
+        resource_budget=parameters.resource_budget,
+        detail_protection=parameters.detail_protection,
+        auto_minimize_anchors=parameters.auto_minimize_anchors,
     )
 
 

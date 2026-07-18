@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://starbridge.local/schemas/desktop_connections.v1.schema.json",
+  "title": "StarBridge Desktop Connections v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "checked_at",
+    "drawing_enabled",
+    "codex",
+    "applications",
+    "safety"
+  ],
+  "properties": {
+    "schema_version": { "const": "starbridge.desktop-connections.v1" },
+    "checked_at": { "type": "string", "format": "date-time" },
+    "drawing_enabled": { "type": "boolean" },
+    "codex": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "app_available",
+        "connector_configured",
+        "session_paired",
+        "pairing_code",
+        "message",
+        "next_steps"
+      ],
+      "properties": {
+        "state": {
+          "enum": ["not_found", "connector_required", "awaiting_pairing", "paired", "error"]
+        },
+        "app_available": { "type": "boolean" },
+        "connector_configured": { "type": "boolean" },
+        "session_paired": { "type": "boolean" },
+        "pairing_code": { "type": "string", "pattern": "^[A-Z2-9]{8}$" },
+        "message": { "type": "string" },
+        "next_steps": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "applications": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "mark",
+          "state",
+          "installed",
+          "running",
+          "bridge_available",
+          "managed",
+          "message"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "mark": { "type": "string" },
+          "state": {
+            "enum": ["not_installed", "installed", "running", "bridge_ready", "unavailable"]
+          },
+          "installed": { "type": "boolean" },
+          "running": { "type": "boolean" },
+          "bridge_available": { "type": "boolean" },
+          "managed": { "type": "boolean" },
+          "message": { "type": "string" },
+          "version": { "type": "string" }
+        }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["loopback_only", "credentials_read", "external_apps_force_restarted"],
+      "properties": {
+        "loopback_only": { "const": true },
+        "credentials_read": { "const": false },
+        "external_apps_force_restarted": { "const": false }
+      }
+    }
+  }
+}

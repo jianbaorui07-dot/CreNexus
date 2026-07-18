@@ -65,6 +65,8 @@ class ArtisanShape:
     parent_shape_id: str | None = None
     depth: int = 0
     role: str = "accent"
+    geometric_intent: str = "paint-region"
+    preview_paths: tuple[Any, ...] = ()
 
     @property
     def subpath_count(self) -> int:
@@ -272,6 +274,121 @@ def _area_error(
     return absolute_error, weight, absolute_error / weight, source_area, fitted_area
 
 
+def _ellipse_candidate(
+    contour: Any,
+    *,
+    width: int,
+    height: int,
+    baseline_anchors: int,
+    error_tolerance: float,
+) -> tuple[str, dict[str, Any]] | None:
+    if len(contour) < 8:
+        return None
+    perimeter = float(cv2.arcLength(contour, True))
+    corner_probe = cv2.approxPolyDP(contour, max(0.25, perimeter * 0.01), True)
+    probe_points = _deduplicated_points(corner_probe, width, height)
+    if len(probe_points) < 5 or any(
+        _interior_angle(
+            probe_points[index - 1],
+            point,
+            probe_points[(index + 1) % len(probe_points)],
+        )
+        < 138.0
+        for index, point in enumerate(probe_points)
+    ):
+        return None
+    try:
+        (center_x, center_y), (diameter_x, diameter_y), angle = cv2.fitEllipse(contour)
+    except cv2.error:
+        return None
+    radius_x = float(diameter_x) / 2.0
+    radius_y = float(diameter_y) / 2.0
+    if radius_x < 1.0 or radius_y < 1.0:
+        return None
+    rotation = math.radians(float(angle))
+    cosine = math.cos(rotation)
+    sine = math.sin(rotation)
+
+    def transform(local_x: float, local_y: float) -> tuple[float, float]:
+        return (
+            _clamp(float(center_x) + local_x * cosine - local_y * sine, 0.0, float(width)),
+            _clamp(float(center_y) + local_x * sine + local_y * cosine, 0.0, float(height)),
+        )
+
+    kappa = 0.5522847498307936
+    local_anchors = (
+        (radius_x, 0.0),
+        (0.0, radius_y),
+        (-radius_x, 0.0),
+        (0.0, -radius_y),
+    )
+    local_controls = (
+        ((radius_x, kappa * radius_y), (kappa * radius_x, radius_y)),
+        ((-kappa * radius_x, radius_y), (-radius_x, kappa * radius_y)),
+        ((-radius_x, -kappa * radius_y), (-kappa * radius_x, -radius_y)),
+        ((kappa * radius_x, -radius_y), (radius_x, -kappa * radius_y)),
+    )
+    anchors = [transform(*point) for point in local_anchors]
+    controls = [(transform(*first), transform(*second)) for first, second in local_controls]
+    commands = [f"M {_point_text(*anchors[0])}"]
+    sampled_points = [anchors[0]]
+    for index, start in enumerate(anchors):
+        following = anchors[(index + 1) % 4]
+        control_1, control_2 = controls[index]
+        commands.append(
+            f"C {_point_text(*control_1)} {_point_text(*control_2)} {_point_text(*following)}"
+        )
+        for sample_index in range(1, 13):
+            t = sample_index / 12.0
+            inverse = 1.0 - t
+            sampled_points.append(
+                (
+                    inverse**3 * start[0]
+                    + 3 * inverse**2 * t * control_1[0]
+                    + 3 * inverse * t**2 * control_2[0]
+                    + t**3 * following[0],
+                    inverse**3 * start[1]
+                    + 3 * inverse**2 * t * control_1[1]
+                    + 3 * inverse * t**2 * control_2[1]
+                    + t**3 * following[1],
+                )
+            )
+    error_total, error_samples, maximum_error = _contour_error(
+        contour, sampled_points, width=width, height=height
+    )
+    (
+        area_error_total,
+        area_error_weight,
+        area_error_ratio,
+        source_area,
+        fitted_area,
+    ) = _area_error(contour, sampled_points)
+    if maximum_error > error_tolerance or area_error_ratio > 0.2:
+        return None
+    commands.append("Z")
+    return " ".join(commands), {
+        "anchors": 4,
+        "corners": 0,
+        "smooth_anchors": 4,
+        "curve_segments": 4,
+        "line_segments": 0,
+        "control_points": 8,
+        "baseline_anchors": max(4, baseline_anchors),
+        "source_contour_points": len(contour),
+        "error_total": error_total,
+        "error_samples": error_samples,
+        "maximum_error": maximum_error,
+        "area_error_total": area_error_total,
+        "area_error_weight": area_error_weight,
+        "area_error_ratio": area_error_ratio,
+        "area_error_tolerance": 0.2,
+        "source_area": source_area,
+        "fitted_area": fitted_area,
+        "adapted": 0,
+        "quality_fallback": 0,
+    }
+
+
 def _fit_contour(
     contour: Any,
     *,
@@ -286,6 +403,15 @@ def _fit_contour(
         return None
     baseline_epsilon = max(0.25, perimeter * 0.004)
     baseline_contour = cv2.approxPolyDP(contour, baseline_epsilon, True)
+    ellipse = _ellipse_candidate(
+        contour,
+        width=width,
+        height=height,
+        baseline_anchors=len(baseline_contour),
+        error_tolerance=error_tolerance,
+    )
+    if ellipse is not None:
+        return ellipse
     artisan_epsilon = max(0.6, perimeter * preset.simplify_ratio)
     smoothing = preset.curve_smoothing
     path_data = ""
@@ -488,6 +614,17 @@ def _scene_metrics(
     area_error_total = sum(shape.area_error_total for shape in shapes)
     area_error_weight = sum(shape.area_error_weight for shape in shapes)
     role_counts = {role: sum(shape.role == role for shape in shapes) for role in ARTISAN_ROLE_ORDER}
+    intent_names = (
+        "flow-contour",
+        "ornament",
+        "detail",
+        "micro-detail",
+        "unclassified",
+        "paint-region",
+    )
+    intent_shape_counts = {
+        intent: sum(shape.geometric_intent == intent for shape in shapes) for intent in intent_names
+    }
     return {
         "path_objects": len(shapes),
         "subpaths": sum(shape.subpath_count for shape in shapes),
@@ -538,7 +675,9 @@ def _scene_metrics(
         "suppressed_foundation_holes": suppressed_foundation_holes,
         "suppressed_foundation_islands": suppressed_foundation_islands,
         "design_role_counts": role_counts,
+        "geometric_intent_shape_counts": intent_shape_counts,
         "stable_shape_references": True,
+        "stable_intent_selectors": True,
         "external_ai_calls": 0,
     }
 
@@ -673,7 +812,12 @@ def _centerline_scene_candidate(
         shape_id = f"shape-{next_id:04d}"
         used_ids.add(shape_id)
         next_id += 1
-        role = "subject" if batch is largest_batch else "detail"
+        role = {
+            "flow-contour": "subject",
+            "ornament": "detail",
+            "detail": "detail",
+            "micro-detail": "accent",
+        }.get(batch.intent, "subject" if batch is largest_batch else "detail")
         shapes.append(
             ArtisanShape(
                 shape_id=shape_id,
@@ -707,6 +851,8 @@ def _centerline_scene_candidate(
                 parent_shape_id=foundation.shape_id,
                 depth=1,
                 role=role,
+                geometric_intent=batch.intent,
+                preview_paths=batch.preview_paths,
             )
         )
 
@@ -715,9 +861,13 @@ def _centerline_scene_candidate(
         height=fill_scene.height,
         shapes=tuple(shapes),
         strategy=(
-            "curve-continuation-v2"
-            if centerline_metrics.get("continuation_candidate_used")
-            else "centerline-stroke-v1"
+            "geometric-intent-v3"
+            if centerline_metrics.get("semantic_candidate_used")
+            else (
+                "curve-continuation-v2"
+                if centerline_metrics.get("continuation_candidate_used")
+                else "centerline-stroke-v1"
+            )
         ),
     )
     metrics = _scene_metrics(

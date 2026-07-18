@@ -16,6 +16,7 @@
     "color_vectorize_plan": "powershell -ExecutionPolicy Bypass -File examples/illustrator_bridge/scripts/color_vectorize.ps1",
     "exact_pixel_raster_to_svg": "python examples/illustrator_bridge/scripts/exact_pixel_vector.py --input <explicit-image.png> --reference-id reference",
     "legacy_quantized_raster_to_svg": "python examples/illustrator_bridge/scripts/trace_photo_preview.py --input <explicit-image.png> --commit-preset flat_16",
+    "artisan_naming_probe": "python -m starbridge_mcp.vectorization.artisan_illustrator probe --soft-exit",
     "vector_line_extract": "python examples/illustrator_bridge/vector_rebuild/extract_vector_lines.py --input <source.ai|source.pdf|source.svg> --out <local-output-dir>",
     "closed_contour_reduce": "python examples/illustrator_bridge/vector_rebuild/reduce_closed_contours.py --lines-json <local-output-dir>/lines.json --out <local-output-dir> --mode fine"
   },
@@ -32,10 +33,12 @@
     "sanitized color vectorization evidence validation",
     "authorized reference and sandbox preview comparison",
     "bounded deterministic color vector repair planning with dry-run execute and compare templates",
-    "confirmed local Illustrator color trace to sandbox AI/SVG/PNG"
+    "confirmed local Illustrator color trace to sandbox AI/SVG/PNG",
+    "headless-verified artisan naming apply/readback/commit/rollback protocol"
   ],
   "unsupported_tasks": [
     "unconfirmed desktop Illustrator writes",
+    "claiming real artisan naming execution without an authorized desktop acceptance run",
     "cloud Image Trace upload",
     "automatic Image Trace fallback for ordinary image-to-vector delivery",
     "production photo, gradient, transparency, or text fidelity",

@@ -170,3 +170,14 @@ python -m starbridge_mcp.mcp_server --list-tools
 ```
 
 没有用户明确提供的公开图片时，只能验证 schema、计划、拒绝路径和脚本静态边界；不得声称已在 Illustrator 中完成视觉验收。
+
+### `illustrator.color_vectorize_backend_plan`
+
+在读取图片或启动软件前，根据调用方提供的脱敏素材特征选择 `native_illustrator` 或 `headless_svg`。它是纯内存 dry-run，不探测本机环境、不接收路径，也不执行 CLI。
+
+- `headless_svg` 只允许 `flat_artwork` / `illustration`，且不能要求渐变、透明度或可编辑文字保真；
+- 照片、混合素材及上述高保真要求必须选择原生 Illustrator；原生不可用时返回 `needs_user`，不得静默降级；
+- `auto` 仅在原生不可用、headless 依赖可用且素材满足安全适用范围时选择 fallback；
+- 输出只给出固定逻辑动作和后续工具名，不包含输入/输出路径或任意脚本。
+
+这个计划把已实现的原生 Image Trace 与 standalone headless fallback 放进同一可替换后端契约，但不改变两者的验证证据：原生路线继续使用 `color_vectorize_execute` + `color_vectorize_compare`；headless 路线必须继续通过 SVG verifier，并保留人工视觉复核。

@@ -12,11 +12,15 @@ const WRITE_METHODS = new Set([
   "illustrator.set_fill",
   "illustrator.move_object",
   "illustrator.create_path",
+  "illustrator.apply_artisan_map",
+  "illustrator.rollback_artisan_map",
 ]);
 const METHODS = new Set([
   "illustrator.get_state",
   "illustrator.document_info",
   "illustrator.zoom_to_selection",
+  "illustrator.readback_artisan_map",
+  "illustrator.commit_artisan_map",
   ...WRITE_METHODS,
 ]);
 
@@ -68,6 +72,16 @@ function finiteNumber(value, minimum, maximum) {
   return typeof value === "number" && Number.isFinite(value) && value >= minimum && value <= maximum;
 }
 
+function validNameRows(value, idPattern, maximum) {
+  if (!Array.isArray(value) || value.length > maximum) return false;
+  const ids = new Set();
+  for (const row of value) {
+    if (!Array.isArray(row) || row.length !== 2 || !idPattern.test(String(row[0])) || !safeToken(row[1], 64) || ids.has(row[0])) return false;
+    ids.add(row[0]);
+  }
+  return true;
+}
+
 function validate(message) {
   if (!message || message.jsonrpc !== "2.0" || !("id" in message) || !METHODS.has(message.method)) {
     return error(message?.id, -32600, "invalid_or_unlisted_method");
@@ -80,6 +94,19 @@ function validate(message) {
   }
   if (message.params.object_id !== undefined && !/^item:[1-9][0-9]*$/.test(String(message.params.object_id))) {
     return error(message.id, -32602, "object_id_must_be_session_local");
+  }
+  if (["illustrator.apply_artisan_map", "illustrator.readback_artisan_map", "illustrator.commit_artisan_map", "illustrator.rollback_artisan_map"].includes(message.method)) {
+    if (!/^apply:[0-9a-f]{12}$/.test(String(message.params.transaction_ref || "")) || !/^imap:[0-9a-f]{12}$/.test(String(message.params.map_ref || ""))) {
+      return error(message.id, -32602, "artisan_refs_invalid");
+    }
+  }
+  if (message.method === "illustrator.apply_artisan_map") {
+    if (!validNameRows(message.params.layers, /^layer-[a-z][a-z-]{0,31}$/, 4) || !validNameRows(message.params.objects, /^shape-[0-9]{4,}$/, 128)) {
+      return error(message.id, -32602, "artisan_name_map_invalid");
+    }
+    if (!Number.isInteger(message.params.expected_state_revision) || message.params.expected_state_revision !== stateRevision) {
+      return error(message.id, -32011, "stale_state_revision");
+    }
   }
   return null;
 }

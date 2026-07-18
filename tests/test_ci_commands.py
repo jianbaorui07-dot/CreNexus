@@ -22,6 +22,18 @@ REQUIRED_CI_COMMANDS = [
 
 
 class CiCommandsTest(unittest.TestCase):
+    def test_normal_ci_covers_desktop_frontend_and_tauri_shell(self) -> None:
+        workflow = (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        for command in (
+            "npm ci --prefix apps/starbridge-desktop",
+            "npm test --prefix apps/starbridge-desktop",
+            "npm run build --prefix apps/starbridge-desktop",
+            "cargo fmt --manifest-path apps/starbridge-desktop/src-tauri/Cargo.toml",
+            "cargo test --manifest-path apps/starbridge-desktop/src-tauri/Cargo.toml",
+        ):
+            with self.subTest(command=command):
+                self.assertIn(command, workflow)
+
     def test_readme_mentions_release_candidate_commands(self) -> None:
         readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
         release_doc = (REPO_ROOT / "docs" / "RELEASE_V0_1_ALPHA.md").read_text(encoding="utf-8")
@@ -40,6 +52,7 @@ class CiCommandsTest(unittest.TestCase):
         expected = {
             "test": "python -m unittest discover -s tests",
             "security:check": "python scripts/security_check.py",
+            "product:facts:check": "python scripts/check_product_facts.py",
             "bridge:status:json": "python scripts/collect_bridge_status.py --json",
             "bridge:status:safe": "python examples/bridge_status.py --json --redact-paths --soft-exit",
             "starbridge:tools:safe": "python -m starbridge_mcp.server tools --json --safe-only",
@@ -53,6 +66,7 @@ class CiCommandsTest(unittest.TestCase):
             "comfy:lifecycle:template": "python examples/comfy_bridge/workflow_lifecycle.py --template-id txt2img_basic_v1 --json",
             "cad:dxf:dry-run": "python examples/cad/generate_dxf_plan.py",
             "photoshop:layers": "python -m starbridge_mcp.adapters.photoshop.semantic_layers.cli",
+            "desktop:install": "npm ci --prefix apps/starbridge-desktop",
         }
         for name, command in expected.items():
             with self.subTest(script=name):

@@ -13,7 +13,9 @@
         "illustrator.get_state", "illustrator.document_info",
         "illustrator.select_object", "illustrator.set_fill",
         "illustrator.move_object", "illustrator.create_path",
-        "illustrator.zoom_to_selection"
+        "illustrator.zoom_to_selection",
+        "illustrator.apply_artisan_map", "illustrator.readback_artisan_map", "illustrator.commit_artisan_map",
+        "illustrator.rollback_artisan_map"
       ]
     },
     "params": {
@@ -32,8 +34,39 @@
           }
         },
         "closed": {"type": "boolean"}
+        ,
+        "transaction_ref": {"type": "string", "pattern": "^apply:[0-9a-f]{12}$"},
+        "map_ref": {"type": "string", "pattern": "^imap:[0-9a-f]{12}$"},
+        "expected_state_revision": {"type": "integer", "minimum": 1},
+        "layers": {"$ref": "#/$defs/layerNameRows"},
+        "objects": {"$ref": "#/$defs/objectNameRows"}
       },
       "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "safeName": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[^\"'/:\\\\]+$"},
+    "layerNameRows": {
+      "type": "array", "maxItems": 4,
+      "items": {
+        "type": "array", "minItems": 2, "maxItems": 2,
+        "prefixItems": [
+          {"type": "string", "pattern": "^layer-[a-z][a-z-]{0,31}$"},
+          {"$ref": "#/$defs/safeName"}
+        ],
+        "items": false
+      }
+    },
+    "objectNameRows": {
+      "type": "array", "maxItems": 128,
+      "items": {
+        "type": "array", "minItems": 2, "maxItems": 2,
+        "prefixItems": [
+          {"type": "string", "pattern": "^shape-[0-9]{4,}$"},
+          {"$ref": "#/$defs/safeName"}
+        ],
+        "items": false
+      }
     }
   }
 }

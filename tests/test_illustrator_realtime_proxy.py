@@ -237,6 +237,37 @@ class IllustratorRealtimeProxyTests(unittest.TestCase):
         )
         self.assertEqual(-32600, payload["error"]["code"])
 
+    def test_artisan_map_requires_current_state_revision(self):
+        push_state(8976, minimal_state(20))
+        _, health = request("http://127.0.0.1:8976/health")
+        params = {
+            "confirm_write": True,
+            "transaction_ref": "apply:0123456789ab",
+            "map_ref": "imap:abcdef012345",
+            "expected_state_revision": health["state_revision"] + 1,
+            "layers": [["layer-subject", "主体色块"]],
+            "objects": [["shape-0002", "朱红装饰"]],
+        }
+        message = {
+            "jsonrpc": "2.0",
+            "id": 21,
+            "method": "illustrator.apply_artisan_map",
+            "params": params,
+        }
+        _, payload = request(
+            "http://127.0.0.1:8976/rpc",
+            json.dumps(message).encode(),
+            {"Content-Type": "application/json"},
+        )
+        self.assertEqual(-32011, payload["error"]["code"])
+        message["params"]["expected_state_revision"] = health["state_revision"]
+        _, payload = request(
+            "http://127.0.0.1:8976/rpc",
+            json.dumps(message).encode(),
+            {"Content-Type": "application/json"},
+        )
+        self.assertEqual(-32001, payload["error"]["code"])
+
     def test_desktop_frame_rejected(self):
         with self.assertRaises(urllib.error.HTTPError) as caught:
             request(

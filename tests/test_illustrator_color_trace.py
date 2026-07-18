@@ -20,6 +20,13 @@ from unittest import mock
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_DIR = REPO_ROOT / "examples" / "illustrator_bridge" / "scripts"
+QUALITY_SCHEMA = (
+    REPO_ROOT
+    / "examples"
+    / "illustrator_bridge"
+    / "protocols"
+    / "headless_svg_quality.v1.schema.json"
+)
 
 
 def load_script_module(name: str, filename: str) -> ModuleType:
@@ -53,6 +60,19 @@ if os.environ.get("STARBRIDGE_REQUIRE_TRACE_RUNTIME") == "1" and not HAS_TRACE_R
 
 
 class SvgArtifactVerifierTests(unittest.TestCase):
+    def test_headless_quality_schema_is_closed_and_sanitized(self) -> None:
+        schema = json.loads(QUALITY_SCHEMA.read_text(encoding="utf-8"))
+        self.assertFalse(schema["additionalProperties"])
+        self.assertEqual(
+            {"in_memory_quantized_target", "explicit_reference_work_rgb"},
+            set(schema["properties"]["target_kind"]["enum"]),
+        )
+        safety = schema["properties"]["safety"]["properties"]
+        self.assertFalse(safety["source_path_reported"]["const"])
+        self.assertFalse(safety["image_bytes_returned"]["const"])
+        self.assertFalse(safety["rasterizes_embedded_image"]["const"])
+        self.assertTrue(safety["visual_review_required"]["const"])
+
     def write_svg(self, directory: Path, body: str) -> Path:
         path = directory / "artifact.svg"
         path.write_text(body, encoding="utf-8")
@@ -211,6 +231,43 @@ class ColorTraceClosedLoopTests(unittest.TestCase):
                 fill = path.get("fill", fill)
         return fill
 
+    def test_restricted_svg_raster_quality_passes_and_requires_review(self) -> None:
+        svg_path = self.root / "quality.svg"
+        svg_path.write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" '
+            'viewBox="0 0 16 16"><rect width="16" height="16" fill="#ffffff"/>'
+            '<path d="M 2 2 L 13 2 L 13 13 L 2 13 Z" fill="#e6232d" '
+            'fill-rule="evenodd" stroke="none"/></svg>',
+            encoding="utf-8",
+        )
+        target = trace.np.full((16, 16, 3), 255, dtype=trace.np.uint8)
+        target[2:14, 2:14] = (230, 35, 45)
+
+        passed = trace.measure_svg_raster_quality(
+            svg_path,
+            target,
+            target_kind="in_memory_quantized_target",
+        )
+        review = trace.measure_svg_raster_quality(
+            svg_path,
+            trace.np.full_like(target, 255),
+            target_kind="explicit_reference_work_rgb",
+        )
+
+        self.assertEqual("pass", passed["verdict"])
+        self.assertEqual(1.0, passed["similarity"])
+        self.assertEqual(1.0, passed["exact_pixel_match_ratio"])
+        self.assertEqual("review_required", review["verdict"])
+        self.assertEqual("explicit_reference_work_rgb", review["target_kind"])
+        self.assertLess(review["similarity"], review["similarity_min"])
+        self.assertNotIn(str(svg_path), json.dumps(passed))
+        with self.assertRaisesRegex(ValueError, "target_kind"):
+            trace.measure_svg_raster_quality(
+                svg_path,
+                target,
+                target_kind="untrusted_target",
+            )
+
     def test_real_color_trace_is_deterministic_topology_safe_and_manifested(self) -> None:
         source = self.make_ring_image()
 
@@ -267,6 +324,30 @@ class ColorTraceClosedLoopTests(unittest.TestCase):
         )
         self.assertEqual(preset_svg["sha256"], final_svg["sha256"])
         self.assertEqual(first["final"]["preset"], "flat_8")
+        quality = report["presets"][0]["svg_raster_quality"]
+        quality_schema = json.loads(QUALITY_SCHEMA.read_text(encoding="utf-8"))
+        self.assertEqual("starbridge.headless-svg-quality.v1", quality["schema_version"])
+        self.assertGreaterEqual(quality["similarity"], 0.95)
+        self.assertEqual(set(quality_schema["required"]), set(quality))
+        self.assertEqual(
+            set(quality_schema["properties"]["safety"]["required"]),
+            set(quality["safety"]),
+        )
+        self.assertEqual(quality, first["final"]["svg_raster_quality"])
+        reference_quality = report["presets"][0]["reference_svg_quality"]
+        self.assertEqual("explicit_reference_work_rgb", reference_quality["target_kind"])
+        self.assertGreaterEqual(reference_quality["similarity"], 0.0)
+        self.assertLessEqual(reference_quality["similarity"], 1.0)
+        self.assertEqual(reference_quality, first["final"]["reference_svg_quality"])
+        second_report = json.loads((self.output_root / "second" / "trace_report.json").read_text())
+        self.assertEqual(
+            quality,
+            second_report["presets"][0]["svg_raster_quality"],
+        )
+        self.assertEqual(
+            reference_quality,
+            second_report["presets"][0]["reference_svg_quality"],
+        )
 
     def test_zero_path_generation_fails_without_publishing_partial_artifacts(self) -> None:
         source = self.make_ring_image()

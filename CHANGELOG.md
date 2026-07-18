@@ -2,6 +2,20 @@
 
 ## Unreleased / Optimizations
 
+* Added Artisan final-render adaptive optimization with high-fidelity, balanced, and minimal-anchor quality presets.
+* Added original-resolution SVG rendering, structural difference, normalized MAE, edge Dice, local error hotspots, Pareto selection, reverse anchor deletion, and deterministic rollback to the prior Artisan result.
+* Added quality-gated four-anchor cubic ellipse fitting while preserving four-corner rectangles and compound-path holes.
+* Added local SHA-256 keyed candidate caching, bounded memory policies, compact quality/edit/patch references, and safe pre-publish resource-limit stops.
+* Preserved Exact, Smart, and Lightweight execution and output behavior; Illustrator remains outside candidate generation and validation.
+
+### 2026-07-16 — Artisan Vector iteration 5
+
+* Added deterministic geometric-intent profiles for flow contours, ornaments, details, and micro details, with profile-specific simplification and Bézier smoothing.
+* Added coverage-aware micro-stroke cleanup and a fourth independent quality gate; failed candidates retain iteration-4 continuation, iteration-3 centerlines, or iteration-2 outline fills.
+* Added a vector-sampled Artisan preview plus schema-v3 intent metadata and stable `intent:*` selectors without claiming content recognition.
+* Added a 6,133-byte `artisan_edit_index.json` and local selector inspector so agents can request one edit scope without loading the 23,839-byte previous structure context.
+* Validated the retained authorized local preview without committing assets: 30,813 to 24,875 centerline anchors (19.27% fewer), 10,309 to 8,064 subpaths (21.78% fewer), 116 to 110 edit batches (5.17% fewer), and 1,014,783 to 861,890 SVG bytes (15.07% fewer), while retaining 93.13% recall and 74.54% Dice.
+
 ### 2026-07-16 — Artisan Vector iteration 4
 
 * Added deterministic tangent- and width-aware continuation through skeleton junctions so visually continuous lines become longer editable paths instead of many isolated segments.

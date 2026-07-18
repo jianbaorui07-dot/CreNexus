@@ -1,8 +1,27 @@
 # Roadmap
 
-本路线图记录 StarBridge 公开仓库的下一步方向。当前项目定位是 **Codex Computer Use + StarBridge MCP + Safety Verification Layer**：Computer Use 负责 GUI 观察和复现，MCP tools 负责结构化生产操作，Safety layer 负责脱敏、权限边界和发布前验证。
+本路线图记录 StarBridge 公开仓库的下一步方向。当前产品版本是 `0.1.0-alpha.0`。产品事实以 [PRODUCT_FACTS](docs/PRODUCT_FACTS.md) 为准，目标架构以 [工作流架构 v2](docs/ARCHITECTURE_V2.md) 为准。
 
-## v0.1.0
+## 工作流产品化 P0–P10
+
+旧版 [P0 产品化审计](docs/PRODUCTIZATION_AUDIT.md) 已更新为历史审计说明，不再把早期“桌面端不存在”的结论作为当前事实。实施顺序如下：
+
+| 阶段 | 范围 | 完成证据 |
+| --- | --- | --- |
+| P0（本分支完成） | 修复 bootstrap、CI、安全扫描，统一版本和产品事实 | 所有规定命令在干净工作树可运行，main required checks 为绿 |
+| P1（本分支完成） | Project、CreativeJob、应用数据持久化 | 原子写入、事件历史、路径脱敏、旧 VectorJob 兼容测试 |
+| P2（本分支完成） | Workflow Engine、状态机和 Adapter 接口 | 六状态转换、确认绑定、取消、重试、回滚和 soft-exit 测试 |
+| P3（实验实现完成） | `vector-delivery-v1` | 精确重建先行、绘制模式、质量报告、Evidence；Illustrator AI 副本仍属 P6–P7 |
+| P4（本分支完成） | 项目页、工作流页、任务详情页和交付页 | 普通用户入口、技术详情折叠、统一任务中心 |
+| P5（模拟闭环完成） | `comfyui-generation-v1` | dry-run、确认、队列结果、真实字节/哈希和 Evidence 进入通用任务系统；真实本机验收待完成 |
+| P6–P7 | 有限 Photoshop、Illustrator 工作流 | 当前授权会话实测、失败回滚、脱敏证据 |
+| P8 | 统一交付打包 | 只打包真实存在产物，不泄露绝对路径 |
+| P9 | Pro 批量 | 明确选择输入、并发、重试、恢复和安全检查点 |
+| P10 | Blender、CAD、视频完整工作流 | 各软件真实授权验收后逐项开放 |
+
+在安装包完成真实构建与首次启动验证前，不把“下载 Windows 版”描述为已经可用。
+
+## 历史能力里程碑 A
 
 - Adobe sandbox demo bridge
 - Safe MCP tool registration
@@ -10,7 +29,7 @@
 - Smoke test documentation
 - Release notes draft
 
-## v0.2.0
+## 历史能力里程碑 B（能力 schema，不是产品版本）
 
 - EvidenceManifest: 统一记录 plan、job、output files、screenshots、validation、warnings、safety decision。
 - JobStatus: 统一使用 `queued / running / completed / failed / cancelled / needs_user` 状态词汇。
@@ -25,6 +44,10 @@
 | Computer Use integration guidance | 补清楚 GUI Computer Use 与 StarBridge MCP 的分工、安全等级和各软件双通道流程 | README 链接到 `docs/07-codex-computer-use.md` 和 `docs/computer-use-vs-mcp.md` |
 | post-GUI verification commands | 每次 GUI 观察或复现后，给出可重复的 CLI / MCP 验证命令 | 文档示例统一引用 `npm.cmd test`、`npm.cmd run preflight`、`bridge_status.py --redact-paths` |
 | visual evidence + redacted report | GUI 截图和复现说明只作为脱敏证据，不提交客户素材或私有输出 | 报告不包含真实路径、账号、token、模型路径、素材路径或授权信息 |
+| Artisan Iteration 7 paint structure | 对已有 SVG 做受拓扑保护的块面合并和客户可选的近色归并 | 基础色、重叠块、源子路径、锚点和未选描边保持不变；补丁脱敏且无收益不发布 |
+| 完成：Artisan Iteration 8 manual art direction | 增加显式手动颜色组、对象命名转移和 Illustrator 设计层名称映射协议 | 不猜测客户配色；指令与 SVG/index/profile 绑定，桌面写入前仍需显式确认 |
+| 完成：Artisan Iteration 9 confirmed Illustrator apply protocol | 消费经过验证的映射，按 revision 与 approval 执行应用、回读、提交或回滚 | headless UXP/代理协议通过；写入显式确认、哈希复核，无桌面环境时 soft-exit |
+| Artisan Iteration 10 authorized desktop acceptance | 在用户明确授权的 Illustrator 会话中实测命名事务与 AI 副本交付 | 不覆盖源文档；回读名称和副本文件，提交脱敏证据，不提交 AI/素材 |
 | StarBridge MCP tool hardening | 保持 `status`、`probe`、tool registry 和 DXF plan 工具稳定 | `npm.cmd test` 和 `npm.cmd run preflight` 通过 |
 | Safety verification layer | 强化路径脱敏、只读检查、dry-run、发布前体检和 forbidden content 扫描 | preflight 输出可审查，失败信息给出明确修复方向 |
 
@@ -70,8 +93,13 @@
 发布前至少运行：
 
 ```powershell
+powershell -ExecutionPolicy Bypass -File .\bootstrap.ps1 -Profile auto
 npm.cmd test
 npm.cmd run preflight
+npm.cmd run desktop:test
+npm.cmd run desktop:build
+npm.cmd run desktop:sidecar:test
+python scripts\security_check.py
 python examples\bridge_status.py --json --redact-paths --soft-exit
 ```
 

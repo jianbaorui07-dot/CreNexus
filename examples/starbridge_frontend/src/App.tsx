@@ -246,32 +246,56 @@ function ArtField({ activeColor }: { activeColor: string }) {
     }
     scene.add(ribbon);
 
+    let frame = 0;
+    let disposed = false;
+    const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const shouldAnimate = () => !disposed && !document.hidden && !motionPreference.matches;
+
     const resize = () => {
       const width = Math.max(container.clientWidth, 1);
       const height = Math.max(container.clientHeight, 1);
       renderer.setSize(width, height);
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
+      if (!shouldAnimate()) renderer.render(scene, camera);
     };
 
-    let frame = 0;
     const animate = () => {
-      frame = requestAnimationFrame(animate);
+      frame = 0;
+      if (!shouldAnimate()) return;
       const time = performance.now() * 0.00016;
       points.rotation.y = time;
       points.rotation.x = Math.sin(time * 1.9) * 0.06;
       ribbon.rotation.y = -time * 1.25;
       renderer.render(scene, camera);
+      frame = requestAnimationFrame(animate);
+    };
+
+    const syncAnimation = () => {
+      if (shouldAnimate()) {
+        if (!frame) frame = requestAnimationFrame(animate);
+        return;
+      }
+      if (frame) cancelAnimationFrame(frame);
+      frame = 0;
+      renderer.render(scene, camera);
     };
 
     resize();
-    animate();
+    syncAnimation();
     window.addEventListener('resize', resize);
+    document.addEventListener('visibilitychange', syncAnimation);
+    motionPreference.addEventListener('change', syncAnimation);
 
     return () => {
-      cancelAnimationFrame(frame);
+      disposed = true;
+      if (frame) cancelAnimationFrame(frame);
       window.removeEventListener('resize', resize);
-      container.removeChild(renderer.domElement);
+      document.removeEventListener('visibilitychange', syncAnimation);
+      motionPreference.removeEventListener('change', syncAnimation);
+      if (renderer.domElement.parentNode === container) {
+        container.removeChild(renderer.domElement);
+      }
       geometry.dispose();
       material.dispose();
       ribbon.children.forEach((child) => {
@@ -280,6 +304,7 @@ function ArtField({ activeColor }: { activeColor: string }) {
         line.material.dispose();
       });
       renderer.dispose();
+      renderer.forceContextLoss();
     };
   }, [activeColor]);
 

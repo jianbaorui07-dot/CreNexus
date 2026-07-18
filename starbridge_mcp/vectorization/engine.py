@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import tempfile
 import time
 import warnings
@@ -14,6 +15,7 @@ from typing import Any
 
 from PIL import Image, ImageOps, UnidentifiedImageError
 
+from .artisan_edit import build_edit_index, designer_names
 from .presets import VectorPreset, configured_preset
 from .svg_verify import SvgArtifactError, verify_svg_artifact
 
@@ -48,6 +50,7 @@ class RunConfig:
     mode: str = "smart"
     reference_id: str = "vector-job"
     output_dir: str = ""
+    output_root: str = ""
     colors: int | None = None
     max_dimension: int | None = None
     simplify_ratio: float | None = None
@@ -56,6 +59,13 @@ class RunConfig:
     max_subpaths: int | None = None
     max_points: int | None = None
     max_svg_size_mb: float | None = None
+    quality_preset: str = "high-fidelity"
+    target_difference: float | None = None
+    anchor_budget: str | int = "auto"
+    resource_budget: str = "auto"
+    detail_protection: float = 0.75
+    auto_minimize_anchors: bool = True
+    compact: bool = False
 
 
 @dataclass(frozen=True)
@@ -94,13 +104,20 @@ def repo_relative(path: Path) -> str:
         return "<REDACTED_PATH>"
 
 
-def resolve_output_dir(requested: str, reference_id: str, mode: str) -> Path:
+def resolve_output_dir(
+    requested: str, reference_id: str, mode: str, *, output_root: str = ""
+) -> Path:
     if not REFERENCE_ID.fullmatch(reference_id):
         raise VectorizationError(
             "invalid_reference_id",
             "Reference id must use lowercase letters, digits, underscores, or hyphens.",
         )
-    root = OUTPUT_ROOT.resolve()
+    configured_root = Path(output_root) if output_root else OUTPUT_ROOT
+    if output_root and not configured_root.is_absolute():
+        raise VectorizationError(
+            "invalid_output_root", "Configured output root must be an absolute path."
+        )
+    root = configured_root.resolve()
     if requested:
         candidate = Path(requested)
         if not candidate.is_absolute():
@@ -572,7 +589,12 @@ def _write_design_svg(
         stream.write("</svg>\n")
 
 
-def _write_artisan_svg(path: Path, scene: Any, paints: dict[int, Paint]) -> None:
+def _write_artisan_svg(
+    path: Path,
+    scene: Any,
+    paints: dict[int, Paint],
+    shape_names: dict[str, str],
+) -> None:
     with path.open("w", encoding="utf-8", newline="\n") as stream:
         stream.write(
             f'<svg xmlns="http://www.w3.org/2000/svg" width="{scene.width}" '
@@ -586,6 +608,7 @@ def _write_artisan_svg(path: Path, scene: Any, paints: dict[int, Paint]) -> None
                 metadata = (
                     f'<path id="{shape.shape_id}" data-role="{shape.role}" '
                     f'data-depth="{shape.depth}" data-parent="{parent}" '
+                    f'data-name="{shape_names[shape.shape_id]}" '
                 )
                 if shape.kind == "stroke":
                     opacity = (
@@ -610,7 +633,11 @@ def _write_artisan_svg(path: Path, scene: Any, paints: dict[int, Paint]) -> None
         stream.write("</svg>\n")
 
 
-def _artisan_structure_manifest(scene: Any, paints: dict[int, Paint]) -> dict[str, Any]:
+def _artisan_structure_manifest(
+    scene: Any,
+    paints: dict[int, Paint],
+    shape_names: dict[str, str],
+) -> dict[str, Any]:
     from .artisan import ARTISAN_ROLE_LABELS_ZH
 
     canvas_area = float(scene.width * scene.height)
@@ -621,6 +648,8 @@ def _artisan_structure_manifest(scene: Any, paints: dict[int, Paint]) -> dict[st
             "id": shape.shape_id,
             "kind": shape.kind,
             "role": shape.role,
+            "geometric_intent": shape.geometric_intent,
+            "designer_name": shape_names[shape.shape_id],
             "parent_id": shape.parent_shape_id,
             "depth": shape.depth,
             "bbox": list(shape.bbox),
@@ -661,11 +690,29 @@ def _artisan_structure_manifest(scene: Any, paints: dict[int, Paint]) -> dict[st
         }
         for index, (role, layer_shapes) in enumerate(scene.ordered_layers())
     ]
+    intent_groups = [
+        {
+            "selector": f"intent:{intent}",
+            "object_count": len(members),
+            "anchors": sum(int(item["anchors"]) for item in members),
+            "subpaths": sum(int(item["subpaths"]) for item in members),
+        }
+        for intent in (
+            "flow-contour",
+            "ornament",
+            "detail",
+            "micro-detail",
+            "unclassified",
+            "paint-region",
+        )
+        if (members := [item for item in shapes if item["geometric_intent"] == intent])
+    ]
     core = {
-        "schema_version": 2,
+        "schema_version": 3,
         "strategy": scene.strategy,
         "canvas": {"width": scene.width, "height": scene.height},
         "layers": layers,
+        "intent_groups": intent_groups,
         "shapes": shapes,
     }
     canonical = json.dumps(core, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
@@ -678,12 +725,15 @@ def _artisan_structure_manifest(scene: Any, paints: dict[int, Paint]) -> dict[st
         "structure_ref": f"artisan:{digest[:12]}",
         "interaction_contract": {
             "stable_shape_ids": True,
+            "stable_intent_selectors": True,
             "compact_reference": f"artisan:{digest[:12]}",
             "local_analysis_only": True,
             "external_ai_calls": 0,
-            "edit_reference_format": "<structure_ref> <shape-id|layer-id> <change>",
+            "edit_reference_format": (
+                "<structure_ref> <intent:selector|shape-id|layer-id> <change>"
+            ),
             "preferred_reference": (
-                "stroke-batch-id"
+                "intent-selector-or-shape-id"
                 if any(shape.kind == "stroke" for shape in scene.shapes)
                 else "shape-or-layer-id"
             ),
@@ -691,11 +741,58 @@ def _artisan_structure_manifest(scene: Any, paints: dict[int, Paint]) -> dict[st
     }
 
 
+def _artisan_edit_index(structure: dict[str, Any], svg_sha256: str) -> dict[str, Any]:
+    return build_edit_index(
+        structure_ref=str(structure["structure_ref"]),
+        strategy=str(structure["strategy"]),
+        svg_sha256=svg_sha256,
+        objects=[
+            [
+                item["id"],
+                item["geometric_intent"],
+                item["bbox"],
+                item["anchors"],
+                item["subpaths"],
+                item["designer_name"],
+            ]
+            for item in structure["shapes"]
+        ],
+    )
+
+
 def _design_preview(labels: Any, paints: dict[int, Paint]) -> Image.Image:
     rgba = np.zeros((*labels.shape, 4), dtype=np.uint8)
     for label in [int(value) for value in np.unique(labels) if value >= 0]:
         paint = paints[label]
         rgba[labels == label] = (paint.red, paint.green, paint.blue, paint.alpha)
+    return Image.fromarray(rgba, mode="RGBA")
+
+
+def _artisan_preview(scene: Any, paints: dict[int, Paint], fallback: Image.Image) -> Image.Image:
+    strokes = [shape for shape in scene.shapes if shape.kind == "stroke"]
+    foundations = [shape for shape in scene.shapes if shape.role == "foundation"]
+    if not strokes or len(foundations) != 1:
+        return fallback
+    foundation_paint = paints[foundations[0].label]
+    rgba = np.empty((scene.height, scene.width, 4), dtype=np.uint8)
+    rgba[:, :] = (
+        foundation_paint.red,
+        foundation_paint.green,
+        foundation_paint.blue,
+        foundation_paint.alpha,
+    )
+    for shape in strokes:
+        paint = paints[shape.label]
+        if not shape.preview_paths:
+            continue
+        cv2.polylines(
+            rgba,
+            list(shape.preview_paths),
+            False,
+            (paint.red, paint.green, paint.blue, paint.alpha),
+            max(1, round(float(shape.stroke_width))),
+            cv2.LINE_AA,
+        )
     return Image.fromarray(rgba, mode="RGBA")
 
 
@@ -804,9 +901,47 @@ def _markdown_report(report: dict[str, Any]) -> str:
                 lines.append(
                     "- Junction curve continuation: quality gate rejected; iteration-3 centerlines retained"
                 )
+            if vector.get("semantic_candidate_used"):
+                intent_counts = vector["semantic_intent_counts"]
+                lines.extend(
+                    [
+                        "- 几何意图分级：已通过质量门",
+                        f"- 主轮廓 / 装饰纹 / 细节 / 微细节："
+                        f"{intent_counts['flow-contour']} / {intent_counts['ornament']} / "
+                        f"{intent_counts['detail']} / {intent_counts['micro-detail']}",
+                        f"- 覆盖感知微短枝清理：{vector['semantic_pruned_micro_paths']}",
+                        f"- 本轮额外减少锚点：{vector['semantic_anchor_reduction_ratio']:.1%}",
+                        f"- 本轮额外减少总点数：{vector['semantic_point_reduction_ratio']:.1%}",
+                        f"- 本轮编辑批次减少：{vector['semantic_batch_reduction_ratio']:.1%}",
+                    ]
+                )
+            elif "semantic_candidate_used" in vector:
+                lines.append("- 几何意图分级：质量门拒绝，保留第 4 轮曲线续接结果")
         elif "centerline_candidate_used" in vector:
             lines.append(
                 "- Centerline stroke reconstruction: quality gate rejected; outline-fill fallback retained"
+            )
+        optimization = report.get("adaptive_optimization")
+        if optimization:
+            final_metrics = optimization["final_render_metrics"]
+            anchor_change = optimization["anchors"]
+            lines.extend(
+                [
+                    "",
+                    "## Adaptive minimum-anchor optimization",
+                    "",
+                    f"- Status: `{optimization['status']}`",
+                    f"- Quality preset: `{optimization['quality_preset']}`",
+                    f"- Candidates evaluated: {optimization['candidate_count']}",
+                    f"- Final structural difference: {final_metrics['difference_percent']:.2f}%",
+                    f"- Final normalized MAE: {final_metrics['normalized_mae']:.4f}",
+                    f"- Final edge Dice: {final_metrics['edge_dice']:.4f}",
+                    f"- Anchors: {anchor_change['before']} -> {anchor_change['after']}",
+                    f"- Cache hit rate: {optimization['cache']['hit_rate']:.1%}",
+                    f"- Stop reason: `{optimization['stop_reason']}`",
+                    f"- Quality ref: `{optimization['quality_ref']}`",
+                    f"- Patch ref: `{optimization['patch_ref']}`",
+                ]
             )
     if report["warnings"]:
         lines.extend(["", "## 说明", "", *[f"- {item}" for item in report["warnings"]]])
@@ -822,7 +957,12 @@ def _publish(staging: Path, output_dir: Path, filenames: tuple[str, ...]) -> Non
 def run_vectorization(config: RunConfig) -> dict[str, Any]:
     started = time.perf_counter()
     preset = _configured(config)
-    output_dir = resolve_output_dir(config.output_dir, config.reference_id, preset.mode)
+    output_dir = resolve_output_dir(
+        config.output_dir,
+        config.reference_id,
+        preset.mode,
+        output_root=config.output_root,
+    )
     source_image, source = load_source(config.input_path, preset.max_source_pixels)
     output_dir.parent.mkdir(parents=True, exist_ok=True)
 
@@ -833,6 +973,9 @@ def run_vectorization(config: RunConfig) -> dict[str, Any]:
         warnings_list: list[str] = []
         exact_validation: dict[str, Any] | None = None
         artisan_structure: dict[str, Any] | None = None
+        artisan_edit_index: dict[str, Any] | None = None
+        artisan_scene: Any | None = None
+        adaptive_report: dict[str, Any] | None = None
 
         if preset.mode == "exact":
             rectangles = _merge_exact_rectangles(source_image, preset)
@@ -871,11 +1014,72 @@ def run_vectorization(config: RunConfig) -> dict[str, Any]:
                     artisan_scene, vector_metrics = trace_artisan_scene(labels, preset)
                 except ArtisanComplexityError as exc:
                     raise VectorizationError("vector_too_complex", str(exc)) from exc
-                _write_artisan_svg(svg_path, artisan_scene, paints)
-                artisan_structure = _artisan_structure_manifest(artisan_scene, paints)
+                shape_names = designer_names(
+                    [(shape.shape_id, shape.geometric_intent) for shape in artisan_scene.shapes]
+                )
+                baseline_svg = staging / "artisan_baseline.svg"
+                _write_artisan_svg(baseline_svg, artisan_scene, paints, shape_names)
+                from .adaptive_optimize import (
+                    AdaptiveOptimizationError,
+                    AdaptiveOptions,
+                    optimize_artisan_scene,
+                )
+
+                try:
+                    optimized = optimize_artisan_scene(
+                        labels=labels,
+                        baseline_scene=artisan_scene,
+                        baseline_metrics=vector_metrics,
+                        baseline_svg=baseline_svg,
+                        reference=source_image,
+                        source_sha256=str(source["source_sha256"]),
+                        preset=preset,
+                        options=AdaptiveOptions(
+                            quality_preset=config.quality_preset,
+                            target_difference=config.target_difference,
+                            anchor_budget=config.anchor_budget,
+                            resource_budget=config.resource_budget,
+                            detail_protection=config.detail_protection,
+                            auto_minimize_anchors=config.auto_minimize_anchors,
+                        ),
+                        staging_dir=staging,
+                        cache_dir=OUTPUT_ROOT / ".adaptive-cache",
+                        write_scene=lambda candidate_path, candidate_scene: _write_artisan_svg(
+                            candidate_path, candidate_scene, paints, shape_names
+                        ),
+                    )
+                except AdaptiveOptimizationError as exc:
+                    raise VectorizationError(exc.code, str(exc)) from exc
+                artisan_scene = optimized.scene
+                vector_metrics = optimized.vector_metrics
+                adaptive_report = optimized.report
+                shutil.copyfile(optimized.svg_path, svg_path)
+                shutil.copyfile(optimized.render_path, staging / "svg_render.png")
+                (staging / "adaptive_optimization.json").write_text(
+                    json.dumps(adaptive_report, ensure_ascii=False, indent=2) + "\n",
+                    encoding="utf-8",
+                )
+                artisan_structure = _artisan_structure_manifest(
+                    artisan_scene,
+                    paints,
+                    shape_names,
+                )
+                artisan_edit_index = _artisan_edit_index(
+                    artisan_structure,
+                    file_sha256(svg_path),
+                )
                 (staging / "artisan_structure.json").write_text(
                     json.dumps(
                         artisan_structure,
+                        ensure_ascii=False,
+                        separators=(",", ":"),
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+                (staging / "artisan_edit_index.json").write_text(
+                    json.dumps(
+                        artisan_edit_index,
                         ensure_ascii=False,
                         separators=(",", ":"),
                     )
@@ -887,7 +1091,10 @@ def run_vectorization(config: RunConfig) -> dict[str, Any]:
                 _write_design_svg(svg_path, work_image.width, work_image.height, paths)
             vector_metrics["cleaned_small_regions"] = cleaned_regions
             vector_metrics.update(line_art_metrics)
-            _design_preview(labels, paints).save(preview_path, format="PNG")
+            processed_preview = _design_preview(labels, paints)
+            if artisan_scene is not None:
+                processed_preview = _artisan_preview(artisan_scene, paints, processed_preview)
+            processed_preview.save(preview_path, format="PNG")
             if preset.mode == "artisan":
                 warnings_list.append(
                     "匠心模式使用少量锚点、贝塞尔曲线和本地构图层级推断；当前角色是几何设计角色，不宣称识别人脸、文字等内容语义。"
@@ -928,8 +1135,19 @@ def run_vectorization(config: RunConfig) -> dict[str, Any]:
         final_svg = output_dir / "vector.svg"
         final_preview = output_dir / "preview.png"
         parameters_path = staging / "parameters.json"
+        public_parameters = preset.public_parameters()
+        if preset.mode == "artisan":
+            public_parameters = {
+                **public_parameters,
+                "quality_preset": config.quality_preset,
+                "target_difference": config.target_difference,
+                "anchor_budget": config.anchor_budget,
+                "resource_budget": config.resource_budget,
+                "detail_protection": config.detail_protection,
+                "auto_minimize_anchors": config.auto_minimize_anchors,
+            }
         parameters_path.write_text(
-            json.dumps(preset.public_parameters(), ensure_ascii=False, indent=2) + "\n",
+            json.dumps(public_parameters, ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
         )
         elapsed = round(time.perf_counter() - started, 4)
@@ -990,7 +1208,9 @@ def run_vectorization(config: RunConfig) -> dict[str, Any]:
                         "maximum_structure_depth",
                         "hole_count",
                         "design_role_counts",
+                        "geometric_intent_shape_counts",
                         "stable_shape_references",
+                        "stable_intent_selectors",
                         "external_ai_calls",
                         "line_art_adaptation",
                         "ink_pixel_ratio",
@@ -1036,6 +1256,29 @@ def run_vectorization(config: RunConfig) -> dict[str, Any]:
                         "continuation_precision_delta",
                         "continuation_recall_delta",
                         "continuation_dice_delta",
+                        "semantic_candidate_used",
+                        "semantic_rejection_reasons",
+                        "semantic_intent_counts",
+                        "semantic_pruned_micro_paths",
+                        "semantic_pruned_micro_anchors",
+                        "semantic_baseline_subpaths",
+                        "semantic_candidate_subpaths",
+                        "semantic_path_reduction_ratio",
+                        "semantic_baseline_anchors",
+                        "semantic_candidate_anchors",
+                        "semantic_anchor_reduction_ratio",
+                        "semantic_baseline_points",
+                        "semantic_candidate_points",
+                        "semantic_point_reduction_ratio",
+                        "semantic_baseline_batches",
+                        "semantic_candidate_batches",
+                        "semantic_batch_reduction_ratio",
+                        "semantic_precision_delta",
+                        "semantic_recall_delta",
+                        "semantic_dice_delta",
+                        "semantic_minimum_epsilon",
+                        "semantic_maximum_epsilon",
+                        "semantic_quality_thresholds",
                     }
                 },
             },
@@ -1053,12 +1296,19 @@ def run_vectorization(config: RunConfig) -> dict[str, Any]:
                     "structure_sha256": artisan_structure["structure_sha256"],
                     "strategy": artisan_structure["strategy"],
                     "stable_shape_ids": True,
+                    "stable_intent_selectors": True,
+                    "intent_selectors": [
+                        item["selector"] for item in artisan_structure["intent_groups"]
+                    ],
+                    "edit_ref": artisan_edit_index["edit_ref"],
+                    "edit_index_sha256": artisan_edit_index["edit_index_sha256"],
                     "external_ai_calls": 0,
                 }
                 if artisan_structure is not None
                 else None
             ),
-            "parameters": preset.public_parameters(),
+            "adaptive_optimization": adaptive_report,
+            "parameters": public_parameters,
             "output_dir": repo_relative(output_dir),
             "artifacts": [
                 {
@@ -1077,6 +1327,21 @@ def run_vectorization(config: RunConfig) -> dict[str, Any]:
             "elapsed_seconds": elapsed,
             "warnings": warnings_list,
         }
+        if adaptive_report is None:
+            report.pop("adaptive_optimization")
+        else:
+            report["validation"].update(
+                {
+                    "final_render_quality_gate_passed": adaptive_report[
+                        "official_optimization_result"
+                    ],
+                    "formal_result": (
+                        "optimized"
+                        if adaptive_report["selected_candidate"] != "baseline"
+                        else "artisan_baseline"
+                    ),
+                }
+            )
         publish_filenames = [
             "vector.svg",
             "preview.png",
@@ -1086,6 +1351,41 @@ def run_vectorization(config: RunConfig) -> dict[str, Any]:
         ]
         if artisan_structure is not None:
             final_structure = output_dir / "artisan_structure.json"
+            final_edit_index = output_dir / "artisan_edit_index.json"
+            final_baseline = output_dir / "artisan_baseline.svg"
+            final_render = output_dir / "svg_render.png"
+            final_optimization = output_dir / "adaptive_optimization.json"
+            report["artifacts"].extend(
+                [
+                    {
+                        **_artifact(
+                            staging / "artisan_baseline.svg",
+                            "artisan_rollback_baseline",
+                            "image/svg+xml",
+                        ),
+                        "path": repo_relative(final_baseline),
+                    },
+                    {
+                        **_artifact(
+                            staging / "svg_render.png",
+                            "final_svg_render_proof",
+                            "image/png",
+                        ),
+                        "path": repo_relative(final_render),
+                    },
+                    {
+                        **_artifact(
+                            staging / "adaptive_optimization.json",
+                            "adaptive_optimization_report",
+                            "application/json",
+                        ),
+                        "path": repo_relative(final_optimization),
+                    },
+                ]
+            )
+            publish_filenames.extend(
+                ["artisan_baseline.svg", "svg_render.png", "adaptive_optimization.json"]
+            )
             report["artifacts"].append(
                 {
                     **_artifact(
@@ -1097,6 +1397,17 @@ def run_vectorization(config: RunConfig) -> dict[str, Any]:
                 }
             )
             publish_filenames.append("artisan_structure.json")
+            report["artifacts"].append(
+                {
+                    **_artifact(
+                        staging / "artisan_edit_index.json",
+                        "artisan_compact_edit_index",
+                        "application/json",
+                    ),
+                    "path": repo_relative(final_edit_index),
+                }
+            )
+            publish_filenames.append("artisan_edit_index.json")
         report_json = staging / "vector_report.json"
         report_markdown = staging / "vector_report.md"
         report_json.write_text(

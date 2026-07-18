@@ -37,6 +37,46 @@ class SecurityCheckTest(unittest.TestCase):
             )
         )
 
+    def test_github_secret_reference_is_allowed_but_literal_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workflow = root / ".github" / "workflows" / "release.yml"
+            workflow.parent.mkdir(parents=True)
+            sensitive_name = "PASS" + "WORD"
+            workflow.write_text(
+                f"TAURI_SIGNING_PRIVATE_KEY_{sensitive_name}: "
+                f"${{{{ secrets.TAURI_SIGNING_PRIVATE_KEY_{sensitive_name} }}}}\n",
+                encoding="utf-8",
+            )
+            self.assertEqual([], security_check.find_failures([workflow], root))
+
+            workflow.write_text(
+                f"TAURI_SIGNING_PRIVATE_KEY_{sensitive_name}: actual-secret-value\n",
+                encoding="utf-8",
+            )
+            failures = security_check.find_failures([workflow], root)
+
+        self.assertEqual(1, len(failures))
+        self.assertIn("sensitive assignment", failures[0])
+
+    def test_powershell_secure_string_must_come_directly_from_environment(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            script = root / "release.ps1"
+            sensitive_name = ("PASS" + "WORD").lower()
+            script.write_text(
+                f"${sensitive_name} = ConvertTo-SecureString "
+                f"$env:SIGNING_{sensitive_name.upper()} -AsPlainText -Force\n",
+                encoding="utf-8",
+            )
+            self.assertEqual([], security_check.find_failures([script], root))
+
+            script.write_text(f'${sensitive_name} = "actual-secret-value"\n', encoding="utf-8")
+            failures = security_check.find_failures([script], root)
+
+        self.assertEqual(1, len(failures))
+        self.assertIn("sensitive assignment", failures[0])
+
     def test_security_check_script_runs(self) -> None:
         completed = subprocess.run(
             [sys.executable, str(security_check.REPO_ROOT / "scripts" / "security_check.py")],

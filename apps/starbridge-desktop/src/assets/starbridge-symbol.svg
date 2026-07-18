@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc" data-source="starbridge-symbol">
+  <title id="title">StarBridge 星桥轨迹标志</title>
+  <desc id="desc">两条桥梁轨迹形成开放回旋，在右上方连接一个四角星节点。</desc>
+  <g id="starbridge-symbol">
+    <rect data-role="field" x="4" y="4" width="56" height="56" rx="14" fill="#153A73"/>
+    <path data-role="primary-track" d="M13 17C22 8 40 9 50 17C57 23 55 30 47 34C38 39 24 37 17 44C12 49 13 54 18 57" fill="none" stroke="#FFFFFF" stroke-width="5.5" stroke-linecap="round"/>
+    <path data-role="secondary-track" d="M17 24C26 16 39 16 46 22C50 25 49 29 43 32C35 36 24 35 19 41C15 45 16 49 21 52" fill="none" stroke="#0EA5C6" stroke-width="5.5" stroke-linecap="round"/>
+    <path data-role="star-node" d="M51 10L53.2 15.8L59 18L53.2 20.2L51 26L48.8 20.2L43 18L48.8 15.8Z" fill="#73D6ED" stroke="#153A73" stroke-width="1.5" stroke-linejoin="round"/>
+  </g>
+</svg>

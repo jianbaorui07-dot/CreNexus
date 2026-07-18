@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://starbridge.local/schemas/desktop_connections.v2.schema.json",
+  "title": "StarBridge Desktop Connections v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "checked_at",
+    "drawing_enabled",
+    "codex",
+    "applications",
+    "safety"
+  ],
+  "properties": {
+    "schema_version": { "const": "starbridge.desktop-connections.v2" },
+    "checked_at": { "type": "string", "format": "date-time" },
+    "drawing_enabled": { "type": "boolean" },
+    "codex": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "app_available",
+        "connector_configured",
+        "session_paired",
+        "pairing_code",
+        "message",
+        "next_steps"
+      ],
+      "properties": {
+        "state": {
+          "enum": ["not_found", "connector_required", "awaiting_pairing", "paired", "error"]
+        },
+        "app_available": { "type": "boolean" },
+        "connector_configured": { "type": "boolean" },
+        "session_paired": { "type": "boolean" },
+        "pairing_code": { "type": "string", "pattern": "^[A-Z2-9]{8}$" },
+        "message": { "type": "string" },
+        "next_steps": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "applications": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "mark",
+          "state",
+          "installed",
+          "running",
+          "bridge_available",
+          "managed",
+          "message",
+          "pairing_state",
+          "paired",
+          "adapter_kind",
+          "control_level",
+          "capabilities",
+          "next_steps"
+        ],
+        "properties": {
+          "id": {
+            "enum": [
+              "photoshop",
+              "illustrator",
+              "comfyui",
+              "autocad",
+              "blender",
+              "jianying_capcut"
+            ]
+          },
+          "name": { "type": "string" },
+          "mark": { "type": "string" },
+          "state": {
+            "enum": ["not_installed", "installed", "running", "bridge_ready", "unavailable"]
+          },
+          "installed": { "type": "boolean" },
+          "running": { "type": "boolean" },
+          "bridge_available": { "type": "boolean" },
+          "managed": { "const": false },
+          "message": { "type": "string" },
+          "pairing_state": {
+            "enum": [
+              "not_available",
+              "open_required",
+              "ready_to_pair",
+              "paired",
+              "paired_limited",
+              "reconnect_required",
+              "unavailable"
+            ]
+          },
+          "paired": { "type": "boolean" },
+          "adapter_kind": { "enum": ["com", "http", "process"] },
+          "control_level": { "enum": ["verified_bridge", "session_detection"] },
+          "capabilities": {
+            "type": "array",
+            "items": { "type": "string" },
+            "maxItems": 6
+          },
+          "next_steps": { "type": "array", "items": { "type": "string" } },
+          "last_connected_at": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["loopback_only", "credentials_read", "external_apps_force_restarted"],
+      "properties": {
+        "loopback_only": { "const": true },
+        "credentials_read": { "const": false },
+        "external_apps_force_restarted": { "const": false }
+      }
+    }
+  }
+}

@@ -129,6 +129,39 @@ class VectorizationModeTests(unittest.TestCase):
         self.assertEqual(raised.exception.code, "output_outside_sandbox")
         self.assertFalse(outside.exists())
 
+    def test_trusted_absolute_output_root_keeps_artifacts_inside_app_data(self) -> None:
+        source = self.make_exact_source()
+        app_output_root = (self.root / "local-app-data" / "vectorization").resolve()
+
+        result = run_vectorization(
+            RunConfig(
+                input_path=str(source),
+                mode="exact",
+                reference_id="desktop-safe-root",
+                output_root=str(app_output_root),
+            )
+        )
+
+        expected = app_output_root / "desktop-safe-root" / "exact"
+        self.assertTrue(result["ok"])
+        self.assertTrue((expected / "vector.svg").is_file())
+        self.assertFalse(self.output_root.exists())
+
+    def test_trusted_output_root_must_be_absolute(self) -> None:
+        source = self.make_exact_source()
+
+        with self.assertRaises(VectorizationError) as raised:
+            run_vectorization(
+                RunConfig(
+                    input_path=str(source),
+                    mode="exact",
+                    reference_id="relative-root",
+                    output_root="relative/output",
+                )
+            )
+
+        self.assertEqual("invalid_output_root", raised.exception.code)
+
     def test_cli_failure_is_structured_and_does_not_echo_private_input(self) -> None:
         private_path = self.root / "do-not-echo-this-name.png"
         stdout = io.StringIO()
@@ -288,6 +321,60 @@ class DesignVectorizationModeTests(VectorizationModeTests):
         self.assertEqual(sorted(len(path) for path in stitched), [3, 3])
         self.assertEqual(sum(_path_extent(path) for path in stitched), 20.0)
 
+    def test_artisan_geometric_intent_profiles_are_deterministic(self) -> None:
+        from starbridge_mcp.vectorization.artisan_strokes import _classify_path_intent
+
+        self.assertEqual(_classify_path_intent([(0.0, 0.0), (0.0, 2.0)]), "micro-detail")
+        self.assertEqual(
+            _classify_path_intent([(0.0, 0.0), (0.0, 30.0), (0.0, 60.0)]),
+            "flow-contour",
+        )
+        self.assertEqual(
+            _classify_path_intent(
+                [(0.0, 0.0), (0.0, 12.0), (12.0, 12.0), (12.0, 0.0), (0.0, 0.0)],
+                closed=True,
+            ),
+            "ornament",
+        )
+        self.assertEqual(_classify_path_intent([(0.0, 0.0), (3.0, 5.0)]), "detail")
+
+    def test_artisan_semantic_quality_gate_requires_savings_and_fidelity(self) -> None:
+        from starbridge_mcp.vectorization.artisan_strokes import _semantic_rejection_reasons
+
+        baseline = {
+            "subpaths": 100,
+            "anchors": 300,
+            "control_points": 500,
+            "batches": 10,
+            "precision": 0.80,
+            "recall": 0.94,
+            "dice": 0.86,
+        }
+        candidate = {
+            "subpaths": 90,
+            "anchors": 260,
+            "control_points": 440,
+            "batches": 9,
+            "precision": 0.798,
+            "recall": 0.932,
+            "dice": 0.857,
+            "semantic_intent_counts": {
+                "flow-contour": 20,
+                "ornament": 40,
+                "detail": 30,
+                "micro-detail": 0,
+            },
+        }
+
+        self.assertEqual(
+            _semantic_rejection_reasons(baseline, candidate, continuation_used=True), []
+        )
+        candidate["recall"] = 0.92
+        self.assertIn(
+            "semantic_recall_regression_over_0_01",
+            _semantic_rejection_reasons(baseline, candidate, continuation_used=True),
+        )
+
     def test_artisan_line_art_builds_quality_gated_centerlines_and_stable_reference(
         self,
     ) -> None:
@@ -302,6 +389,7 @@ class DesignVectorizationModeTests(VectorizationModeTests):
 
         output = self.output_root / "line-art-one" / "artisan"
         structure = json.loads((output / "artisan_structure.json").read_text(encoding="utf-8"))
+        edit_index = json.loads((output / "artisan_edit_index.json").read_text(encoding="utf-8"))
         svg = (output / "vector.svg").read_text(encoding="utf-8")
         vector = first["vector"]
         self.assertTrue(vector["line_art_adaptation"])
@@ -351,19 +439,66 @@ class DesignVectorizationModeTests(VectorizationModeTests):
         )
         self.assertRegex(first["artisan_structure"]["structure_ref"], r"^artisan:[0-9a-f]{12}$")
         self.assertTrue(structure["interaction_contract"]["stable_shape_ids"])
+        self.assertTrue(structure["interaction_contract"]["stable_intent_selectors"])
         self.assertEqual(structure["interaction_contract"]["external_ai_calls"], 0)
         self.assertEqual(
-            structure["interaction_contract"]["preferred_reference"], "stroke-batch-id"
+            structure["interaction_contract"]["preferred_reference"],
+            "intent-selector-or-shape-id",
         )
+        self.assertEqual(structure["schema_version"], 3)
+        self.assertEqual(edit_index["schema_version"], 2)
+        self.assertEqual(edit_index["svg_sha256"], first["artifacts"][0]["sha256"])
+        self.assertIsNone(edit_index["parent_edit_ref"])
+        self.assertRegex(edit_index["edit_ref"], r"^edit:[0-9a-f]{12}$")
+        self.assertEqual(first["artisan_structure"]["edit_ref"], edit_index["edit_ref"])
+        self.assertEqual(
+            first["artisan_structure"]["edit_ref"],
+            second["artisan_structure"]["edit_ref"],
+        )
+        self.assertTrue(first["artisan_structure"]["intent_selectors"])
+        self.assertEqual(len(edit_index["objects"]), vector["shape_count"])
+        self.assertTrue(all(len(item) == 6 and item[5] for item in edit_index["objects"]))
         self.assertEqual(len(structure["shapes"]), vector["shape_count"])
         self.assertEqual(
             sum(item["shape_count"] for item in structure["layers"]),
             vector["shape_count"],
         )
         self.assertIn('<g id="layer-foundation" data-role="foundation">', svg)
+        self.assertIn('data-name="', svg)
         self.assertIn('fill="none" stroke="#', svg)
         self.assertIn('stroke-linecap="round" stroke-linejoin="round"', svg)
         self.assertNotIn(source.name, json.dumps(structure, ensure_ascii=False))
+        self.assertNotIn(source.name, json.dumps(edit_index, ensure_ascii=False))
+
+        from starbridge_mcp.vectorization import artisan_edit
+
+        selector = first["artisan_structure"]["intent_selectors"][0]
+        scope = artisan_edit.inspect_edit_index(str(output / "artisan_edit_index.json"), selector)
+        self.assertTrue(scope["ok"])
+        self.assertEqual(scope["edit_ref"], edit_index["edit_ref"])
+        self.assertGreater(scope["object_count"], 0)
+        self.assertNotIn(str(output), json.dumps(scope, ensure_ascii=False))
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            exit_code = artisan_edit.main(
+                [
+                    "--index",
+                    str(output / "artisan_edit_index.json"),
+                    "--selector",
+                    selector,
+                    "--object-limit",
+                    "4",
+                ]
+            )
+        self.assertEqual(exit_code, 0)
+        self.assertLess(len(stdout.getvalue()), 1200)
+        self.assertNotIn(str(output), stdout.getvalue())
+        tampered = self.root / "tampered-edit-index.json"
+        edit_index["objects"][0][3] += 1
+        tampered.write_text(json.dumps(edit_index), encoding="utf-8")
+        with self.assertRaises(artisan_edit.EditIndexError) as raised:
+            artisan_edit.inspect_edit_index(str(tampered), selector)
+        self.assertEqual(raised.exception.code, "edit_index_integrity_failed")
 
     def test_artisan_centerline_quality_gate_retains_outline_fallback(self) -> None:
         source = self.make_line_art_source()
@@ -472,6 +607,17 @@ class DesignVectorizationModeTests(VectorizationModeTests):
             )
             with self.assertRaises(SvgArtifactError):
                 verify_svg_artifact(unsafe)
+
+        unsafe_name = self.root / "unsafe-designer-name.svg"
+        unsafe_name.write_text(
+            path.read_text(encoding="utf-8").replace(
+                'data-parent="none"', 'data-parent="none" data-name="细节:script"'
+            ),
+            encoding="utf-8",
+        )
+        with self.assertRaises(SvgArtifactError) as raised:
+            verify_svg_artifact(unsafe_name)
+        self.assertEqual(raised.exception.code, "invalid_designer_name")
 
     def test_svg_verifier_validates_structured_parent_references(self) -> None:
         path = self.root / "structured.svg"

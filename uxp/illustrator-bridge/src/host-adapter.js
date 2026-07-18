@@ -14,6 +14,8 @@ export class IllustratorHostAdapter {
     this.module = loadHostModule();
     this.app = this.module?.app || this.module?.application || globalThis.app || null;
     this.objectMap = new Map();
+    this.stableTargetMap = new Map();
+    this.nameTransactions = new Map();
     this.sequence = 0;
   }
 
@@ -59,10 +61,78 @@ export class IllustratorHostAdapter {
 
   resolveItem(objectId) { const item = this.objectMap.get(String(objectId)); if (!item) throw new Error("object_id_not_found_refresh_state"); return item; }
 
+  namedTargets(document) {
+    return [...list(document?.layers), ...this.pageItems(document)];
+  }
+
+  resolveStableTarget(document, stableId) {
+    const targets = this.namedTargets(document);
+    const cached = this.stableTargetMap.get(stableId);
+    if (cached && targets.includes(cached)) {
+      if (cached?.locked || cached?.hidden) throw new Error("stable_name_target_locked_or_hidden");
+      return cached;
+    }
+    if (cached) this.stableTargetMap.delete(stableId);
+    const matches = targets.filter(target => text(target?.name) === stableId);
+    if (matches.length !== 1) throw new Error("stable_name_target_not_unique");
+    const target = matches[0];
+    if (target?.locked || target?.hidden) throw new Error("stable_name_target_locked_or_hidden");
+    this.stableTargetMap.set(stableId, target);
+    return target;
+  }
+
+  applyArtisanMap(document, params) {
+    if (this.nameTransactions.has(params.transaction_ref)) throw new Error("artisan_transaction_already_exists");
+    const rows = [...params.layers, ...params.objects];
+    const changes = rows.map(([stableId, desired]) => {
+      const target = this.resolveStableTarget(document, stableId);
+      return {stableId, target, previous: text(target.name), desired};
+    });
+    try {
+      for (const change of changes) change.target.name = change.desired;
+    } catch (_error) {
+      let rollbackFailed = false;
+      for (const change of changes) { try { change.target.name = change.previous; } catch (_rollbackError) { rollbackFailed = true; } }
+      throw new Error(rollbackFailed ? "artisan_apply_failed_rollback_incomplete" : "artisan_apply_failed_rollback_completed");
+    }
+    this.nameTransactions.set(params.transaction_ref, {map_ref: params.map_ref, document, changes});
+    return {ok: true, transaction_ref: params.transaction_ref, map_ref: params.map_ref, applied_layers: params.layers.length, applied_objects: params.objects.length, rollback_performed: false};
+  }
+
+  readbackArtisanMap(document, params) {
+    const transaction = this.nameTransactions.get(params.transaction_ref);
+    if (!transaction || transaction.map_ref !== params.map_ref) throw new Error("artisan_transaction_not_found");
+    if (transaction.document !== document) throw new Error("artisan_transaction_document_changed");
+    const matched = transaction.changes.filter(change => text(change.target?.name) === change.desired).length;
+    return {ok: matched === transaction.changes.length, transaction_ref: params.transaction_ref, map_ref: params.map_ref, matched, expected: transaction.changes.length};
+  }
+
+  rollbackArtisanMap(document, params) {
+    const transaction = this.nameTransactions.get(params.transaction_ref);
+    if (!transaction || transaction.map_ref !== params.map_ref) throw new Error("artisan_transaction_not_found");
+    if (transaction.document !== document) throw new Error("artisan_transaction_document_changed");
+    let restored = 0;
+    for (const change of transaction.changes) { change.target.name = change.previous; restored += 1; }
+    this.nameTransactions.delete(params.transaction_ref);
+    return {ok: true, transaction_ref: params.transaction_ref, map_ref: params.map_ref, restored};
+  }
+
+  commitArtisanMap(document, params) {
+    const transaction = this.nameTransactions.get(params.transaction_ref);
+    if (!transaction || transaction.map_ref !== params.map_ref) throw new Error("artisan_transaction_not_found");
+    if (transaction.document !== document) throw new Error("artisan_transaction_document_changed");
+    this.nameTransactions.delete(params.transaction_ref);
+    return {ok: true, transaction_ref: params.transaction_ref, map_ref: params.map_ref, committed: transaction.changes.length};
+  }
+
   async execute(method, params) {
     if (method === "illustrator.get_state" || method === "illustrator.document_info") return this.state();
     const document = this.activeDocument();
     if (!document) throw new Error("active_document_required");
+    if (method === "illustrator.apply_artisan_map") return this.applyArtisanMap(document, params);
+    if (method === "illustrator.readback_artisan_map") return this.readbackArtisanMap(document, params);
+    if (method === "illustrator.commit_artisan_map") return this.commitArtisanMap(document, params);
+    if (method === "illustrator.rollback_artisan_map") return this.rollbackArtisanMap(document, params);
     if (method === "illustrator.select_object") {
       const item = this.resolveItem(params.object_id);
       try { document.selection = null; } catch (_error) {}

@@ -1,6 +1,7 @@
 # 依赖目录
 node_modules/
 dist/
+build/
 
 # Python 缓存
 __pycache__/
@@ -12,8 +13,21 @@ __pycache__/
 .env.*
 !.env.example
 .codex/config.toml
+*.starbridge-license
+StarBridge-license-request-*.json
+starbridge-license-private*
 .venv/
+.venv-build/
 venv/
+
+# StarBridge Desktop 本地产物
+apps/starbridge-desktop/node_modules/
+apps/starbridge-desktop/dist/
+apps/starbridge-desktop/build/
+apps/starbridge-desktop/src-tauri/target/
+apps/starbridge-desktop/src-tauri/gen/
+apps/starbridge-desktop/src-tauri/binaries/*
+!apps/starbridge-desktop/src-tauri/binaries/README.md
 
 # 生成物、缓存和本地渲染输出
 output/
@@ -70,6 +84,8 @@ examples/output/illustrator/**
 
 # 不属于 GitHub 发布范围的本地 demo、报告脚本和研究素材
 src/
+!apps/starbridge-site/src/
+!apps/starbridge-site/src/**
 !uxp/**/src/
 !uxp/**/src/**
 !examples/starbridge_frontend/src/
@@ -81,6 +97,10 @@ src/
 !examples/starbridge_canvas/public/**
 !examples/starbridge_canvas/src/
 !examples/starbridge_canvas/src/**
+!apps/starbridge-desktop/src/
+!apps/starbridge-desktop/src/**
+!apps/starbridge-desktop/src-tauri/src/
+!apps/starbridge-desktop/src-tauri/src/**
 virtual-pet/
 overtime-analysis-deck/
 /index.html

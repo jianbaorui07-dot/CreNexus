@@ -18,6 +18,7 @@ from starbridge_mcp.bridges.blender_safe_scene import (
 from starbridge_mcp.bridges.capcut_draft_structure import draft_structure_summary
 from starbridge_mcp.bridges.illustrator_preflight import preflight_summary
 from starbridge_mcp.core.color_preprocess import build_color_preprocess_plan
+from starbridge_mcp.core.color_vector_backend import build_color_vector_backend_plan
 from starbridge_mcp.core.color_vector_compare import compare_color_vectorization_files
 from starbridge_mcp.core.color_vector_repair import (
     advance_color_vector_iteration,
@@ -28,6 +29,7 @@ from starbridge_mcp.core.color_vectorization import (
     validate_color_vectorization_metrics,
 )
 from starbridge_mcp.core.control_planner import build_control_plan
+from starbridge_mcp.core.desktop_connections import pair_desktop_session
 from starbridge_mcp.core.evidence import (
     DEFAULT_MANIFEST_FILENAME,
     ValidationResult,
@@ -240,6 +242,39 @@ TOOL_DEFINITIONS: list[JsonObject] = [
             },
             required=["bridge"],
         ),
+    ),
+    _standard_tool(
+        name="starbridge.desktop_pair",
+        title="Pair StarBridge Session",
+        description=(
+            "使用连接中心当前显示的一次性配对码关联正在运行的 StarBridge 桌面会话。"
+            "只写入可撤销的本地配对回执，不读取 Codex 凭据、用户文件或创意软件文档。"
+        ),
+        input_schema=_object_schema(
+            {
+                "pairing_code": {
+                    "type": "string",
+                    "pattern": "^[A-Z2-9]{8}$",
+                    "description": "StarBridge 连接中心当前显示的 8 位配对码。",
+                },
+                "confirm_pairing": {
+                    "type": "boolean",
+                    "description": "必须明确为 true，确认关联当前桌面会话。",
+                },
+                "confirm_write": {
+                    "type": "boolean",
+                    "default": False,
+                    "description": "必须明确为 true，确认写入可撤销的本地配对回执。",
+                },
+                "dry_run": {
+                    "type": "boolean",
+                    "default": True,
+                    "description": "默认只验证配对计划；实际关联必须明确设为 false。",
+                },
+            },
+            required=["pairing_code", "confirm_pairing", "confirm_write"],
+        ),
+        read_only=False,
     ),
     {
         "name": "starbridge.tools",
@@ -1114,6 +1149,36 @@ TOOL_DEFINITIONS: list[JsonObject] = [
         ),
     ),
     _standard_tool(
+        name="illustrator.color_vectorize_backend_plan",
+        title="Plan Color Vectorization Backend",
+        description=(
+            "根据脱敏素材特征保守选择 Illustrator 原生或 headless SVG fallback；"
+            "纯内存 dry-run，不读取图片、不探测环境、不执行软件或脚本。"
+        ),
+        input_schema=_object_schema(
+            {
+                "reference_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"},
+                "reference_authorized": {"type": "boolean"},
+                "backend_preference": {
+                    "type": "string",
+                    "enum": ["auto", "native_illustrator", "headless_svg"],
+                    "default": "auto",
+                },
+                "artwork_kind": {
+                    "type": "string",
+                    "enum": ["flat_artwork", "illustration", "photo", "mixed"],
+                    "default": "mixed",
+                },
+                "requires_gradient_fidelity": {"type": "boolean", "default": False},
+                "requires_transparency": {"type": "boolean", "default": False},
+                "requires_text_editability": {"type": "boolean", "default": False},
+                "illustrator_available": {"type": "boolean", "default": False},
+                "headless_dependencies_available": {"type": "boolean", "default": False},
+            },
+            required=["reference_id", "reference_authorized"],
+        ),
+    ),
+    _standard_tool(
         name="illustrator.color_vectorize_plan",
         title="Plan Color-Faithful Illustrator Vectorization",
         description=(
@@ -1806,7 +1871,9 @@ def _enrich_tool_annotations() -> None:
         )
         tool["annotations"] = annotations
         if not read_only:
-            if tool["name"] == "comfyui.agent_run":
+            if tool["name"] == "starbridge.desktop_pair":
+                properties.setdefault("dry_run", {"type": "boolean", "default": True})
+            elif tool["name"] == "comfyui.agent_run":
                 properties.setdefault("confirm_run", {"type": "boolean", "default": False})
             else:
                 properties.setdefault("dry_run", {"type": "boolean", "default": True})
@@ -1840,6 +1907,15 @@ def _handle_probe(arguments: JsonObject) -> JsonObject:
     if not arguments.get("bridge"):
         raise ValueError("bridge is required")
     return build_response(_namespace_for_status(arguments, probe_default=True))
+
+
+def _handle_desktop_pair(arguments: JsonObject) -> JsonObject:
+    return pair_desktop_session(
+        pairing_code=str(arguments.get("pairing_code") or ""),
+        confirm_pairing=bool(arguments.get("confirm_pairing", False))
+        and bool(arguments.get("confirm_write", False)),
+        dry_run=bool(arguments.get("dry_run", True)),
+    )
 
 
 def _handle_tools(arguments: JsonObject) -> JsonObject:
@@ -3499,6 +3575,7 @@ def _handle_photoshop_run(arguments: JsonObject) -> JsonObject:
 TOOL_HANDLERS: dict[str, ToolHandler] = {
     "starbridge.status": _handle_status,
     "starbridge.probe": _handle_probe,
+    "starbridge.desktop_pair": _handle_desktop_pair,
     "starbridge.tools": _handle_tools,
     "starbridge.control_plan": _handle_control_plan,
     "starbridge.safe_roots": _handle_safe_roots,
@@ -3579,6 +3656,7 @@ TOOL_HANDLERS: dict[str, ToolHandler] = {
         arguments.get("document_summary") or {}
     ),
     "illustrator.color_vectorize_plan": build_color_vectorization_plan,
+    "illustrator.color_vectorize_backend_plan": build_color_vector_backend_plan,
     "illustrator.color_vectorize_validate": lambda arguments: validate_color_vectorization_metrics(
         metrics=arguments.get("metrics") or {},
         hard_gates=arguments.get("hard_gates") or {},

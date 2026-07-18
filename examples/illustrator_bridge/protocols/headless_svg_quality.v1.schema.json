@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://starbridge.local/schemas/headless_svg_quality.v1.schema.json",
+  "title": "StarBridge Headless SVG Raster Quality",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "target_kind", "rasterizer", "pixel_count",
+    "exact_pixel_match_ratio", "mean_absolute_error", "similarity",
+    "similarity_min", "verdict", "safety"
+  ],
+  "properties": {
+    "schema_version": { "const": "starbridge.headless-svg-quality.v1" },
+    "target_kind": {
+      "enum": ["in_memory_quantized_target", "explicit_reference_work_rgb"]
+    },
+    "rasterizer": { "const": "restricted_svg_rect_path_v1" },
+    "pixel_count": { "type": "integer", "minimum": 1 },
+    "exact_pixel_match_ratio": { "type": "number", "minimum": 0, "maximum": 1 },
+    "mean_absolute_error": { "type": "number", "minimum": 0, "maximum": 255 },
+    "similarity": { "type": "number", "minimum": 0, "maximum": 1 },
+    "similarity_min": { "type": "number", "minimum": 0.5, "maximum": 1 },
+    "verdict": { "enum": ["pass", "review_required"] },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_path_reported", "image_bytes_returned", "reads_generated_svg",
+        "rasterizes_embedded_image", "visual_review_required"
+      ],
+      "properties": {
+        "source_path_reported": { "const": false },
+        "image_bytes_returned": { "const": false },
+        "reads_generated_svg": { "const": true },
+        "rasterizes_embedded_image": { "const": false },
+        "visual_review_required": { "const": true }
+      }
+    }
+  }
+}

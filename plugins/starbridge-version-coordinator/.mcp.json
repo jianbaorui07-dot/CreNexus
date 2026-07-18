@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "starbridge-version-coordinator": {
+      "command": "python",
+      "args": ["./scripts/version_coordinator_mcp.py"],
+      "cwd": ".",
+      "env": {
+        "STARBRIDGE_CONFIG_SAFE_ONLY": "1",
+        "PYTHONUTF8": "1"
+      }
+    }
+  }
+}

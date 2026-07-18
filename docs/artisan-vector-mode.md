@@ -89,6 +89,177 @@ SVG 安全验证器对开放描边使用独立的严格契约：只接受绝对 
 
 因此当前有三级回退：交叉点续接不合格时保留 Iteration 3 中心线；中心线整体不合格时再保留 Iteration 2 轮廓填充。报告中的 `continuation_*` 字段同时保存候选前后的路径、锚点、批次、平均长度和像素质量差值。
 
+## Iteration 5：几何意图与局部编辑索引
+
+第五轮不声称识别人脸、文字或年画题材，而是根据单条曲线自身的长度、闭合性和转折密度判断绘制意图：
+
+- `flow-contour`：长而连续的主轮廓，使用更积极的少锚点平滑；
+- `ornament`：闭环或高转折装饰纹，保守保留曲率变化；
+- `detail`：普通局部结构，平衡简化与转角；
+- `micro-detail`：微短枝，仅在其源墨线像素已经完全被邻近描边覆盖时删除。
+
+意图候选相对 Iteration 4 必须至少再减少 3% 子路径、锚点和锚点加控制点，编辑批次不能增加；精确率和 Dice 下降不得超过 0.6 个百分点，召回率下降不得超过 1 个百分点。失败时保留 Iteration 4，因此形成“意图分级 → 曲线续接 → 中心线 → 轮廓填充”的四级回退。
+
+本轮同时生成 `artisan_edit_index.json`。它只保存 `edit_ref`、意图选择器、稳定 `shape-*` ID、边界框和局部复杂度，不保存源文件名或路径。代理可先检查 `intent:ornament` 等局部范围，不必把完整结构文件加载进对话。
+
+## Iteration 6：客户意图预校准与矢量局部精修
+
+第六轮不依赖某一张示例图，而是固定一套可复用修订协议：
+
+```text
+三个客户问题
+→ 本地风格配置 style_ref
+→ edit_ref + intent:* / shape-* 选择局部对象
+→ 直接读取已有 SVG 贝塞尔几何
+→ 按曲率重新分配锚点
+→ 逐子路径检查偏差、端点、自交和回头线
+→ 失败子路径保留原样
+→ 输出新 SVG、edit_ref 和 patch_ref
+```
+
+三个问题分别确定主要目标、布线规则和颜色策略。答案会编译成确定性的本地参数先验；文档中称为“预校准”，不称为已经训练新的机器学习模型。配置不包含源图片、文件名或绝对路径，`external_ai_calls` 为 `0`，后续修订只需传递不足 1 KB 的配置和短引用。
+
+编辑索引 schema v2 新增：
+
+- `svg_sha256`：索引只允许用于与它精确匹配的 SVG；
+- `designer_name`：主轮廓、装饰纹、细节、微细节和基础块面的稳定可读名称；
+- `parent_edit_ref`：记录前一轮索引，形成可审计补丁链。
+
+局部精修只改变通过质量门的选中描边 `d` 属性。以下条件是硬约束：
+
+- 开放路径每个子路径的首尾端点保持不变；
+- 不新增自交和回头线；
+- 路径数、子路径数、颜色数和 paint 数保持不变；
+- 未选路径逐字节一致；
+- 选中路径除几何 `d` 外的样式和元数据逐字节一致；
+- 单个候选失败时保留原子路径，整组选区达不到最低锚点收益时不发布补丁。
+
+命令示例：
+
+```powershell
+python -m starbridge_mcp.vectorization.artisan_brief questions
+python -m starbridge_mcp.vectorization.artisan_brief compile `
+  --answers "client_answers.json" `
+  --output "artisan_style_profile.json"
+
+python -m starbridge_mcp.vectorization.artisan_refine `
+  --svg "<output>/vector.svg" `
+  --index "<output>/artisan_edit_index.json" `
+  --profile "artisan_style_profile.json" `
+  --selector intent:flow-contour `
+  --output-dir "<new-output>"
+```
+
+同一授权回归样例上的真实结果如下；这些数字用于证明协议能运行，不把样图本身当作产品成果：
+
+| 指标 | 精修前 | 精修后 |
+| --- | ---: | ---: |
+| 通过质量门的主轮廓对象 | 6 | 6 |
+| 局部锚点 | 3,178 | 2,922（-8.06%） |
+| 全图锚点 | 24,879 | 24,623（-1.03%） |
+| 路径 / 子路径 | 111 / 8,065 | 111 / 8,065 |
+| 颜色 / paint | 2 / 2 | 2 / 2 |
+| SVG 大小 | 864,638 bytes | 841,965 bytes（-2.62%） |
+| 平均 / 最大几何偏差 | — | 0.1744 px / 2.3438 px |
+| 自交 / 回头线 | 5 / 0 | 5 / 0 |
+| 未选路径 | — | 逐字节一致 |
+
+风格配置为 958 bytes，补丁报告为 1,254 bytes，schema-v2 编辑索引为 7,874 bytes；索引仍比 30,003-byte 完整结构上下文小 73.76%。这使后续多轮修订可以交换短引用和局部证据，而不是反复上传图片或完整报告。
+
+## Iteration 7：受拓扑保护的块面与颜色设计
+
+第七轮继续处理已有 SVG，不重新读取或上传原始图片。客户在第三个短问题中选择颜色策略，schema-v2 风格配置把答案编译成本地参数：
+
+- `preserve-palette`：默认选项，只合并完全相同的 paint；
+- `reduce-near-colors`：在 Delta-E 6.0 门内把近似色归到面积占优色；
+- `monochrome`：仅在客户明确选择时把非基础色归到单一主色；
+- `manual-groups`：保留为未来显式颜色映射入口；映射协议完成前安全拒绝，不自行猜色。
+
+块面合并不是简单拼接所有同色路径。候选必须同时满足同角色、同深度、同父对象、同目标 paint、无子对象、边界框互不重叠，并受单批子路径/锚点上限保护。边界框重叠即保留为独立对象，避免 `evenodd` 填充把重叠区域翻成透明孔洞。基础/纸张颜色永不参与归并。
+
+发布门槛逐项验证：
+
+- 选中对象的源 `d` 子路径多重集逐字节不变；
+- 子路径数、锚点数和描边路径数不变；
+- 未选路径逐字节一致；
+- 路径、颜色和 paint 只允许减少；
+- 块面、颜色和 paint 都没有可测量收益时拒绝发布；
+- 新索引绑定输出 SVG 哈希并记录 `parent_edit_ref`，紧凑报告不含源文件名或绝对路径。
+
+```powershell
+python -m starbridge_mcp.vectorization.artisan_paint `
+  --svg "<output>/vector.svg" `
+  --index "<output>/artisan_edit_index.json" `
+  --profile "artisan_style_profile.json" `
+  --selector intent:paint-region `
+  --output-dir "<new-output>"
+```
+
+可复用合成夹具的真实回归证据如下。夹具刻意包含基础色、完全同色块、近似色块、互相重叠块和未选描边，用于覆盖规则边界，而不是把某张样图当作产品成果：
+
+| 指标 | 近色处理前 | 近色处理后 |
+| --- | ---: | ---: |
+| 选中块面 | 5 | 3（-40%） |
+| 全图路径 | 6 | 4 |
+| 颜色 / paint | 4 / 4 | 3 / 3 |
+| 子路径 / 锚点 | 6 / 22 | 6 / 22 |
+| 基础色 / 重叠块 / 未选描边 | 保留 | 保留 |
+
+同一夹具使用 `preserve-palette` 时，选中块面从 5 减到 4，颜色仍为 4。schema-v2 配置小于 1,200 bytes，paint 补丁小于 2,300 bytes；后续请求可传 `profile_ref + edit_ref + selector`，无需反复传图片或完整 SVG。
+
+## Iteration 8：显式人工配色与设计命名
+
+第八轮完成第七轮预留的 `manual-groups`，但不让算法猜测客户的审美决定。客户先选择手动颜色策略，再提交一个只含短引用和数组映射的 spec；本地编译器验证颜色、稳定形状 ID、名称字符、数量上限与重复来源，并生成不可变 `direction_ref`。
+
+```text
+edit_ref + profile_ref
+→ 客户显式颜色组 / 对象名 / 图层名
+→ 本地编译 direction_ref
+→ 校验指令与当前 SVG 索引、风格配置完全绑定
+→ 应用颜色组和非重叠叶子块面合并
+→ 把被合并对象的人工名称转移到保留对象
+→ 输出 patch_ref + edit_ref + imap_ref
+```
+
+人工指令的安全规则：
+
+- 一个源颜色只能属于一个颜色组，未选颜色和不存在的形状 ID 会拒绝；
+- 禁止从基础色改出，也禁止把其他颜色改成基础色；
+- 对象名称只允许安全字符，不能包含路径、引号或 XML 控制字符；
+- 同一合并组内两个不同人工名称会产生 `manual_name_conflict`，不会自动二选一；
+- 指令、Illustrator 映射和编辑索引均有独立哈希，并相互绑定短引用；
+- `artisan_illustrator_map.json` 只是经验证的交付映射，包含 `requires_user_confirmed_illustrator_write: true`，本轮没有自动操作桌面软件。
+
+合成回归夹具的手动颜色组把 5 个选中块面减到 3 个、全图颜色/paint 从 4/4 减到 3/3；6 个子路径、22 个锚点、基础色、重叠块和未选描边保持不变。被合并的 `shape-0004` 人工名称被确定性转移到保留的 `shape-0002`。指令与 Illustrator 映射分别小于 900 bytes，paint 补丁小于 2,800 bytes，均不包含源文件名或绝对路径。
+
+## Iteration 9：确认式 Illustrator 应用事务
+
+第九轮只消费第八轮已经验证的映射，不重新分析图片。计划编译器逐项核对 SVG 哈希、schema-v2 编辑索引、人工指令和 Illustrator 映射，并绑定当前本机会话的脱敏 `state_revision`。计划和回执都只保存短引用、目标数量和状态，不保存客户名称、SVG 全文或路径。
+
+```text
+probe：代理就绪 + 活动文档 + state_revision
+→ 编译 apply-plan / approval_ref
+→ 客户审查并显式 confirm_write
+→ 代理再次核对 revision
+→ UXP 预解析全部稳定目标
+→ 一次性应用名称
+→ readback 匹配数量
+→ commit 释放回滚快照
+失败：rollback 恢复原名称
+```
+
+安全门槛包括：
+
+- 代理 URL 只能是 `127.0.0.1` 或 `localhost`；
+- `confirm_write` 与计划派生的 `approval_ref` 缺一不可；
+- 应用请求只接受最多 4 个 `layer-*` 和 128 个 `shape-*` 名称映射；
+- 代理持有的最新 revision 与计划不一致时拒绝转发；
+- 主机解析目标时要求稳定 ID 唯一，且对象未锁定、未隐藏；
+- 应用异常在主机内立即恢复；回读或事务提交失败由调用端发起回滚；
+- 代理/Illustrator 不可用时 `probe --soft-exit` 返回 `not_available`，不假装执行成功。
+
+本轮以 Python 假传输、Node 主机模拟以及真实 loopback HTTP/WebSocket 代理完成 headless 回归。成功回执与计划均小于 1 KB；测试不包含客户名称、文件路径或图像。尚未在用户已授权的 Illustrator 桌面会话中执行真实改名，因此不把协议通过描述成桌面实测通过。
+
 ## 验收指标
 
 | 指标 | 含义 |
@@ -114,6 +285,12 @@ SVG 安全验证器对开放描边使用独立的严格契约：只接受绝对 
 | `continuation_anchor_reduction_ratio` | 续接相对 Iteration 3 再减少的锚点比例 |
 | `continuation_batch_reduction_ratio` | 可引用描边批次减少比例，直接影响结构索引与后续编辑上下文 |
 | `continuation_mean_path_length_gain_ratio` | 平均单条可编辑描边增长比例 |
+| `semantic_candidate_used` | 几何意图候选是否通过独立质量门 |
+| `semantic_intent_counts` | 四类几何意图的最终子路径数量 |
+| `semantic_pruned_micro_paths` | 被邻近描边完全覆盖后删除的微短枝数量 |
+| `semantic_anchor_reduction_ratio` | 相对 Iteration 4 再减少的锚点比例 |
+| `semantic_point_reduction_ratio` | 相对 Iteration 4 再减少的锚点加控制点比例 |
+| `semantic_batch_reduction_ratio` | 相对 Iteration 4 再减少的局部编辑批次比例 |
 
 测试要求匠心样例必须包含真实 `C` 曲线，锚点少于基础多边形锚点，最大轮廓误差和复合面积误差不超过报告阈值，并且结构 ID、父子深度和图层角色通过 SVG 验证器复核。
 
@@ -160,6 +337,23 @@ SVG 安全验证器对开放描边使用独立的严格契约：只接受绝对 
 
 最终输出为 30,817 个锚点（包含基础层 4 个锚点），相对 73,086 基础多边形基准减少 57.83%；SVG 为 1,014,783 bytes，紧凑结构索引为 23,839 bytes，相对 Iteration 3 的 39,756 bytes 再减少约 40%。结果保持 94.04% 召回率、74.71% Dice、无位图、无外链、外部 AI 调用为 0。
 
+### Iteration 5 同图回归
+
+第五轮继续使用同一份本地授权处理预览，源图和输出仍在 Git 忽略目录，不提交到仓库。
+
+| 指标 | Iteration 4 | Iteration 5 | 变化 |
+| --- | ---: | ---: | ---: |
+| 子路径 | 10,309 | 8,064 | -21.78% |
+| 锚点 | 30,813 | 24,875 | -19.27% |
+| 锚点 + 控制点 | 68,819 | 56,875 | -17.36% |
+| 可编辑描边批次 | 116 | 110 | -5.17% |
+| SVG 大小 | 1,014,783 bytes | 861,890 bytes | -15.07% |
+| 精确率 | 61.97% | 62.13% | +0.16 个百分点 |
+| 召回率 | 94.04% | 93.13% | -0.91 个百分点 |
+| Dice | 74.71% | 74.54% | -0.17 个百分点 |
+
+最终 SVG 含基础层后为 24,879 个锚点，相对 73,086 多边形基准减少 65.96%。2,245 条微短枝只有在没有增加任何源墨线覆盖时才被清理；主轮廓、装饰纹、细节和微细节分别保留 452、2,438、3,803 和 1,371 条子路径。紧凑编辑索引为 6,133 bytes，相对上一轮需要加载的 23,839-byte 完整结构上下文减少 74.27%。
+
 ## 使用
 
 ```powershell
@@ -171,7 +365,15 @@ python -m starbridge_mcp.vectorization.cli `
   --compact
 ```
 
-`--compact` 只在终端返回模式、关键质量指标、输出位置和 `structure_ref`；完整 JSON / Markdown 报告仍写入本地。它适合 Codex 或其他代理调用，避免把整份报告重复塞回对话。
+`--compact` 只在终端返回模式、关键质量指标、输出位置、`edit_ref` 和意图选择器；完整 JSON / Markdown 报告仍写入本地。进一步检查局部对象时使用：
+
+```powershell
+python -m starbridge_mcp.vectorization.artisan_edit `
+  --index "<output>/artisan_edit_index.json" `
+  --selector intent:flow-contour
+```
+
+这样 Codex 或其他代理无需把整份报告或结构重复塞回对话。
 
 桌面端选择“匠心矢量”即可使用同一引擎：
 
@@ -185,7 +387,11 @@ npm.cmd run vector-app:start
 2. **Iteration 2：设计结构（已完成）。** 图层角色、父子形状、线稿自适应、稳定引用和低 token 局部修订契约。
 3. **Iteration 3：中心线描边（已完成）。** 本地骨架追踪、开放贝塞尔描边、可变线宽、质量门控和轮廓填充回退。
 4. **Iteration 4：交叉点曲线续接（已完成）。** 切线和线宽配对、长描边续接、三级质量回退和编辑批次压缩。
-5. **Iteration 5：语义与风格先验（下一轮）。** 区分 Logo、水墨、年画、文字和装饰纹样，并按风格选择锚点与曲率规则；没有模型证据前不宣称内容识别。
-6. **Iteration 6：设计师交付。** Illustrator 图层、路径命名、颜色组、人工修订建议和局部重算。
+5. **Iteration 5：几何意图与局部索引（已完成）。** 主轮廓、装饰纹、细节和微细节分级，覆盖感知短枝清理、四级质量回退与 6 KB 级编辑索引。
+6. **Iteration 6：客户意图与局部精修（已完成）。** 三问预校准、SVG/索引绑定、设计师可读命名、曲率布线、严格拓扑门控和补丁链。
+7. **Iteration 7：块面与颜色设计（已完成）。** 非重叠叶子块面合并、基础色保护、感知近色门、paint 补丁链和无收益拒绝发布。
+8. **Iteration 8：人工配色与 Illustrator 映射（已完成协议层）。** 显式颜色组、对象命名转移、设计层映射、三重引用绑定和低 token 指令。
+9. **Iteration 9：确认式 Illustrator 应用（已完成协议层）。** revision 绑定计划、双重确认、全目标预解析、回读/提交/回滚和 soft-exit。
+10. **Iteration 10：授权桌面验收与 AI 交付。** 在用户明确授权的 Illustrator 会话中实测命名事务、保存副本、回读 AI 文件并记录脱敏证据。
 
 匠心模式的长期目标不是声称“一键等同人工设计”，而是用可验证的锚点数量、轮廓误差、结构分层和可编辑性，逐轮缩小与专业设计师手工矢量稿之间的差距。
