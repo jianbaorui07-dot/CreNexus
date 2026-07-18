@@ -69,6 +69,7 @@ examples/output/**/*.ai
 examples/output/**/*.svg
 examples/output/**/*.pdf
 examples/output/**/*.json
+examples/output/**/*.jsonl
 examples/output/**/*.blend
 examples/output/**/*.zip
 examples/output/**/*.xmp
@@ -76,6 +77,7 @@ examples/output/**/*.CR2
 examples/output/**/*.cr2
 examples/output/**/*.jsx
 examples/output/vectorization/**
+examples/output/illustrator/**
 !examples/output/
 !examples/output/.gitkeep
 !examples/output/README.md

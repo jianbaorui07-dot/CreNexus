@@ -10,7 +10,8 @@ use url::Url;
 
 use crate::{request_graceful_stop, BackendManager};
 
-const UPDATE_ENDPOINT: &str = "https://github.com/jianbaorui07-dot/CreNexus/releases/latest/download/latest.json";
+const UPDATE_ENDPOINT: &str =
+    "https://github.com/jianbaorui07-dot/CreNexus/releases/latest/download/latest.json";
 const UPDATE_SOURCE_LABEL: &str = "GitHub Releases";
 const UPDATE_TIMEOUT: Duration = Duration::from_secs(20);
 

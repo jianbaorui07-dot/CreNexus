@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>Codex Live for Photoshop</title>
+  <link rel="stylesheet" href="src/styles.css">
+</head>
+<body>
+  <main>
+    <header>
+      <span class="eyebrow">STARBRIDGE</span>
+      <h1>Codex Live</h1>
+      <p>Codex 的当前步骤会直接显示在 Photoshop 内。</p>
+    </header>
+
+    <section class="session-card" id="session-card" data-phase="idle" aria-live="polite">
+      <div class="session-heading">
+        <span class="status-dot"></span>
+        <strong id="session-phase">等待任务</strong>
+        <span id="session-step">—</span>
+      </div>
+      <p id="session-message">连接代理后，执行状态会显示在这里。</p>
+      <div class="progress-track" role="progressbar" aria-label="Codex 任务进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <span id="session-progress"></span>
+      </div>
+      <dl>
+        <dt>方式</dt><dd id="session-mode">结构化命令</dd>
+        <dt>更新</dt><dd id="session-time">—</dd>
+      </dl>
+    </section>
+
+    <footer>
+      <span>代理</span>
+      <strong id="connection">连接中</strong>
+      <button id="reconnect" type="button">重新连接</button>
+    </footer>
+    <p class="warning">需要确认的写操作仍会暂停等待确认；状态文字不代替画布结果验证。</p>
+  </main>
+  <script type="module" src="src/index.js"></script>
+</body>
+</html>

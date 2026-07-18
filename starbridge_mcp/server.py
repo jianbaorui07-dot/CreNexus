@@ -165,9 +165,7 @@ def _manifest_summary(payload: dict[str, Any], manifest_path: Path) -> dict[str,
 
 
 def _handle_evidence_cli(argv: list[str]) -> None:
-    parser = argparse.ArgumentParser(
-        description="Create or validate CreNexus evidence manifests."
-    )
+    parser = argparse.ArgumentParser(description="Create or validate CreNexus evidence manifests.")
     parser.add_argument("--init", action="store_true")
     parser.add_argument("--validate", action="store_true")
     parser.add_argument("--add-file", dest="add_file", action="store_true")
@@ -459,9 +457,7 @@ def main() -> None:
             _handle_job_status_cli(argv)
         return
 
-    parser = argparse.ArgumentParser(
-        description="CreNexus 本地创意软件 MCP 桥接框架最小状态入口。"
-    )
+    parser = argparse.ArgumentParser(description="CreNexus 本地创意软件 MCP 桥接框架最小状态入口。")
     parser.add_argument(
         "action",
         nargs="?",

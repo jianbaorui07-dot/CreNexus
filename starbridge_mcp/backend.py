@@ -12,7 +12,7 @@ import signal
 import time
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field, replace
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from threading import Event, RLock, Thread, Timer, current_thread
@@ -534,7 +534,7 @@ class CreNexusBackend:
     def _record_vector_event(self, job: JsonObject, result: JsonObject) -> None:
         event = {
             "event_id": f"evt_{uuid4().hex[:12]}",
-            "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
+            "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "kind": "vectorization",
             "action": "local_vectorization",
             "ok": True,
@@ -616,7 +616,7 @@ class CreNexusBackend:
                     status="completed",
                     progress=100,
                     stage="处理完成",
-                    completed_at=datetime.now(UTC).isoformat(timespec="seconds"),
+                    completed_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
                     result=result,
                     output_dir=output_dir,
                 )
@@ -629,7 +629,7 @@ class CreNexusBackend:
                     status="failed",
                     progress=100,
                     stage="需要处理",
-                    completed_at=datetime.now(UTC).isoformat(timespec="seconds"),
+                    completed_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
                     error={
                         "code": code,
                         "message": message,
@@ -678,7 +678,7 @@ class CreNexusBackend:
             "progress": 6,
             "stage": "已确认，正在准备",
             "mode": mode,
-            "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
+            "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "completed_at": None,
             "result": None,
             "error": None,
@@ -1011,7 +1011,7 @@ class CreNexusBackend:
         event = sanitize(
             {
                 "event_id": f"evt_{uuid4().hex[:12]}",
-                "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
+                "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
                 "kind": "recipe_action",
                 "recipe_id": recipe_id,
                 "bridge": result.get("bridge"),

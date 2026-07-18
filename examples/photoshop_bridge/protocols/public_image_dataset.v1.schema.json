@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://starbridge.local/schemas/public_image_dataset.v1.schema.json",
+  "title": "StarBridge Public Image Dataset v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "created_at",
+    "provider",
+    "item_count",
+    "license_verified",
+    "private_paths_recorded",
+    "items"
+  ],
+  "properties": {
+    "schema_version": {"const": "starbridge.public_image_dataset.v1"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "provider": {"const": "wikimedia_commons"},
+    "item_count": {"type": "integer", "minimum": 1, "maximum": 32},
+    "license_verified": {"const": true},
+    "private_paths_recorded": {"const": false},
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "use_case",
+          "local_asset",
+          "sha256",
+          "width",
+          "height",
+          "format",
+          "source_page",
+          "download_url",
+          "license_family",
+          "license_short_name",
+          "license_url",
+          "artist",
+          "attribution"
+        ],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{1,63}$"},
+          "use_case": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{1,63}$"},
+          "local_asset": {
+            "type": "string",
+            "pattern": "^assets/[a-z0-9][a-z0-9_-]{1,63}\\.(jpg|png|webp|tif)$"
+          },
+          "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+          "width": {"type": "integer", "minimum": 1},
+          "height": {"type": "integer", "minimum": 1},
+          "format": {"enum": ["JPEG", "PNG", "WEBP", "TIFF"]},
+          "source_page": {"type": "string", "format": "uri", "maxLength": 512},
+          "download_url": {"type": "string", "format": "uri", "maxLength": 2048},
+          "license_family": {"enum": ["public_domain", "cc0", "cc_by", "cc_by_sa"]},
+          "license_short_name": {"type": "string", "minLength": 1, "maxLength": 256},
+          "license_url": {"type": "string", "maxLength": 512},
+          "artist": {"type": "string", "maxLength": 256},
+          "attribution": {"type": "string", "maxLength": 256}
+        }
+      }
+    }
+  }
+}

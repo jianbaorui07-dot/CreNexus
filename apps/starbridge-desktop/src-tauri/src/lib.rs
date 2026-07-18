@@ -609,8 +609,7 @@ fn open_codex_pairing(pairing_code: String) -> Result<(), String> {
     })
 }
 
-const GITHUB_PROJECT_URL: &str =
-    "https://github.com/jianbaorui07-dot/CreNexus";
+const GITHUB_PROJECT_URL: &str = "https://github.com/jianbaorui07-dot/CreNexus";
 
 #[tauri::command]
 fn open_github_project() -> Result<(), String> {
@@ -1022,10 +1021,7 @@ mod tests {
         let target = url::Url::parse(GITHUB_PROJECT_URL).expect("valid project URL");
         assert_eq!(target.scheme(), "https");
         assert_eq!(target.host_str(), Some("github.com"));
-        assert_eq!(
-            target.path(),
-            "/jianbaorui07-dot/CreNexus"
-        );
+        assert_eq!(target.path(), "/jianbaorui07-dot/CreNexus");
         assert!(target.query().is_none());
         assert!(target.fragment().is_none());
     }

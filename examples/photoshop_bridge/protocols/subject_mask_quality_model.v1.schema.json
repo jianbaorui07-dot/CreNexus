@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://starbridge.local/schemas/subject_mask_quality_model.v1.schema.json",
+  "title": "StarBridge Subject Mask Quality Candidate Model v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "feature_names",
+    "means",
+    "scales",
+    "weights",
+    "bias",
+    "threshold",
+    "training_examples",
+    "validation_examples",
+    "training_source_groups",
+    "validation_source_groups",
+    "training_metrics",
+    "validation_metrics",
+    "dataset_digest",
+    "private_paths_recorded",
+    "automatic_application_allowed"
+  ],
+  "properties": {
+    "schema_version": {"const": "starbridge.subject_mask_quality_model.v1"},
+    "status": {"const": "candidate_only"},
+    "feature_names": {
+      "const": [
+        "candidate_score",
+        "coverage",
+        "center_overlap",
+        "border_touch",
+        "edge_alignment",
+        "recomposition_similarity"
+      ]
+    },
+    "means": {"$ref": "#/$defs/vector"},
+    "scales": {"$ref": "#/$defs/vector"},
+    "weights": {"$ref": "#/$defs/vector"},
+    "bias": {"type": "number"},
+    "threshold": {"type": "number", "minimum": 0, "maximum": 1},
+    "training_examples": {"type": "integer", "minimum": 1},
+    "validation_examples": {"type": "integer", "minimum": 1},
+    "training_source_groups": {"type": "integer", "minimum": 1},
+    "validation_source_groups": {"type": "integer", "minimum": 1},
+    "training_metrics": {"$ref": "#/$defs/metrics"},
+    "validation_metrics": {"$ref": "#/$defs/metrics"},
+    "dataset_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "private_paths_recorded": {"const": false},
+    "automatic_application_allowed": {"const": false}
+  },
+  "$defs": {
+    "vector": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": {"type": "number"}
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["accuracy", "precision", "recall", "log_loss"],
+      "properties": {
+        "accuracy": {"type": "number", "minimum": 0, "maximum": 1},
+        "precision": {"type": "number", "minimum": 0, "maximum": 1},
+        "recall": {"type": "number", "minimum": 0, "maximum": 1},
+        "log_loss": {"type": "number", "minimum": 0}
+      }
+    }
+  }
+}

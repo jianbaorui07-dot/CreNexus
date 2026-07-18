@@ -55,6 +55,12 @@ adobe = [
   "Pillow>=10,<13",
   "pywin32>=306; platform_system == 'Windows'",
 ]
+image-to-psd = [
+  "Pillow>=10,<13",
+  "numpy>=2,<3",
+  "opencv-python-headless>=4.10,<6",
+  "pywin32>=306; platform_system == 'Windows'",
+]
 illustrator-trace = [
   "numpy>=2,<3",
   "opencv-python-headless>=4.10,<5",
@@ -92,6 +98,7 @@ starbridge-artisan-paint = "starbridge_mcp.vectorization.artisan_paint:main"
 starbridge-artisan-direction = "starbridge_mcp.vectorization.artisan_direction:main"
 starbridge-artisan-illustrator = "starbridge_mcp.vectorization.artisan_illustrator:main"
 vectorflow-studio = "starbridge_mcp.vectorization.app:main"
+starbridge-image-to-psd = "starbridge_mcp.adapters.photoshop.semantic_layers.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["starbridge_mcp*"]

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://starbridge.local/schemas/starbridge_live_session.v1.schema.json",
+  "title": "StarBridge in-app Codex live session update",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "protocol_version", "session_id", "bridge", "mode", "phase", "step", "message", "progress", "at"],
+  "properties": {
+    "type": {"const": "codex_session"},
+    "protocol_version": {"const": 1},
+    "session_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$"},
+    "bridge": {"enum": ["photoshop", "illustrator", "autocad"]},
+    "mode": {"enum": ["structured", "computer_use"]},
+    "phase": {"enum": ["queued", "running", "completed", "failed", "cancelled", "needs_user"]},
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "index", "total"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$"},
+        "label": {"type": "string", "minLength": 1, "maxLength": 80, "pattern": "^[^\\u0000-\\u001F\\u007F]+$"},
+        "index": {"type": "integer", "minimum": 1, "maximum": 1000},
+        "total": {"type": "integer", "minimum": 1, "maximum": 1000}
+      }
+    },
+    "message": {"type": "string", "minLength": 1, "maxLength": 160, "pattern": "^[^\\u0000-\\u001F\\u007F]+$"},
+    "progress": {"type": "integer", "minimum": 0, "maximum": 100},
+    "at": {"type": "string", "format": "date-time"}
+  }
+}

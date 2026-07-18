@@ -4,7 +4,7 @@ import json
 import os
 import sys
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -95,7 +95,7 @@ def append_runtime_log(
 ) -> None:
     payload = sanitize(
         {
-            "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
+            "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "event": event,
             "details": details or {},
         }
@@ -108,7 +108,7 @@ def append_runtime_log(
 def write_crash_diagnostic(paths: AppDataPaths, *, error_type: str, summary: str) -> Path:
     payload = sanitize(
         {
-            "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
+            "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "event": "backend_crash",
             "error_type": error_type,
             "summary": summary,

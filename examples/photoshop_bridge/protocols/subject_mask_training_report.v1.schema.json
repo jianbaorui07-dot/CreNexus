@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://starbridge.local/schemas/subject_mask_training_report.v1.schema.json",
+  "title": "StarBridge Subject Mask Training Report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "model_written",
+    "requirements",
+    "dataset_digest",
+    "private_paths_recorded",
+    "automatic_application_allowed"
+  ],
+  "properties": {
+    "schema_version": {"const": "starbridge.subject_mask_training_report.v1"},
+    "status": {"enum": ["insufficient_data", "insufficient_grouped_validation"]},
+    "model_written": {"const": false},
+    "requirements": {"$ref": "#/$defs/requirements"},
+    "dataset_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "private_paths_recorded": {"const": false},
+    "automatic_application_allowed": {"const": false}
+  },
+  "$defs": {
+    "requirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "example_count",
+        "source_group_count",
+        "accepted_count",
+        "rejected_count",
+        "minimum_examples",
+        "minimum_source_groups",
+        "minimum_per_class",
+        "missing",
+        "satisfied"
+      ],
+      "properties": {
+        "example_count": {"type": "integer", "minimum": 0},
+        "source_group_count": {"type": "integer", "minimum": 0},
+        "accepted_count": {"type": "integer", "minimum": 0},
+        "rejected_count": {"type": "integer", "minimum": 0},
+        "minimum_examples": {"type": "integer", "minimum": 1},
+        "minimum_source_groups": {"type": "integer", "minimum": 1},
+        "minimum_per_class": {"type": "integer", "minimum": 1},
+        "missing": {"type": "array", "items": {"type": "string"}},
+        "satisfied": {"type": "boolean"}
+      }
+    }
+  }
+}

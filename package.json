@@ -60,6 +60,8 @@
     "photoshop:manifest": "python -m json.tool examples/output/photoshop/demo_manifest.json",
     "photoshop:camera-raw:tune": "python examples/photoshop_bridge/scripts/camera_raw_tune.py",
     "photoshop:camera-raw:export": "powershell -ExecutionPolicy Bypass -File examples/photoshop_bridge/scripts/camera_raw_export.ps1",
+    "photoshop:layers": "python -m starbridge_mcp.adapters.photoshop.semantic_layers.cli",
+    "photoshop:layers:regression": "python -m starbridge_mcp.adapters.photoshop.semantic_layers.cli regression --output-root examples/output/photoshop/synthetic-regression --confirm-write",
     "illustrator:info": "powershell -ExecutionPolicy Bypass -File examples/illustrator_bridge/scripts/document_info.ps1",
     "illustrator:realtime:proxy": "npm --prefix node_proxy/illustrator-bridge start",
     "illustrator:realtime:adapter": "powershell -ExecutionPolicy Bypass -File examples/illustrator_bridge/scripts/realtime_session_adapter.ps1",

@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import secrets
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 
 @dataclass(frozen=True)
@@ -58,7 +58,7 @@ class ApprovalGate:
         revision: int,
         safe_root_ref: str,
     ) -> ApprovalRequest:
-        now = datetime.now(UTC)
+        now = datetime.now(timezone.utc)
         expires_at = now + timedelta(seconds=self.lifetime_seconds)
         approval_ref = f"approval-{secrets.token_urlsafe(24)}"
         request = ApprovalRequest(
@@ -89,7 +89,7 @@ class ApprovalGate:
         if not confirm_execute:
             return False
         record = self._records.get(self._key(approval_ref))
-        if record is None or record.used or datetime.now(UTC) >= record.expires_at:
+        if record is None or record.used or datetime.now(timezone.utc) >= record.expires_at:
             return False
         expected = record.request
         if (

@@ -4,6 +4,7 @@ import { executeTypedBatchPlay, runModalJob, validateBatchPlay } from "./batchpl
 const photoshop = require("photoshop");
 const { action, app } = photoshop;
 const uxp = require("uxp");
+const { entrypoints } = uxp;
 const storage = uxp.storage;
 const localFileSystem = storage.localFileSystem;
 
@@ -415,13 +416,63 @@ const handlers = {
   "ps.batchplay.execute_confirmed": batchplayExecuteConfirmed,
 };
 
-const client = new BridgeClient({ handlers });
+const panelElements = {
+  card: document.querySelector("#session-card"),
+  phase: document.querySelector("#session-phase"),
+  step: document.querySelector("#session-step"),
+  message: document.querySelector("#session-message"),
+  progress: document.querySelector("#session-progress"),
+  progressTrack: document.querySelector(".progress-track"),
+  mode: document.querySelector("#session-mode"),
+  time: document.querySelector("#session-time"),
+  connection: document.querySelector("#connection"),
+};
+
+const phaseLabels = {
+  queued: "已排队",
+  running: "Codex 正在工作",
+  completed: "已完成",
+  failed: "执行失败",
+  cancelled: "已取消",
+  needs_user: "等待确认",
+};
+
+function setPanelText(element, value) {
+  if (element) element.textContent = value;
+}
+
+function onBridgeStatus(status) {
+  const labels = { connecting: "连接中", connected: "已连接", disconnected: "已断开", error: "连接异常" };
+  setPanelText(panelElements.connection, labels[status] || status);
+}
+
+function onLiveSession(update) {
+  const progress = Math.max(0, Math.min(100, Number(update?.progress || 0)));
+  if (panelElements.card) panelElements.card.dataset.phase = String(update?.phase || "idle");
+  setPanelText(panelElements.phase, phaseLabels[update?.phase] || String(update?.phase || "等待任务"));
+  setPanelText(panelElements.step, `${update?.step?.index || 0}/${update?.step?.total || 0} · ${update?.step?.label || ""}`);
+  setPanelText(panelElements.message, String(update?.message || ""));
+  setPanelText(panelElements.mode, update?.mode === "computer_use" ? "界面操作" : "结构化命令");
+  setPanelText(panelElements.time, update?.at ? new Date(update.at).toLocaleTimeString() : "—");
+  if (panelElements.progress) panelElements.progress.style.width = `${progress}%`;
+  if (panelElements.progressTrack) panelElements.progressTrack.setAttribute("aria-valuenow", String(progress));
+}
+
+const client = new BridgeClient({ handlers, onStatus: onBridgeStatus, onSession: onLiveSession });
+document.querySelector("#reconnect")?.addEventListener("click", () => client.reconnect());
 client.connect();
 
-if (typeof entrypoints !== "undefined") {
+if (entrypoints) {
   entrypoints.setup({
     commands: {
       starbridgePing: async () => ping(),
+    },
+    panels: {
+      starbridgePhotoshopLivePanel: {
+        show() {
+          onBridgeStatus(client.connected ? "connected" : "connecting");
+        },
+      },
     },
   });
 }

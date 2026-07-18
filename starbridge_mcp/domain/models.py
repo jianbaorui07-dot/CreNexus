@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import PurePosixPath
 from typing import Any, ClassVar
 
@@ -16,7 +16,7 @@ TERMINAL_JOB_STATUSES = frozenset({"completed", "failed", "cancelled"})
 
 
 def utc_now_iso() -> str:
-    return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def validate_id(value: str, field_name: str) -> str:

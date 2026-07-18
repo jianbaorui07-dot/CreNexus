@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://starbridge.local/schemas/public_client_mode_experiment.v1.schema.json",
+  "title": "StarBridge Public Client-mode Experiment v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "created_at",
+    "ok",
+    "case_count",
+    "license_verified_inputs",
+    "simulated_client_mode",
+    "automatic_outputs_are_training_labels",
+    "private_paths_recorded",
+    "cases"
+  ],
+  "properties": {
+    "schema_version": {"const": "starbridge.public_client_mode_experiment.v1"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "ok": {"type": "boolean"},
+    "case_count": {"type": "integer", "minimum": 0, "maximum": 32},
+    "license_verified_inputs": {"const": true},
+    "simulated_client_mode": {"const": true},
+    "automatic_outputs_are_training_labels": {"const": false},
+    "private_paths_recorded": {"const": false},
+    "cases": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "required": ["id", "ok", "use_case", "ground_truth_status"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{1,63}$"},
+          "ok": {"type": "boolean"},
+          "use_case": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{1,63}$"},
+          "ground_truth_status": {
+            "enum": ["unreviewed_candidate_output", "unavailable"]
+          },
+          "license_family": {"enum": ["public_domain", "cc0", "cc_by", "cc_by_sa"]},
+          "auto_strategy": {"type": "string", "maxLength": 64},
+          "client_preset": {"type": "string", "maxLength": 64},
+          "client_mode_rationale": {"type": "string", "maxLength": 128},
+          "intent": {"type": "object"},
+          "layer_count": {"type": "integer", "minimum": 0},
+          "review_item_count": {"type": "integer", "minimum": 0},
+          "requires_manual_review": {"type": "boolean"},
+          "recomposition_similarity": {"type": "number", "minimum": 0, "maximum": 1},
+          "overall_score": {"type": "number", "minimum": 0, "maximum": 100},
+          "error_type": {"type": "string", "maxLength": 128},
+          "error": {"type": "string", "maxLength": 256}
+        }
+      }
+    }
+  }
+}

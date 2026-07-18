@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://starbridge.local/schemas/github_issue_metrics.v1.schema.json",
+  "title": "StarBridge GitHub Issue Metrics v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "day_utc",
+    "event_type",
+    "pipeline_version",
+    "strategy",
+    "intent",
+    "document",
+    "quality",
+    "result",
+    "privacy"
+  ],
+  "properties": {
+    "schema_version": {"const": "starbridge.github_issue_metrics.v1"},
+    "event_id": {"type": "string", "pattern": "^[0-9a-f]{16}$"},
+    "day_utc": {"type": "string", "format": "date"},
+    "event_type": {"enum": ["run", "patch", "build", "batch"]},
+    "pipeline_version": {"type": "string", "maxLength": 128},
+    "strategy": {"type": "string", "maxLength": 128},
+    "intent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "editing_goal",
+        "subject_granularity",
+        "text_policy",
+        "background_policy",
+        "decoration_policy",
+        "risk_level"
+      ],
+      "properties": {
+        "editing_goal": {"type": "string", "maxLength": 128},
+        "subject_granularity": {"type": "string", "maxLength": 128},
+        "text_policy": {"type": "string", "maxLength": 128},
+        "background_policy": {"type": "string", "maxLength": 128},
+        "decoration_policy": {"type": "string", "maxLength": 128},
+        "risk_level": {"type": "string", "maxLength": 128}
+      }
+    },
+    "document": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["orientation", "size_bucket"],
+      "properties": {
+        "orientation": {"enum": ["portrait", "landscape", "square", "mixed"]},
+        "size_bucket": {
+          "enum": ["up_to_1mp", "1_to_4mp", "4_to_16mp", "over_16mp", "mixed"]
+        }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "overall",
+        "recomposition",
+        "background_clean",
+        "layer_editability",
+        "manual_review_required"
+      ],
+      "properties": {
+        "overall": {"type": ["number", "null"]},
+        "recomposition": {"type": ["number", "null"]},
+        "background_clean": {"type": ["number", "null"]},
+        "layer_editability": {"type": ["number", "null"]},
+        "manual_review_required": {"type": "boolean"}
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ok",
+        "cached",
+        "layer_count",
+        "semantic_region_count",
+        "local_patch_applied",
+        "background_recomputed"
+      ],
+      "properties": {
+        "ok": {"type": "boolean"},
+        "cached": {"type": "boolean"},
+        "layer_count": {"type": "integer", "minimum": 0},
+        "semantic_region_count": {"type": "integer", "minimum": 0},
+        "local_patch_applied": {"type": "boolean"},
+        "background_recomputed": {"type": "boolean"},
+        "batch_size": {"type": "integer", "minimum": 0},
+        "completed_count": {"type": "integer", "minimum": 0},
+        "failed_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "customer_material_included",
+        "local_identifiers_included",
+        "asset_fingerprints_included"
+      ],
+      "properties": {
+        "customer_material_included": {"const": false},
+        "local_identifiers_included": {"const": false},
+        "asset_fingerprints_included": {"const": false}
+      }
+    }
+  }
+}

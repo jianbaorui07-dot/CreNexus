@@ -12,7 +12,7 @@ import sys
 import urllib.error
 import urllib.request
 from collections.abc import Callable, Iterable
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -108,7 +108,7 @@ class ConnectionSetupError(ValueError):
 
 
 def _utc_now() -> datetime:
-    return datetime.now(UTC)
+    return datetime.now(timezone.utc)
 
 
 def _iso_now() -> str:
@@ -160,7 +160,7 @@ def _parse_created_at(value: object) -> datetime | None:
         return None
     if parsed.tzinfo is None:
         return None
-    return parsed.astimezone(UTC)
+    return parsed.astimezone(timezone.utc)
 
 
 def pair_desktop_session(
