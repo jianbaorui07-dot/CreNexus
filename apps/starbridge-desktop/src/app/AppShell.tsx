@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
+import { IconBrandGithub, IconSettings } from "@tabler/icons-react";
 
 import { Brand } from "../components/Brand/Brand";
 import { EditionBadge } from "../components/EditionBadge/EditionBadge";
 import { Navigation } from "../components/Navigation/Navigation";
 import { StatusChip } from "../components/StatusChip/StatusChip";
 import type { ConnectionOverview, LicenseStatus, RuntimeStatus, SoftwareUpdateStatus, VersionInfo } from "../types/api";
-import { PAGE_TITLES, type PageId } from "./routes";
+import { NAVIGATION_ITEMS, PAGE_CAPTIONS, PAGE_TITLES, type PageId } from "./routes";
 
 interface AppShellProps {
   currentPage: PageId;
@@ -20,22 +21,32 @@ interface AppShellProps {
 }
 
 export function AppShell({ currentPage, onNavigate, status, connections, license, version, updateStatus, onOpenGitHub, children }: AppShellProps) {
+  const pageIndex = NAVIGATION_ITEMS.findIndex((item) => item.id === currentPage);
+  const readyApplications = connections?.applications.filter((application) => application.bridge_available).length ?? 0;
   return (
     <div className="app-shell">
       <aside className="sidebar">
         <Brand />
         <Navigation currentPage={currentPage} onNavigate={onNavigate} />
         <div className="sidebar-footnote">
-          <span aria-hidden="true">✓</span>
-          <p><strong>本机处理</strong><br />不上传图片和设计文件</p>
+          <span>LOCAL RUNTIME / 本机摘要</span>
+          <dl>
+            <div><dt>运行</dt><dd>{status.state === "connected" ? "ONLINE" : status.state.toUpperCase()}</dd></div>
+            <div><dt>Codex</dt><dd>{connections?.codex.session_paired ? "PAIRED" : "STANDBY"}</dd></div>
+            <div><dt>软件桥</dt><dd>{readyApplications} READY</dd></div>
+            <div><dt>数据</dt><dd>LOCAL-ONLY</dd></div>
+          </dl>
+          <p><strong>PRIVATE BY DESIGN</strong><br />不上传图片和设计文件</p>
         </div>
       </aside>
       <section className="app-main">
         <header className="app-topbar">
-          <div>
-            <span className="topbar-product">CreNexus</span>
+          <div className="topbar-page-title">
+            <span className="topbar-index">{pageIndex >= 0 ? String(pageIndex + 1).padStart(2, "0") : "—"}</span>
             <h1>{PAGE_TITLES[currentPage]}</h1>
+            <span className="topbar-caption">/ {PAGE_CAPTIONS[currentPage]}</span>
           </div>
+          <div className="workspace-marker"><span>WORKSPACE</span><strong>LOCAL CREATIVE WORKSPACE</strong></div>
           <div className="topbar-actions">
             <button
               type="button"
@@ -58,20 +69,28 @@ export function AppShell({ currentPage, onNavigate, status, connections, license
             <button
               type="button"
               className="github-project-button"
+              aria-label="GitHub 项目"
               onClick={() => void onOpenGitHub()}
               title="打开 CreNexus GitHub 项目"
             >
-              GitHub 项目
+              <IconBrandGithub aria-hidden="true" />
+              <span>GitHub</span>
             </button>
             <StatusChip state={status.state} />
             <EditionBadge edition={license.edition} />
             <span className="version-copy">v{version?.desktop ?? "—"}</span>
             <button type="button" className="icon-button settings-button" aria-label="打开设置与诊断" onClick={() => onNavigate("diagnostics")}>
-              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19 13.5v-3l-2-.7a6 6 0 0 0-.6-1.4l.9-1.9-2.1-2.1-1.9.9a6 6 0 0 0-1.4-.6L11.2 3h-3l-.7 2a6 6 0 0 0-1.4.6l-1.9-.9-2.1 2.1.9 1.9a6 6 0 0 0-.6 1.4l-2 .7v3l2 .7a6 6 0 0 0 .6 1.4l-.9 1.9 2.1 2.1 1.9-.9a6 6 0 0 0 1.4.6l.7 2h3l.7-2a6 6 0 0 0 1.4-.6l1.9.9 2.1-2.1-.9-1.9a6 6 0 0 0 .6-1.4z" /></svg>
+              <IconSettings aria-hidden="true" />
             </button>
           </div>
         </header>
         <main className="page-content">{children}</main>
+        <footer className="app-statusbar">
+          <span>LOCAL-FIRST</span>
+          <span>SAFE ROOTS ENABLED</span>
+          <span>{status.state === "connected" ? "RUNTIME ONLINE" : "RUNTIME CHECK"}</span>
+          <button type="button" onClick={() => onNavigate("diagnostics")}>设置与诊断 →</button>
+        </footer>
       </section>
     </div>
   );

@@ -264,7 +264,7 @@ export function App({ client: providedClient }: AppProps) {
     };
     switch (page) {
       case "home":
-        return <HomePage status={status} connections={connections} recentTasks={tasks} onNavigate={setPage} />;
+        return <HomePage status={status} connections={connections} recentTasks={tasks} license={license} version={version} onNavigate={setPage} />;
       case "projects":
         return <ProjectsPage client={client} runtimeReady={status.state === "connected"} onOpenWorkflow={openWorkflow} />;
       case "workflows":

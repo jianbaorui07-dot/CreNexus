@@ -15,6 +15,7 @@
     "tauri:bundle:nsis": "tauri build --bundles nsis"
   },
   "dependencies": {
+    "@tabler/icons-react": "^3.45.0",
     "@tauri-apps/api": "^2.8.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"

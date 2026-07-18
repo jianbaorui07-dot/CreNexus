@@ -10,7 +10,7 @@ export function Brand({ compact = false }: BrandProps) {
       <img src={symbolUrl} alt="" aria-hidden="true" />
       <span>
         <strong>CreNexus</strong>
-        {!compact ? <small>创枢 · AI 创意软件协同平台</small> : null}
+        {!compact ? <><small>STARBRIDGE</small><em>LOCAL CREATIVE OS</em></> : null}
       </span>
     </div>
   );
