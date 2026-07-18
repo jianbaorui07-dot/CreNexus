@@ -76,8 +76,8 @@ class DesktopBackendSecurityTests(unittest.TestCase):
             server.stop()
 
         self.assertTrue(server.wait(timeout=2))
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
-            probe.bind(("127.0.0.1", port))
+        with self.assertRaises(OSError):
+            socket.create_connection(("127.0.0.1", port), timeout=0.5)
 
     def test_non_loopback_bind_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "loopback"):
