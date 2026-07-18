@@ -5,6 +5,7 @@ import os
 import subprocess
 import time
 import unittest
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -29,6 +30,34 @@ def post_rpc(port: str, method: str, params: dict, request_id: int = 1) -> dict:
     )
     with urllib.request.urlopen(request, timeout=5) as response:
         return json.loads(response.read().decode("utf-8"))
+
+
+def post_json(url: str, payload: dict) -> tuple[int, dict]:
+    request = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(request, timeout=5) as response:
+        return response.status, json.loads(response.read().decode("utf-8"))
+
+
+def live_update(**overrides: object) -> dict:
+    payload = {
+        "type": "codex_session",
+        "protocol_version": 1,
+        "session_id": "ps-demo",
+        "bridge": "photoshop",
+        "mode": "structured",
+        "phase": "running",
+        "step": {"id": "layers", "label": "调整图层", "index": 2, "total": 4},
+        "message": "Codex 正在调整图层结构",
+        "progress": 50,
+        "at": "2026-07-18T00:00:00.000Z",
+    }
+    payload.update(overrides)
+    return payload
 
 
 @unittest.skipUnless(SERVER_JS.exists(), "node proxy source not present")
@@ -72,6 +101,27 @@ class PhotoshopNodeProxyTests(unittest.TestCase):
         self.assertTrue(payload["ok"])
         self.assertTrue(payload["node_proxy_running"])
         self.assertFalse(payload["uxp_client_connected"])
+        self.assertFalse(payload["live_session"]["active"])
+
+    def test_live_session_can_be_published_and_read(self) -> None:
+        status, accepted = post_json(
+            f"http://127.0.0.1:{self.port}/session", live_update()
+        )
+        self.assertEqual(202, status)
+        self.assertEqual("ps-demo", accepted["update"]["session_id"])
+        snapshot = read_json(f"http://127.0.0.1:{self.port}/session")
+        self.assertEqual("running", snapshot["current"]["phase"])
+        health = read_json(f"http://127.0.0.1:{self.port}/health")
+        self.assertTrue(health["live_session"]["active"])
+        self.assertEqual(50, health["live_session"]["progress"])
+
+    def test_live_session_rejects_private_paths(self) -> None:
+        with self.assertRaises(urllib.error.HTTPError) as caught:
+            post_json(
+                f"http://127.0.0.1:{self.port}/session",
+                live_update(message="正在处理 C:/private/client.psd"),
+            )
+        self.assertEqual(400, caught.exception.code)
 
     def test_bridge_status_reports_uxp_not_connected(self) -> None:
         payload = read_json(f"http://127.0.0.1:{self.port}/bridge/status")
@@ -200,6 +250,21 @@ class PhotoshopNodeProxyTests(unittest.TestCase):
         self.assertIn("document.duplicate", runner_source)
         self.assertIn("registerAutoCloseDocument", runner_source)
         self.assertIn("unregisterAutoCloseDocument", runner_source)
+
+    def test_uxp_bridge_has_in_app_codex_live_panel(self) -> None:
+        plugin = REPO_ROOT / "uxp" / "photoshop-bridge"
+        manifest = json.loads((plugin / "manifest.json").read_text(encoding="utf-8"))
+        panel_ids = {
+            entry["id"] for entry in manifest["entrypoints"] if entry["type"] == "panel"
+        }
+        self.assertEqual("index.html", manifest["main"])
+        self.assertIn("starbridgePhotoshopLivePanel", panel_ids)
+        html = (plugin / "index.html").read_text(encoding="utf-8")
+        client = (plugin / "src" / "bridge-client.js").read_text(encoding="utf-8")
+        for element_id in ("session-phase", "session-message", "session-progress"):
+            self.assertIn(f'id="{element_id}"', html)
+        self.assertIn('message?.type === "codex_session"', client)
+        self.assertIn("this.onSession(message)", client)
 
 
 if __name__ == "__main__":

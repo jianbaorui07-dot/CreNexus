@@ -13,17 +13,26 @@
   "entrypoints": {
     "diagnose": "powershell -ExecutionPolicy Bypass -File examples/photoshop_bridge/scripts/diagnose_local.ps1",
     "probe": "powershell -ExecutionPolicy Bypass -File examples/photoshop_bridge/probe.ps1",
-    "run": "powershell -ExecutionPolicy Bypass -File examples/photoshop_bridge/scripts/run_local_practice.ps1"
+    "run": "powershell -ExecutionPolicy Bypass -File examples/photoshop_bridge/scripts/run_local_practice.ps1",
+    "image_to_psd": "python -m starbridge_mcp.adapters.photoshop.semantic_layers.cli"
   },
   "supported_tasks": [
     "local diagnosis",
     "COM probe",
     "document info",
-    "subject extraction experiment"
+    "subject extraction experiment",
+    "client-approved layer intent profiles with content-hash resume",
+    "local semantic layer decomposition and staged crop review",
+    "opt-in pixel-free review decision records",
+    "opt-in metrics-only GitHub Issue or Discussion feedback",
+    "explicit license-verified Wikimedia Commons regression datasets",
+    "candidate-only subject mask quality training with grouped validation",
+    "confirmed editable PSD assembly and reopen validation"
   ],
   "unsupported_tasks": [
     "stable production retouching workflow",
-    "batch PSD processing",
+    "production-grade decomposition for every image style",
+    "automatic instance separation for heavily overlapping line art",
     "UXP panel",
     "Photoshop MCP server"
   ],

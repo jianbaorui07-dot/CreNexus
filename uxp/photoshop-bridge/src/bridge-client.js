@@ -5,9 +5,11 @@ function nowIso() {
 }
 
 export class BridgeClient {
-  constructor({ proxyUrl = DEFAULT_PROXY_URL, handlers = {} } = {}) {
+  constructor({ proxyUrl = DEFAULT_PROXY_URL, handlers = {}, onStatus = () => {}, onSession = () => {} } = {}) {
     this.proxyUrl = proxyUrl;
     this.handlers = handlers;
+    this.onStatus = onStatus;
+    this.onSession = onSession;
     this.socket = null;
     this.connected = false;
     this.lastPingAt = null;
@@ -19,9 +21,11 @@ export class BridgeClient {
       return;
     }
     try {
+      this.onStatus("connecting");
       this.socket = new WebSocket(this.proxyUrl);
       this.socket.addEventListener("open", () => {
         this.connected = true;
+        this.onStatus("connected");
         this.send({
           type: "register",
           host: "photoshop",
@@ -32,10 +36,15 @@ export class BridgeClient {
       this.socket.addEventListener("close", () => {
         this.connected = false;
         this.socket = null;
+        this.onStatus("disconnected");
         this.scheduleReconnect();
       });
       this.socket.addEventListener("message", async (event) => {
         const message = JSON.parse(String(event.data || "{}"));
+        if (message?.type === "codex_session") {
+          this.onSession(message);
+          return;
+        }
         if (!message?.method) {
           return;
         }
@@ -55,11 +64,25 @@ export class BridgeClient {
           this.send({ ...replyBase, error: { code: -32000, message: String(error?.message || error) } });
         }
       });
+      this.socket.addEventListener("error", () => this.onStatus("error"));
     } catch (_error) {
       this.connected = false;
       this.socket = null;
+      this.onStatus("error");
       this.scheduleReconnect();
     }
+  }
+
+  reconnect() {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    if (this.socket) {
+      this.socket.close();
+      return;
+    }
+    this.connect();
   }
 
   hostInfo() {

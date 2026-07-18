@@ -1,0 +1,23 @@
+{
+  "schema_version": "starbridge.layer_intent.v1",
+  "primary_editing_goal": "all_major_elements",
+  "subject_granularity": "major_instances",
+  "text_policy": "editable_when_confident",
+  "background_policy": "preserve_and_complete",
+  "decoration_policy": "separate_salient",
+  "risk_level": "conservative",
+  "review_budget": {
+    "max_active_crops": 2,
+    "max_total_crops": 8,
+    "allow_full_image_followup": false
+  },
+  "learning": {
+    "record_decisions": false,
+    "include_pixels": false
+  },
+  "feedback": {
+    "github_metrics_upload": false,
+    "consent_version": "starbridge.github_metrics.v1",
+    "include_customer_content": false
+  }
+}

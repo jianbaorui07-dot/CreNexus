@@ -95,6 +95,23 @@ def minimal_state(sequence: int = 1) -> dict:
     }
 
 
+def live_update(**overrides) -> dict:
+    payload = {
+        "type": "codex_session",
+        "protocol_version": 1,
+        "session_id": "ai-demo",
+        "bridge": "illustrator",
+        "mode": "structured",
+        "phase": "running",
+        "step": {"id": "paths", "label": "生成路径", "index": 1, "total": 3},
+        "message": "Codex 正在生成矢量路径",
+        "progress": 33,
+        "at": "2026-07-18T00:00:00.000Z",
+    }
+    payload.update(overrides)
+    return payload
+
+
 @unittest.skipUnless(SERVER.exists(), "illustrator realtime proxy missing")
 class IllustratorRealtimeProxyTests(unittest.TestCase):
     @classmethod
@@ -148,6 +165,29 @@ class IllustratorRealtimeProxyTests(unittest.TestCase):
         _, payload = request("http://127.0.0.1:8976/health")
         self.assertTrue(payload["ok"])
         self.assertFalse(payload["adapter_connected"])
+        self.assertFalse(payload["live_session"]["active"])
+
+    def test_live_session_can_be_published_and_read(self):
+        status, accepted = request(
+            "http://127.0.0.1:8976/session",
+            json.dumps(live_update()).encode("utf-8"),
+            {"Content-Type": "application/json"},
+        )
+        self.assertEqual(202, status)
+        self.assertEqual("ai-demo", accepted["update"]["session_id"])
+        _, snapshot = request("http://127.0.0.1:8976/session")
+        self.assertEqual("running", snapshot["current"]["phase"])
+        _, health = request("http://127.0.0.1:8976/health")
+        self.assertTrue(health["live_session"]["active"])
+
+    def test_live_session_rejects_bridge_mismatch(self):
+        with self.assertRaises(urllib.error.HTTPError) as caught:
+            request(
+                "http://127.0.0.1:8976/session",
+                json.dumps(live_update(bridge="photoshop")).encode("utf-8"),
+                {"Content-Type": "application/json"},
+            )
+        self.assertEqual(400, caught.exception.code)
 
     def test_preview_page_is_available(self):
         with urllib.request.urlopen("http://127.0.0.1:8976/preview", timeout=5) as response:

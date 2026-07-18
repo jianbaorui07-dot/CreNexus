@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://starbridge.local/schemas/layer_intent.v1.schema.json",
+  "title": "StarBridge Layer Intent Profile v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version"],
+  "properties": {
+    "schema_version": {
+      "const": "starbridge.layer_intent.v1"
+    },
+    "primary_editing_goal": {
+      "enum": [
+        "reposition_subjects",
+        "edit_text",
+        "replace_background",
+        "all_major_elements"
+      ]
+    },
+    "subject_granularity": {
+      "enum": ["whole_subject", "major_instances", "semantic_groups"]
+    },
+    "text_policy": {
+      "enum": ["editable_when_confident", "pixel_reference_only", "ignore"]
+    },
+    "background_policy": {
+      "enum": ["preserve_and_complete", "keep_original_pixels"]
+    },
+    "decoration_policy": {
+      "enum": ["separate_salient", "keep_with_subject"]
+    },
+    "risk_level": {
+      "enum": ["conservative", "balanced", "aggressive"]
+    },
+    "review_budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_active_crops": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        "max_total_crops": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16
+        },
+        "allow_full_image_followup": {
+          "type": "boolean"
+        }
+      }
+    },
+    "learning": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "record_decisions": {
+          "type": "boolean",
+          "default": false
+        },
+        "include_pixels": {
+          "const": false
+        }
+      }
+    },
+    "feedback": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "github_metrics_upload": {
+          "type": "boolean",
+          "default": false
+        },
+        "consent_version": {
+          "const": "starbridge.github_metrics.v1"
+        },
+        "include_customer_content": {
+          "const": false
+        }
+      }
+    }
+  }
+}

@@ -90,6 +90,14 @@ class IllustratorUxpBridgeTests(unittest.TestCase):
         self.assertNotIn("board?.name", source)
         self.assertIn("protocol_version: 2", source)
 
+    def test_panel_displays_codex_live_updates(self):
+        html = (PLUGIN / "index.html").read_text(encoding="utf-8")
+        source = (PLUGIN / "src" / "bridge-client.js").read_text(encoding="utf-8")
+        for element_id in ("session-phase", "session-step", "session-progress", "session-mode"):
+            self.assertIn(f'id="{element_id}"', html)
+        self.assertIn('message?.type === "codex_session"', source)
+        self.assertIn("this.onSession(message)", source)
+
 
 if __name__ == "__main__":
     unittest.main()
