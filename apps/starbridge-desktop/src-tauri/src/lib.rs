@@ -13,6 +13,7 @@ use tauri_plugin_shell::{
 };
 use uuid::Uuid;
 
+mod adobe_export;
 mod licensing;
 mod updater;
 
@@ -958,6 +959,8 @@ pub fn run() {
             vectorization_history,
             open_vector_output,
             open_project_artifacts,
+            adobe_export::export_adobe_file,
+            adobe_export::list_adobe_exports,
             restart_backend,
             open_logs_directory,
             version_info,

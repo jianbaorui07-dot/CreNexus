@@ -88,6 +88,10 @@ def _evidence_dir_for(repo_root: Path, output_dir: Path) -> Path:
 
 
 def _build_context(arguments: dict[str, Any], repo_root: Path, tool_name: str) -> RequestContext:
+    # Windows runners may hand us an 8.3 alias while Path.resolve() expands child
+    # paths to their long form. Normalize before containment and relative-path
+    # operations so the same directory cannot be mistaken for an escape.
+    repo_root = repo_root.resolve()
     requested_output = str(arguments.get("output_dir") or "sandbox/evidence")
     output_root = _resolve_output_dir(repo_root, requested_output)
     evidence_dir = _evidence_dir_for(repo_root, output_root)
@@ -110,6 +114,7 @@ def _build_context(arguments: dict[str, Any], repo_root: Path, tool_name: str) -
 
 
 def _build_camera_raw_context(arguments: dict[str, Any], repo_root: Path) -> RequestContext:
+    repo_root = repo_root.resolve()
     raw_output = arguments.get("output") or {}
     requested_output = raw_output.get("dir") if isinstance(raw_output, dict) else None
     output_root = resolve_camera_raw_output_dir(

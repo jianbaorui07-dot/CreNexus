@@ -76,6 +76,8 @@ function transportReturning(status: number, body: Record<string, unknown>): CreN
     }),
     openVectorOutput: async () => ({ status: 200, body: { ok: true, data: { opened: true } } }),
     openProjectArtifacts: async () => "artifacts",
+    exportAdobeFile: async () => null,
+    listAdobeExports: async () => [],
   } as CreNexusTransport;
 }
 

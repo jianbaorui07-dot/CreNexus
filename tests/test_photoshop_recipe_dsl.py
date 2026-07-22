@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import ctypes
+import os
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from starbridge_mcp.adapters.photoshop import TOOL_DEFINITIONS, TOOL_HANDLERS
-from starbridge_mcp.adapters.photoshop.bridge import PhotoshopBridgeAdapter
+from starbridge_mcp.adapters.photoshop.bridge import PhotoshopBridgeAdapter, _build_context
 from starbridge_mcp.adapters.photoshop.recipe_dsl import (
     build_batch_plan,
     capability_manifest,
@@ -16,6 +18,21 @@ from starbridge_mcp.adapters.photoshop.recipe_dsl import (
 
 
 class PhotoshopRecipeDslTests(unittest.TestCase):
+    @unittest.skipUnless(os.name == "nt", "Windows 8.3 path aliases are Windows-only")
+    def test_context_normalizes_windows_short_repo_alias(self) -> None:
+        with TemporaryDirectory() as directory:
+            long_root = Path(directory) / "CreNexus Long Repository Name"
+            (long_root / "sandbox").mkdir(parents=True)
+            buffer = ctypes.create_unicode_buffer(32768)
+            length = ctypes.windll.kernel32.GetShortPathNameW(str(long_root), buffer, len(buffer))
+            if not length or Path(buffer.value) == long_root:
+                self.skipTest("8.3 aliases are disabled on this volume")
+
+            context = _build_context({}, Path(buffer.value), "ps.get_state")
+
+        self.assertEqual("sandbox/evidence", context.output_dir)
+        self.assertEqual("evidence", context.evidence_dir.name)
+
     def test_capabilities_separate_live_truth_from_static_support(self) -> None:
         result = capability_manifest()
         self.assertTrue(result["ok"])

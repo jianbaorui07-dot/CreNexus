@@ -376,6 +376,29 @@ export interface ProjectDelivery {
   fabricatedOutputs: false;
 }
 
+export type AdobeExportFormat = "psd" | "ai";
+
+export interface AdobeExportRequest {
+  projectId: string;
+  artifactRelativePath: string;
+  format: AdobeExportFormat;
+  confirmExport: boolean;
+}
+
+export interface AdobeExportReceipt {
+  receiptId: string;
+  format: AdobeExportFormat;
+  fileName: string;
+  sizeBytes: number;
+  sourceBasename: string;
+  sha256: string;
+  createdAtUnixSeconds: number;
+  nativeReopenValidated: true;
+  sourceOverwritten: false;
+  targetPathPersisted: false;
+  historyRecorded: boolean;
+}
+
 export interface ApiErrorShape {
   code?: string;
   message?: string;

@@ -1,4 +1,6 @@
 import type {
+  AdobeExportReceipt,
+  AdobeExportRequest,
   ApiEnvelope,
   CodexConnectionResetResult,
   CodexConnectorInstallResult,
@@ -109,6 +111,20 @@ export class HttpTransport implements CreNexusTransport {
     throw new TransportError(
       "desktop_required",
       "浏览器开发模式不能打开项目交付目录。",
+    );
+  }
+
+  async exportAdobeFile(_request: AdobeExportRequest): Promise<AdobeExportReceipt | null> {
+    throw new TransportError(
+      "desktop_required",
+      "浏览器开发模式不能调用本机 Photoshop 或 Illustrator 导出。",
+    );
+  }
+
+  async listAdobeExports(_projectId: string): Promise<AdobeExportReceipt[]> {
+    throw new TransportError(
+      "desktop_required",
+      "浏览器开发模式不能读取本机 Adobe 导出历史。",
     );
   }
 

@@ -1,5 +1,7 @@
 import type {
   ApiEnvelope,
+  AdobeExportReceipt,
+  AdobeExportRequest,
   CodexConnectionResetResult,
   CodexConnectorInstallResult,
   CreativeApplicationConnection,
@@ -36,6 +38,8 @@ export interface CreNexusTransport {
   restartBackend(): Promise<RuntimeStatus>;
   openLogsDirectory(): Promise<string>;
   openProjectArtifacts(projectId: string): Promise<string>;
+  exportAdobeFile(request: AdobeExportRequest): Promise<AdobeExportReceipt | null>;
+  listAdobeExports(projectId: string): Promise<AdobeExportReceipt[]>;
   installCodexConnector(
     confirmInstall: boolean,
   ): Promise<TransportResponse<ApiEnvelope<CodexConnectorInstallResult>>>;
