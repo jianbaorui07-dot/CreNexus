@@ -2,6 +2,13 @@
 
 ## Unreleased / Optimizations
 
+### 2026-07-23 — Pixel Reconstruction first customer route
+
+* Promoted Pixel Reconstruction into the four-card processing-mode selector and made it the default customer route.
+* Added an exact-only workflow that validates the source, reconstructs real raster-free SVG geometry, verifies the pixels, requests review, and delivers without forcing a second editable-vector pass.
+* Kept Artisan, Smart, and Lightweight as optional dual-stage routes that retain the verified exact baseline before drawing an editable vector.
+* Hardened Windows desktop sidecar startup with a preselected loopback port, split-ready-line decoding, and an authenticated bootstrap identity check.
+
 ### 2026-07-22 — Client loading-state correction
 
 * Replaced the temporary “no projects” and “no deliverables” flashes with explicit local loading states while project, delivery, and Adobe export history records are still being read.

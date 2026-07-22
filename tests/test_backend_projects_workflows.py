@@ -127,6 +127,12 @@ class BackendProjectsWorkflowTests(unittest.TestCase):
             workflows = backend.route("GET", "/api/workflows")
             self.assertEqual(200, workflows.status)
             self.assertFalse(workflows.body["data"]["workflows"][0]["imageTraceFallback"])
+            vector_workflow = next(
+                item
+                for item in workflows.body["data"]["workflows"]
+                if item["workflowId"] == "vector-delivery-v1"
+            )
+            self.assertIn("exact", vector_workflow["drawingModes"])
 
             created = backend.route(
                 "POST",

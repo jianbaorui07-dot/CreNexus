@@ -1,4 +1,5 @@
 use std::{
+    net::{Ipv4Addr, SocketAddrV4, TcpListener},
     path::PathBuf,
     sync::{Arc, Mutex, MutexGuard},
     time::Duration,
@@ -23,6 +24,7 @@ const SESSION_ENV: &str = "STARBRIDGE_SESSION_TOKEN";
 const SESSION_HEADER: &str = "X-CreNexus-Session";
 const MAX_RECOVERY_ATTEMPTS: u8 = 1;
 const STARTUP_TIMEOUT: Duration = Duration::from_secs(15);
+const MAX_READY_BUFFER_BYTES: usize = 64 * 1024;
 const RECOVERY_BACKOFF: Duration = Duration::from_millis(1200);
 const MAX_TYPED_RESPONSE_BYTES: usize = 12 * 1024 * 1024;
 const MAX_VECTOR_PARAMETERS_BYTES: usize = 4 * 1024;
@@ -172,11 +174,61 @@ fn parse_ready(bytes: &[u8]) -> Option<ReadyMessage> {
     serde_json::from_str(payload).ok()
 }
 
+#[derive(Default)]
+struct ReadyStreamDecoder {
+    buffer: Vec<u8>,
+}
+
+impl ReadyStreamDecoder {
+    fn push(&mut self, chunk: &[u8]) -> Result<Option<ReadyMessage>, ()> {
+        if self.buffer.len().saturating_add(chunk.len()) > MAX_READY_BUFFER_BYTES {
+            return Err(());
+        }
+        self.buffer.extend_from_slice(chunk);
+
+        while let Some(newline) = self.buffer.iter().position(|byte| *byte == b'\n') {
+            let line: Vec<u8> = self.buffer.drain(..=newline).collect();
+            if let Some(ready) = parse_ready(&line) {
+                return Ok(Some(ready));
+            }
+        }
+
+        Ok(parse_ready(&self.buffer))
+    }
+}
+
 fn take_and_kill_child(manager: &BackendManager) {
     let child = manager.lock().child.take();
     if let Some(child) = child {
         let _ = child.kill();
     }
+}
+
+fn select_loopback_port() -> Result<u16, &'static str> {
+    let listener = TcpListener::bind(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 0))
+        .map_err(|_| "loopback_port_unavailable")?;
+    listener
+        .local_addr()
+        .map(|address| address.port())
+        .map_err(|_| "loopback_port_unavailable")
+}
+
+async fn authenticated_startup_probe(port: u16, session_credential: &str) -> bool {
+    let client = match reqwest::Client::builder()
+        .no_proxy()
+        .connect_timeout(Duration::from_millis(250))
+        .timeout(Duration::from_millis(500))
+        .build()
+    {
+        Ok(client) => client,
+        Err(_) => return false,
+    };
+    client
+        .get(format!("http://127.0.0.1:{port}/api/bootstrap"))
+        .header(SESSION_HEADER, session_credential)
+        .send()
+        .await
+        .is_ok_and(|response| response.status().is_success())
 }
 
 async fn run_backend_once(
@@ -186,6 +238,11 @@ async fn run_backend_once(
 ) -> ProcessOutcome {
     let session_credential = format!("{}{}", Uuid::new_v4().simple(), Uuid::new_v4().simple());
     let parent_pid = std::process::id().to_string();
+    let requested_port = match select_loopback_port() {
+        Ok(port) => port,
+        Err(code) => return ProcessOutcome::UnexpectedExit(code),
+    };
+    let requested_port_text = requested_port.to_string();
     let app_data_root = match starbridge_data_root(app) {
         Ok(path) => path,
         Err(_) => return ProcessOutcome::UnexpectedExit("app_data_root_unavailable"),
@@ -194,7 +251,13 @@ async fn run_backend_once(
         Ok(command) => command,
         Err(_) => return ProcessOutcome::UnexpectedExit("sidecar_not_staged"),
     }
-    .args(["--desktop", "--parent-pid", parent_pid.as_str()])
+    .args([
+        "--desktop",
+        "--parent-pid",
+        parent_pid.as_str(),
+        "--port",
+        requested_port_text.as_str(),
+    ])
     .env(SESSION_ENV, &session_credential)
     .env(APP_DATA_ENV, app_data_root.as_os_str());
 
@@ -212,29 +275,40 @@ async fn run_backend_once(
         inner.child = Some(child);
         inner.backend_pid = Some(child_pid);
         inner.port = None;
-        inner.session_credential = Some(session_credential);
+        inner.session_credential = Some(session_credential.clone());
         inner.technical_details = None;
     }
 
+    let mut ready_decoder = ReadyStreamDecoder::default();
+    let startup_deadline = tokio::time::Instant::now() + STARTUP_TIMEOUT;
     let ready = loop {
-        let event = match tokio::time::timeout(STARTUP_TIMEOUT, events.recv()).await {
-            Ok(Some(event)) => event,
+        let now = tokio::time::Instant::now();
+        if now >= startup_deadline {
+            take_and_kill_child(manager);
+            return ProcessOutcome::UnexpectedExit("sidecar_startup_timeout");
+        }
+        let poll_window = std::cmp::min(
+            Duration::from_millis(200),
+            startup_deadline.saturating_duration_since(now),
+        );
+        let event = match tokio::time::timeout(poll_window, events.recv()).await {
+            Ok(Some(event)) => Some(event),
             Ok(None) => {
                 take_and_kill_child(manager);
                 return ProcessOutcome::UnexpectedExit("sidecar_event_stream_closed");
             }
-            Err(_) => {
-                take_and_kill_child(manager);
-                return ProcessOutcome::UnexpectedExit("sidecar_startup_timeout");
-            }
+            Err(_) => None,
         };
         match event {
-            CommandEvent::Stdout(bytes) => {
-                if let Some(ready) = parse_ready(&bytes) {
-                    break ready;
+            Some(CommandEvent::Stdout(bytes)) => match ready_decoder.push(&bytes) {
+                Ok(Some(ready)) => break ready,
+                Ok(None) => {}
+                Err(()) => {
+                    take_and_kill_child(manager);
+                    return ProcessOutcome::UnexpectedExit("sidecar_ready_buffer_overflow");
                 }
-            }
-            CommandEvent::Terminated(_) => {
+            },
+            Some(CommandEvent::Terminated(_)) => {
                 let requested = manager.lock().desired_stop;
                 return if requested {
                     ProcessOutcome::RequestedStop
@@ -242,14 +316,26 @@ async fn run_backend_once(
                     ProcessOutcome::UnexpectedExit("sidecar_exited_before_ready")
                 };
             }
-            CommandEvent::Error(_) => {
+            Some(CommandEvent::Error(_)) => {
                 return ProcessOutcome::UnexpectedExit("sidecar_stream_error");
             }
             _ => {}
         }
+        if authenticated_startup_probe(requested_port, &session_credential).await {
+            break ReadyMessage {
+                port: requested_port,
+                pid: child_pid,
+                host: "127.0.0.1".into(),
+                session_required: true,
+            };
+        }
     };
 
-    if ready.host != "127.0.0.1" || !ready.session_required || ready.pid != child_pid {
+    if ready.host != "127.0.0.1"
+        || !ready.session_required
+        || ready.pid != child_pid
+        || ready.port != requested_port
+    {
         take_and_kill_child(manager);
         return ProcessOutcome::UnexpectedExit("sidecar_ready_validation_failed");
     }
@@ -1097,5 +1183,39 @@ mod tests {
         assert_eq!(ready.host, "127.0.0.1");
         assert!(ready.session_required);
         assert!(parse_ready(br#"{"port":49152}"#).is_none());
+    }
+
+    #[test]
+    fn ready_stream_decoder_accepts_a_message_split_across_chunks() {
+        let mut decoder = ReadyStreamDecoder::default();
+        assert!(decoder
+            .push(br#"STARBRIDGE_READY {"port":49152,"pid":1234,"host":"127."#)
+            .expect("bounded input")
+            .is_none());
+        let ready = decoder
+            .push(br#"0.0.1","session_required":true}"#)
+            .expect("bounded input")
+            .expect("split readiness message");
+        assert_eq!(ready.port, 49152);
+        assert_eq!(ready.pid, 1234);
+    }
+
+    #[test]
+    fn ready_stream_decoder_ignores_prior_complete_log_lines() {
+        let mut decoder = ReadyStreamDecoder::default();
+        let ready = decoder
+            .push(
+                b"booting local service\nSTARBRIDGE_READY {\"port\":49152,\"pid\":1234,\"host\":\"127.0.0.1\",\"session_required\":true}\n",
+            )
+            .expect("bounded input")
+            .expect("readiness after log line");
+        assert_eq!(ready.port, 49152);
+    }
+
+    #[test]
+    fn ready_stream_decoder_rejects_unbounded_stdout() {
+        let mut decoder = ReadyStreamDecoder::default();
+        assert!(decoder.push(&vec![b'x'; MAX_READY_BUFFER_BYTES]).is_ok());
+        assert!(decoder.push(b"x").is_err());
     }
 }

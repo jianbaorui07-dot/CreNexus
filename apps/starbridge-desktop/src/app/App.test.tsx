@@ -536,7 +536,7 @@ describe("desktop runtime status", () => {
       recommended: true,
       ordinaryCustomerRoute: true,
       requiresConfirmation: true,
-      drawingModes: ["artisan", "smart", "lightweight"],
+      drawingModes: ["artisan", "smart", "lightweight", "exact"],
       imageTraceFallback: false,
     }]);
     client.createCreativeJob = vi.fn().mockResolvedValue(job);
@@ -546,8 +546,13 @@ describe("desktop runtime status", () => {
     render(<App client={client} />);
     fireEvent.click(await screen.findByRole("button", { name: "图片矢量化" }));
     expect(await screen.findByText("example.png")).toBeInTheDocument();
-    expect(screen.getAllByText(/像素矢量/).length).toBeGreaterThan(0);
-    const createButton = screen.getByRole("button", { name: "建立任务计划" });
+    expect(screen.getAllByText(/像素重建/).length).toBeGreaterThan(0);
+    expect(screen.getByRole("img", { name: "像素重建图标" })).toBeInTheDocument();
+    expect(screen.getByText("像素重建 / PIXEL RECONSTRUCTION")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "选择像素重建模式" }));
+    fireEvent.change(screen.getByLabelText("像素重建最长边"), { target: { value: "512" } });
+    fireEvent.change(screen.getByLabelText("SVG 安全上限"), { target: { value: "64" } });
+    const createButton = screen.getByRole("button", { name: "建立像素重建任务" });
     await waitFor(() => expect(createButton).toBeEnabled());
     fireEvent.click(createButton);
 
@@ -555,8 +560,8 @@ describe("desktop runtime status", () => {
       expect.objectContaining({
         projectId: "project-test",
         sourceAssetId: "asset-test",
-        drawingMode: "smart",
-        parameters: { exact: { maxDimension: 1024, maxSvgSizeMb: 128 } },
+        drawingMode: "exact",
+        parameters: { exact: { maxDimension: 512, maxSvgSizeMb: 64 } },
       }),
     ));
     expect((await screen.findAllByText("等待开始")).length).toBeGreaterThan(0);

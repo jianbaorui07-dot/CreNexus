@@ -94,6 +94,27 @@ class VectorDeliveryPipelineTests(unittest.TestCase):
             exact_step.input_data["parameters"],
         )
 
+    def test_exact_mode_stops_after_verified_pixel_delivery(self) -> None:
+        plan = create_vector_delivery_plan(
+            {
+                "sourceAssetRelativePath": "projects/project-1/source/asset-1.png",
+                "drawingMode": "exact",
+            }
+        )
+
+        self.assertEqual(
+            [
+                "validate-source",
+                "exact-reconstruction",
+                "verify-exact-baseline",
+                "review-result",
+                "collect-delivery",
+            ],
+            [step.step_id for step in plan.steps],
+        )
+        review_step = next(step for step in plan.steps if step.step_id == "review-result")
+        self.assertEqual("pixel-reconstruction", review_step.input_data["review"])
+
     def test_plan_rejects_unbounded_exact_svg_size(self) -> None:
         with self.assertRaisesRegex(ValueError, "maxSvgSizeMb"):
             create_vector_delivery_plan(
@@ -138,6 +159,46 @@ class VectorDeliveryPipelineTests(unittest.TestCase):
                 [
                     "vectorization",
                     "vectorization",
+                    "vectorization",
+                    "vectorization",
+                    "vectorization",
+                    "user-review",
+                    "local-delivery",
+                ],
+                [step["adapter"] for step in evidence["steps"]],
+            )
+            self.assertNotIn(str(root), str(result.job.to_dict()))
+
+    def test_real_small_image_completes_exact_only_delivery(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            engine, project, asset = self.create_runtime(root)
+            job = engine.create_job(
+                project.project_id,
+                WORKFLOW_ID,
+                {
+                    "sourceAssetRelativePath": asset.relative_path,
+                    "drawingMode": "exact",
+                    "parameters": {"exact": {"maxDimension": 512, "maxSvgSizeMb": 64}},
+                },
+            )
+            result = self.confirm_until_terminal(engine, engine.run(job.job_id))
+            self.assertEqual(
+                "completed",
+                result.job.status,
+                result.job.error.to_dict() if result.job.error else result.job.to_dict(),
+            )
+            evidence = engine.evidence_store.get(result.job.evidence_id or "missing")
+            artifact_root = root / "artifacts" / project.project_id / job.job_id
+            exact_svg = artifact_root / "exact" / "vector.svg"
+
+            self.assertTrue(exact_svg.is_file())
+            self.assertNotIn("<image", exact_svg.read_text(encoding="utf-8").lower())
+            self.assertFalse((artifact_root / "artisan").exists())
+            self.assertFalse((artifact_root / "smart").exists())
+            self.assertFalse((artifact_root / "lightweight").exists())
+            self.assertEqual(
+                [
                     "vectorization",
                     "vectorization",
                     "vectorization",

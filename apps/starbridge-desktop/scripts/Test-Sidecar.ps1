@@ -1,7 +1,9 @@
 [CmdletBinding()]
 param(
     [string]$TargetTriple,
-    [int]$StartupTimeoutSeconds = 15
+    [int]$StartupTimeoutSeconds = 15,
+    [ValidateRange(0, 65535)]
+    [int]$Port = 0
 )
 
 $ErrorActionPreference = "Stop"
@@ -63,7 +65,8 @@ $startInfo.UseShellExecute = $false
 $startInfo.CreateNoWindow = $true
 $startInfo.RedirectStandardOutput = $true
 $startInfo.RedirectStandardError = $true
-$startInfo.Arguments = "--desktop --parent-pid $PID"
+$portArgument = if ($Port -gt 0) { " --port $Port" } else { "" }
+$startInfo.Arguments = "--desktop --parent-pid $PID$portArgument"
 $startInfo.EnvironmentVariables["STARBRIDGE_SESSION_TOKEN"] = $sessionCredential
 $startInfo.EnvironmentVariables["STARBRIDGE_APP_DATA_DIR"] = $temporaryRoot
 $codexTestHome = Join-Path $temporaryRoot "codex-home"

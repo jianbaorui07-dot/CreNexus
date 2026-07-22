@@ -788,12 +788,12 @@ class CreNexusBackend:
                     "workflows": [
                         {
                             "workflowId": VECTOR_DELIVERY_WORKFLOW_ID,
-                            "name": "图片 → 精确重建 → 绘制型矢量 → 交付",
+                            "name": "图片 → 像素重建 / 可编辑矢量 → 交付",
                             "capabilityStatus": "experimental",
                             "recommended": True,
                             "ordinaryCustomerRoute": True,
                             "requiresConfirmation": True,
-                            "drawingModes": ["artisan", "smart", "lightweight"],
+                            "drawingModes": ["artisan", "smart", "lightweight", "exact"],
                             "imageTraceFallback": False,
                         },
                         {
@@ -893,7 +893,7 @@ class CreNexusBackend:
             project = self.project_store.get(str(project_id))
             if workflow_id == VECTOR_DELIVERY_WORKFLOW_ID:
                 asset_id = body.get("sourceAssetId") or body.get("source_asset_id")
-                drawing_mode = body.get("drawingMode") or body.get("drawing_mode") or "smart"
+                drawing_mode = body.get("drawingMode") or body.get("drawing_mode") or "exact"
                 parameters = body.get("parameters") or {}
                 if not isinstance(asset_id, str):
                     return self._error(

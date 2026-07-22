@@ -33,6 +33,44 @@ Reference and implementation were placed side by side in one image at the same v
 - The reference contains populated sample tasks and installed software. The implementation renders live local data only, so the QA capture shows the real loading/empty state while retaining the same information architecture.
 - Native Tauri window controls are not present in the browser preview; they remain owned by the desktop shell.
 
-## Result
+## Previous result
 
-`final result: passed`
+Previous design QA result: passed.
+
+---
+
+## 2026-07-23 Pixel Reconstruction mode-grid follow-up
+
+- Source visual truth path: user-provided screenshot attachment (local source path intentionally redacted).
+- Implementation screenshot path: not persisted; the implementation was inspected through a live Computer Use capture of the alpha.2 desktop build.
+- Viewport: `1123 × 795` Windows application window during the final alpha.2 launch.
+- Source and implementation pixels: source `1680 × 1123`; implementation `1123 × 795`; no density normalization was possible because the implementation capture was not persisted.
+- State: Codex paired, local runtime online, alpha.2 desktop shell running.
+
+### Full-view and focused-region evidence
+
+The source establishes a two-column processing-mode grid, square editorial panels, orange selected-state borders, and a separate pixel-parameter section. The implementation reuses those exact layout and token systems, adds Pixel Reconstruction as the fourth card, and uses the installed Tabler `IconGridDots` asset. Automated frontend coverage verified the default selected state, 512-pixel/64-MB controls, and exact job request. The user ended the visual inspection and asked to publish before a persistent same-state capture of the final mode grid could be recorded, so the focused comparison remains blocked.
+
+### Findings
+
+- [P2] Missing persisted final mode-grid comparison.
+  - Location: Image Vectorization processing-mode grid.
+  - Impact: the implementation and interactions are tested, but a same-viewport visual comparison is not reproducible from this report.
+  - Fix: capture the paired Image Vectorization page at the source viewport and compare the mode-grid region before promoting the draft PR.
+
+### Required fidelity surfaces
+
+- Fonts and typography: existing CreNexus display and monospace system retained; final same-state capture pending.
+- Spacing and layout rhythm: existing two-column `.mode-grid` and square record-panel system retained; final same-state capture pending.
+- Colors and visual tokens: existing `--primary`, border, surface, and selected-state tokens reused.
+- Image quality and asset fidelity: no handcrafted SVG added; the new icon comes from the installed Tabler library.
+- Copy and content: Pixel Reconstruction is the default exact-only route, while the other modes remain dual-stage.
+
+### Comparison history and checklist
+
+- Initial implementation placed Pixel Reconstruction only in the lower parameter panel; the user clarified that it must appear in the upper mode selector.
+- The implementation was revised to add the fourth selectable card, default it to selected, and make the primary action mode-specific.
+- Frontend, Python, Rust, security, product-facts, encoding, and real central-red-carp checks passed.
+- Persisting and comparing the final paired workflow-page screenshot remains pending.
+
+final result: blocked

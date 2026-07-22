@@ -8,14 +8,14 @@ from starbridge_mcp.domain.models import WorkflowPlan, WorkflowStep, validate_re
 from starbridge_mcp.workflows.registry import WorkflowRegistry, build_workflow_plan
 
 WORKFLOW_ID = "vector-delivery-v1"
-DRAWING_MODES = frozenset({"artisan", "smart", "lightweight"})
+DRAWING_MODES = frozenset({"exact", "artisan", "smart", "lightweight"})
 
 
 def create_vector_delivery_plan(inputs: dict[str, Any]) -> WorkflowPlan:
     source_relative_path = validate_relative_path(str(inputs.get("sourceAssetRelativePath") or ""))
-    drawing_mode = str(inputs.get("drawingMode") or "smart")
+    drawing_mode = str(inputs.get("drawingMode") or "exact")
     if drawing_mode not in DRAWING_MODES:
-        raise ValueError("drawingMode must be artisan, smart, or lightweight")
+        raise ValueError("drawingMode must be exact, artisan, smart, or lightweight")
     parameters = inputs.get("parameters") or {}
     if not isinstance(parameters, dict):
         raise ValueError("parameters must be an object")
@@ -41,64 +41,72 @@ def create_vector_delivery_plan(inputs: dict[str, Any]) -> WorkflowPlan:
     ):
         raise ValueError("exact maxSvgSizeMb must be between 1 and 256")
     common = {"sourceAssetRelativePath": source_relative_path}
-    return build_workflow_plan(
-        WORKFLOW_ID,
-        (
-            WorkflowStep(
-                step_id="validate-source",
-                adapter="vectorization",
-                input_data={**common, "operation": "validate-source"},
-                validation=("explicit-file", "png-or-jpeg", "managed-project-source"),
+    steps = [
+        WorkflowStep(
+            step_id="validate-source",
+            adapter="vectorization",
+            input_data={**common, "operation": "validate-source"},
+            validation=("explicit-file", "png-or-jpeg", "managed-project-source"),
+        ),
+        WorkflowStep(
+            step_id="exact-reconstruction",
+            adapter="vectorization",
+            input_data={
+                **common,
+                "operation": "vectorize",
+                "mode": "exact",
+                "parameters": exact_parameters,
+            },
+            validation=("safe-output-root", "no-source-overwrite"),
+            requires_confirmation=True,
+            rollback_policy={"enabled": False, "preserveFailedOutputForDiagnostics": True},
+        ),
+        WorkflowStep(
+            step_id="verify-exact-baseline",
+            adapter="vectorization",
+            input_data={**common, "operation": "verify-exact"},
+            validation=(
+                "pixel-match",
+                "raster-free-svg",
+                "no-script",
+                "no-external-reference",
+                "image-trace-not-used",
             ),
-            WorkflowStep(
-                step_id="exact-reconstruction",
-                adapter="vectorization",
-                input_data={
-                    **common,
-                    "operation": "vectorize",
-                    "mode": "exact",
-                    "parameters": exact_parameters,
-                },
-                validation=("safe-output-root", "no-source-overwrite"),
-                requires_confirmation=True,
-                rollback_policy={"enabled": False, "preserveFailedOutputForDiagnostics": True},
-            ),
-            WorkflowStep(
-                step_id="verify-exact-baseline",
-                adapter="vectorization",
-                input_data={**common, "operation": "verify-exact"},
-                validation=(
-                    "pixel-match",
-                    "raster-free-svg",
-                    "no-script",
-                    "no-external-reference",
-                    "image-trace-not-used",
+        ),
+    ]
+    if drawing_mode != "exact":
+        steps.extend(
+            (
+                WorkflowStep(
+                    step_id="draw-vector",
+                    adapter="vectorization",
+                    input_data={
+                        **common,
+                        "operation": "vectorize",
+                        "mode": drawing_mode,
+                        "parameters": drawing_parameters,
+                    },
+                    validation=("exact-baseline-completed", "safe-output-root"),
+                    requires_confirmation=True,
+                    retry_policy={"maxAttempts": 1},
+                    rollback_policy={"enabled": False, "preserveExactBaseline": True},
                 ),
-            ),
-            WorkflowStep(
-                step_id="draw-vector",
-                adapter="vectorization",
-                input_data={
-                    **common,
-                    "operation": "vectorize",
-                    "mode": drawing_mode,
-                    "parameters": drawing_parameters,
-                },
-                validation=("exact-baseline-completed", "safe-output-root"),
-                requires_confirmation=True,
-                retry_policy={"maxAttempts": 1},
-                rollback_policy={"enabled": False, "preserveExactBaseline": True},
-            ),
-            WorkflowStep(
-                step_id="compare-quality",
-                adapter="vectorization",
-                input_data={**common, "operation": "compare-quality", "mode": drawing_mode},
-                validation=("final-svg-render", "quality-metrics"),
-            ),
+                WorkflowStep(
+                    step_id="compare-quality",
+                    adapter="vectorization",
+                    input_data={**common, "operation": "compare-quality", "mode": drawing_mode},
+                    validation=("final-svg-render", "quality-metrics"),
+                ),
+            )
+        )
+    steps.extend(
+        (
             WorkflowStep(
                 step_id="review-result",
                 adapter="user-review",
-                input_data={"review": "vector-result"},
+                input_data={
+                    "review": "pixel-reconstruction" if drawing_mode == "exact" else "vector-result"
+                },
                 requires_confirmation=True,
                 rollback_policy={"enabled": False, "preserveArtifacts": True},
             ),
@@ -108,8 +116,9 @@ def create_vector_delivery_plan(inputs: dict[str, Any]) -> WorkflowPlan:
                 input_data={"formats": "from-existing-artifacts-only"},
                 validation=("no-fabricated-format", "redacted-evidence"),
             ),
-        ),
+        )
     )
+    return build_workflow_plan(WORKFLOW_ID, tuple(steps))
 
 
 def register_vector_delivery_workflow(registry: WorkflowRegistry) -> None:

@@ -182,6 +182,14 @@ button:disabled, .file-button.is-disabled { cursor: not-allowed; opacity: .5; }
 .asset-list span { color: var(--text-muted); font-size: 9.5px; }
 .workflow-builder-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .workflow-truth-panel { grid-column: 1 / -1; }
+.pixel-vector-panel { border-color: color-mix(in srgb, var(--primary) 42%, var(--border)); }
+.pixel-vector-panel.is-active { box-shadow: inset 0 0 0 1px var(--primary); }
+.pixel-vector-feature { display: grid; grid-template-columns: 58px minmax(0, 1fr) auto; align-items: center; gap: 13px; margin-bottom: 15px; }
+.pixel-vector-mark { display: grid; width: 58px; height: 58px; place-items: center; border: 2px solid var(--text); background: var(--primary); color: var(--text); }
+.pixel-vector-icon { width: 40px; height: 40px; stroke-width: 1.8; }
+.pixel-vector-copy > span { color: var(--primary); font-family: ui-monospace, "Cascadia Code", monospace; font-size: 9px; font-weight: 800; letter-spacing: .08em; }
+.pixel-vector-copy h3 { margin: 3px 0 4px; font-size: 18px; }
+.pixel-vector-copy p { margin: 0; color: var(--text-muted); font-size: 10.5px; line-height: 1.45; }
 .workflow-step-list { margin: 13px 0; padding-left: 22px; color: var(--text-muted); font-size: 11.5px; line-height: 1.8; }
 .job-status { display: inline-flex; min-height: 25px; align-items: center; padding: 0 9px; border-radius: 999px; background: var(--surface-subtle); color: var(--text-muted); font-size: 10px; font-weight: 800; }
 .job-status.status-completed { background: color-mix(in srgb, var(--success) 10%, var(--surface)); color: var(--success); }
@@ -243,6 +251,8 @@ button:disabled, .file-button.is-disabled { cursor: not-allowed; opacity: .5; }
 .mode-card strong { color: var(--text); font-size: 12px; }
 .mode-card span { margin-top: 4px; color: var(--text-muted); font-size: 10.5px; line-height: 1.4; }
 .mode-card small { margin-top: 5px; color: var(--primary); font-size: 9.5px; }
+.mode-card-exact { position: relative; padding-right: 42px; }
+.mode-card-icon { position: absolute; top: 10px; right: 10px; width: 24px; height: 24px; color: var(--primary); stroke-width: 1.8; }
 .parameter-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin: 10px 0; }
 .parameter-row label { color: var(--text-muted); font-size: 10.5px; font-weight: 600; }
 .parameter-row input { width: 100%; height: 35px; margin-top: 5px; padding: 0 9px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); }

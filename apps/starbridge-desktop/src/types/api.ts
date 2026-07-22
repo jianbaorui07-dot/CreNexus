@@ -291,7 +291,7 @@ export interface CreativeJobCreateRequest {
   projectId: string;
   workflowId: string;
   sourceAssetId?: string;
-  drawingMode?: "artisan" | "smart" | "lightweight";
+  drawingMode?: "artisan" | "smart" | "lightweight" | "exact";
   parameters?: Record<string, unknown>;
   prompt?: string;
   negativePrompt?: string;
@@ -337,7 +337,7 @@ export interface WorkflowSummary {
   recommended: boolean;
   ordinaryCustomerRoute: boolean;
   requiresConfirmation: boolean;
-  drawingModes: Array<"artisan" | "smart" | "lightweight">;
+  drawingModes: Array<"artisan" | "smart" | "lightweight" | "exact">;
   imageTraceFallback: boolean;
 }
 
