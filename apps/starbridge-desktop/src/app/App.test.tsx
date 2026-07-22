@@ -42,6 +42,7 @@ function makeClient(status: RuntimeStatus | Promise<RuntimeStatus>): CreNexusCli
       .fn()
       .mockResolvedValue("<LOCAL_APP_DATA>/CreNexus/artifacts/project-test"),
     exportAdobeFile: vi.fn().mockResolvedValue(null),
+    listAdobeExports: vi.fn().mockResolvedValue([]),
     getConnections: vi.fn().mockResolvedValue(PAIRED_CONNECTIONS),
     installCodexConnector: vi.fn().mockResolvedValue({
       installed: true,

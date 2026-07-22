@@ -49,6 +49,7 @@ export interface CreNexusClient {
   openLogsDirectory(): Promise<string>;
   openProjectArtifacts(projectId: string): Promise<string>;
   exportAdobeFile(request: AdobeExportRequest): Promise<AdobeExportReceipt | null>;
+  listAdobeExports(projectId: string): Promise<AdobeExportReceipt[]>;
   getConnections(): Promise<ConnectionOverview>;
   installCodexConnector(confirmInstall: boolean): Promise<CodexConnectorInstallResult>;
   resetCodexConnection(confirmReset: boolean): Promise<CodexConnectionResetResult>;
@@ -195,6 +196,10 @@ export class CreNexusApiClient implements CreNexusClient {
 
   exportAdobeFile(request: AdobeExportRequest): Promise<AdobeExportReceipt | null> {
     return this.execute(() => this.transport.exportAdobeFile(request));
+  }
+
+  listAdobeExports(projectId: string): Promise<AdobeExportReceipt[]> {
+    return this.execute(() => this.transport.listAdobeExports(projectId));
   }
 
   getConnections(): Promise<ConnectionOverview> {

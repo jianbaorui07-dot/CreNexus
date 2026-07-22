@@ -960,6 +960,7 @@ pub fn run() {
             open_vector_output,
             open_project_artifacts,
             adobe_export::export_adobe_file,
+            adobe_export::list_adobe_exports,
             restart_backend,
             open_logs_directory,
             version_info,

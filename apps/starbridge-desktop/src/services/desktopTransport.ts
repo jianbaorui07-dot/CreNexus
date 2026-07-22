@@ -109,6 +109,10 @@ export class DesktopTransport implements CreNexusTransport {
     });
   }
 
+  listAdobeExports(projectId: string): Promise<AdobeExportReceipt[]> {
+    return this.call<AdobeExportReceipt[]>("list_adobe_exports", { projectId });
+  }
+
   installCodexConnector(
     confirmInstall: boolean,
   ): Promise<TransportResponse<ApiEnvelope<CodexConnectorInstallResult>>> {

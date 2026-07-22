@@ -43,24 +43,46 @@ const DELIVERY = {
 } satisfies ProjectDelivery;
 
 describe("Adobe delivery export", () => {
-  it("requires confirmation and reports a native AI receipt without exposing a path", async () => {
+  it("restores safe history, requires confirmation, and reports a native AI receipt without exposing a path", async () => {
     const exportAdobeFile = vi.fn().mockResolvedValue({
+      receiptId: "receipt-new",
       format: "ai",
       fileName: "customer.ai",
       sizeBytes: 4096,
       sourceBasename: "vector.svg",
+      sha256: "b".repeat(64),
+      createdAtUnixSeconds: 1784678400,
       nativeReopenValidated: true,
       sourceOverwritten: false,
+      targetPathPersisted: false,
+      historyRecorded: true,
     });
+    const listAdobeExports = vi.fn().mockResolvedValue([{
+      receiptId: "receipt-existing",
+      format: "psd",
+      fileName: "historical.psd",
+      sizeBytes: 8192,
+      sourceBasename: "preview.png",
+      sha256: "c".repeat(64),
+      createdAtUnixSeconds: 1784592000,
+      nativeReopenValidated: true,
+      sourceOverwritten: false,
+      targetPathPersisted: false,
+      historyRecorded: true,
+    }]);
     const client = {
       getProjects: vi.fn().mockResolvedValue([PROJECT]),
       getProjectDelivery: vi.fn().mockResolvedValue(DELIVERY),
       openProjectArtifacts: vi.fn(),
       exportAdobeFile,
+      listAdobeExports,
     } as unknown as CreNexusClient;
 
     render(<DeliveryPage client={client} initialProjectId="project-test" />);
     await screen.findByRole("option", { name: /vector\.svg/ });
+    expect(await screen.findByText("historical.psd")).toBeInTheDocument();
+    expect(listAdobeExports).toHaveBeenCalledWith("project-test");
+    expect(screen.queryByText(/C:\\/)).not.toBeInTheDocument();
     const exportButton = screen.getByRole("button", { name: "选择路径并导出 .ai" });
     expect(exportButton).toBeDisabled();
     fireEvent.click(screen.getByRole("checkbox"));
@@ -74,5 +96,7 @@ describe("Adobe delivery export", () => {
     }));
     expect(await screen.findByText(/customer\.ai.*4 KB/)).toBeInTheDocument();
     expect(screen.getByText(/源产物未覆盖/)).toBeInTheDocument();
+    expect(screen.getByText("customer.ai")).toBeInTheDocument();
+    expect(screen.getAllByText(/保存路径未记录/).length).toBeGreaterThan(0);
   });
 });

@@ -25,6 +25,7 @@ apps/starbridge-desktop/node_modules/
 apps/starbridge-desktop/dist/
 apps/starbridge-desktop/build/
 apps/starbridge-desktop/src-tauri/target/
+apps/starbridge-desktop/src-tauri/target-validation/
 apps/starbridge-desktop/src-tauri/gen/
 apps/starbridge-desktop/src-tauri/binaries/*
 !apps/starbridge-desktop/src-tauri/binaries/README.md

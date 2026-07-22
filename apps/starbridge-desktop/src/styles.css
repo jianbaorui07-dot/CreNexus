@@ -766,6 +766,15 @@ button.quiet-button, .text-button { color: var(--primary); }
 .adobe-export-format button.is-selected { border: 2px solid var(--primary); background: color-mix(in srgb, var(--primary) 7%, var(--surface)); }
 .adobe-export-format button strong { font-family: Impact, "Arial Black", sans-serif; font-size: 30px; }
 .adobe-export-format button span { color: var(--text-muted); font-size: 9px; line-height: 1.5; }
+.adobe-export-history { margin: 14px 0; padding: 16px; }
+.adobe-history-list { display: grid; gap: 8px; }
+.adobe-history-list article { display: grid; grid-template-columns: minmax(180px, .6fr) minmax(300px, 1.4fr); gap: 20px; padding: 10px 0; border-top: 1px solid var(--border); }
+.adobe-history-list article:first-child { border-top: 0; }
+.adobe-history-list strong { display: block; margin: 4px 0; font-size: 13px; }
+.adobe-history-list p { margin: 0; color: var(--text-muted); font-size: 9px; }
+.adobe-history-list dl { margin: 0; }
+.adobe-history-list dt { color: var(--text-muted); font-size: 9px; }
+.adobe-history-list dd { overflow-wrap: anywhere; margin: 3px 0 7px; font-family: Consolas, monospace; font-size: 9px; }
 
 @media (max-width: 1240px) {
   .app-shell { grid-template-columns: 192px minmax(0, 1fr); }
@@ -794,6 +803,7 @@ button.quiet-button, .text-button { color: var(--primary); }
   .quick-action-panel > header { grid-column: 1 / -1; }
   .quick-action-panel > button { border-right: 1px solid #c6c2b8; }
   .codex-workspace-grid { grid-template-columns: 1fr; }
+  .adobe-history-list article { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 840px) {

@@ -39,6 +39,7 @@ export interface CreNexusTransport {
   openLogsDirectory(): Promise<string>;
   openProjectArtifacts(projectId: string): Promise<string>;
   exportAdobeFile(request: AdobeExportRequest): Promise<AdobeExportReceipt | null>;
+  listAdobeExports(projectId: string): Promise<AdobeExportReceipt[]>;
   installCodexConnector(
     confirmInstall: boolean,
   ): Promise<TransportResponse<ApiEnvelope<CodexConnectorInstallResult>>>;

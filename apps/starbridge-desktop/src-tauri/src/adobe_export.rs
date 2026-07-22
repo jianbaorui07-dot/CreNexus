@@ -1,25 +1,124 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::fs::{self, OpenOptions};
 use std::io::{self, Read, Write};
 use std::path::{Component, Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tauri::AppHandle;
 
 use super::{starbridge_data_root, valid_vector_id};
 
 const EXPORT_TIMEOUT: Duration = Duration::from_secs(120);
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AdobeExportReceipt {
+    receipt_id: String,
     format: String,
     file_name: String,
     size_bytes: u64,
     source_basename: String,
+    sha256: String,
+    created_at_unix_seconds: u64,
     native_reopen_validated: bool,
     source_overwritten: bool,
+    target_path_persisted: bool,
+    history_recorded: bool,
+}
+
+fn receipt_directory(data_root: &Path, project_id: &str) -> PathBuf {
+    data_root.join("adobe-export-receipts").join(project_id)
+}
+
+fn hash_file(path: &Path) -> Result<String, String> {
+    let mut file =
+        fs::File::open(path).map_err(|_| "无法读取已验证的 Adobe 交付文件。".to_string())?;
+    let mut digest = Sha256::new();
+    let mut buffer = [0_u8; 64 * 1024];
+    loop {
+        let read = file
+            .read(&mut buffer)
+            .map_err(|_| "无法计算 Adobe 交付文件校验值。".to_string())?;
+        if read == 0 {
+            break;
+        }
+        digest.update(&buffer[..read]);
+    }
+    Ok(format!("{:x}", digest.finalize()))
+}
+
+fn persist_receipt(
+    data_root: &Path,
+    project_id: &str,
+    receipt: &AdobeExportReceipt,
+) -> Result<(), String> {
+    let directory = receipt_directory(data_root, project_id);
+    fs::create_dir_all(&directory).map_err(|_| "无法创建 Adobe 导出历史目录。".to_string())?;
+    let encoded =
+        serde_json::to_vec_pretty(receipt).map_err(|_| "无法编码 Adobe 导出历史。".to_string())?;
+    let target = directory.join(format!("receipt-{}.json", receipt.receipt_id));
+    let temporary = directory.join(format!(".receipt-{}.tmp", receipt.receipt_id));
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&temporary)
+        .map_err(|_| "无法创建 Adobe 导出历史临时文件。".to_string())?;
+    if file.write_all(&encoded).is_err() || file.sync_all().is_err() {
+        drop(file);
+        let _ = fs::remove_file(&temporary);
+        return Err("无法完整写入 Adobe 导出历史。".into());
+    }
+    drop(file);
+    if fs::rename(&temporary, &target).is_err() {
+        let _ = fs::remove_file(&temporary);
+        return Err("无法提交 Adobe 导出历史。".into());
+    }
+    Ok(())
+}
+
+fn read_receipts(data_root: &Path, project_id: &str) -> Vec<AdobeExportReceipt> {
+    let Ok(entries) = fs::read_dir(receipt_directory(data_root, project_id)) else {
+        return Vec::new();
+    };
+    let mut receipts = Vec::new();
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let valid_name = path
+            .file_name()
+            .and_then(|value| value.to_str())
+            .is_some_and(|value| value.starts_with("receipt-") && value.ends_with(".json"));
+        let valid_size = entry
+            .metadata()
+            .map(|metadata| metadata.is_file() && metadata.len() <= 64 * 1024)
+            .unwrap_or(false);
+        if !valid_name || !valid_size {
+            continue;
+        }
+        let Ok(bytes) = fs::read(path) else {
+            continue;
+        };
+        let Ok(receipt) = serde_json::from_slice::<AdobeExportReceipt>(&bytes) else {
+            continue;
+        };
+        if receipt.target_path_persisted
+            || receipt.source_overwritten
+            || !receipt.native_reopen_validated
+            || !matches!(receipt.format.as_str(), "psd" | "ai")
+        {
+            continue;
+        }
+        receipts.push(receipt);
+    }
+    receipts.sort_by(|left, right| {
+        right
+            .created_at_unix_seconds
+            .cmp(&left.created_at_unix_seconds)
+            .then_with(|| right.receipt_id.cmp(&left.receipt_id))
+    });
+    receipts.truncate(100);
+    receipts
 }
 
 fn valid_relative_artifact(relative_path: &str) -> bool {
@@ -349,6 +448,7 @@ pub async fn export_adobe_file(
     .await
     .map_err(|_| "Adobe 导出任务意外停止。".to_string())??;
     validate_native_file(&staged, &format)?;
+    let sha256 = hash_file(&staged)?;
     let size_bytes = match publish_without_overwrite(&staged, &target) {
         Ok(size) => size,
         Err(error) => {
@@ -357,7 +457,8 @@ pub async fn export_adobe_file(
         }
     };
     let _ = fs::remove_file(&staged);
-    Ok(Some(AdobeExportReceipt {
+    let mut receipt = AdobeExportReceipt {
+        receipt_id: uuid::Uuid::new_v4().simple().to_string(),
         format,
         file_name: target
             .file_name()
@@ -370,9 +471,32 @@ pub async fn export_adobe_file(
             .and_then(|value| value.to_str())
             .unwrap_or("artifact")
             .to_string(),
+        sha256,
+        created_at_unix_seconds: SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs(),
         native_reopen_validated: true,
         source_overwritten: false,
-    }))
+        target_path_persisted: false,
+        history_recorded: true,
+    };
+    if persist_receipt(&data_root, &project_id, &receipt).is_err() {
+        receipt.history_recorded = false;
+    }
+    Ok(Some(receipt))
+}
+
+#[tauri::command]
+pub fn list_adobe_exports(
+    app: AppHandle,
+    project_id: String,
+) -> Result<Vec<AdobeExportReceipt>, String> {
+    if !valid_vector_id(&project_id, "project-") {
+        return Err("项目标识无效。".into());
+    }
+    let data_root = starbridge_data_root(&app)?;
+    Ok(read_receipts(&data_root, &project_id))
 }
 
 #[cfg(test)]
@@ -445,5 +569,44 @@ mod tests {
         fs::remove_file(staged).expect("remove stage");
         fs::remove_file(target).expect("remove target");
         fs::remove_dir(base).expect("remove temp directory");
+    }
+
+    #[test]
+    fn receipts_persist_without_a_customer_destination_path() {
+        let base = std::env::temp_dir().join(format!("crenexus-receipt-{}", uuid::Uuid::new_v4()));
+        let project_id = "project-receipt-test";
+        let receipt = AdobeExportReceipt {
+            receipt_id: "newer".into(),
+            format: "ai".into(),
+            file_name: "customer.ai".into(),
+            size_bytes: 4096,
+            source_basename: "vector.svg".into(),
+            sha256: "a".repeat(64),
+            created_at_unix_seconds: 20,
+            native_reopen_validated: true,
+            source_overwritten: false,
+            target_path_persisted: false,
+            history_recorded: true,
+        };
+        persist_receipt(&base, project_id, &receipt).expect("persist receipt");
+        let older = AdobeExportReceipt {
+            receipt_id: "older".into(),
+            created_at_unix_seconds: 10,
+            ..receipt.clone()
+        };
+        persist_receipt(&base, project_id, &older).expect("persist older receipt");
+
+        let receipt_path = receipt_directory(&base, project_id).join("receipt-newer.json");
+        let encoded = fs::read_to_string(&receipt_path).expect("receipt json");
+        assert!(!encoded.contains("C:\\\\Customers\\\\Secret"));
+        assert!(!encoded.contains("\"targetPath\":"));
+        assert!(!encoded.contains("destinationPath"));
+        assert!(encoded.contains("\"targetPathPersisted\": false"));
+
+        let receipts = read_receipts(&base, project_id);
+        assert_eq!(receipts.len(), 2);
+        assert_eq!(receipts[0].receipt_id, "newer");
+        assert_eq!(receipts[1].receipt_id, "older");
+        fs::remove_dir_all(base).expect("remove receipt directory");
     }
 }

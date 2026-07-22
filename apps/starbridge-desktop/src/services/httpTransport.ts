@@ -121,6 +121,13 @@ export class HttpTransport implements CreNexusTransport {
     );
   }
 
+  async listAdobeExports(_projectId: string): Promise<AdobeExportReceipt[]> {
+    throw new TransportError(
+      "desktop_required",
+      "浏览器开发模式不能读取本机 Adobe 导出历史。",
+    );
+  }
+
   async installCodexConnector(
     _confirmInstall: boolean,
   ): Promise<TransportResponse<ApiEnvelope<CodexConnectorInstallResult>>> {
