@@ -43,6 +43,20 @@ class SecuritySanitizerTests(unittest.TestCase):
         self.assertEqual(sanitize_text(text), text)
         self.assert_clean(sanitize_text(text))
 
+    def test_malformed_uri_like_text_does_not_raise(self) -> None:
+        samples = (
+            "https://exa／mple.com/path",
+            "file://local／host/tmp/path",
+            "file:////tmp/secret",
+            "file://localhost//tmp/secret",
+            "https://e.test/?local=%252Ftmp%252Fsecret",
+            "file:///tmp%252Fsecret",
+        )
+        for sample in samples:
+            with self.subTest(sample=sample):
+                self.assertIsInstance(sanitize_path(sample), str)
+                self.assertIsInstance(contains_sensitive_text(sample), bool)
+
     def test_sanitize_details_recurses_dicts_and_lists(self) -> None:
         payload = {
             "bridge": "illustrator",

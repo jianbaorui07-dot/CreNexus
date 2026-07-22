@@ -91,7 +91,7 @@ if (-not $ConfirmApply -or -not $ConfirmExport) {
         dry_run = $true
         confirm_apply = [bool]$ConfirmApply
         confirm_export = [bool]$ConfirmExport
-        warnings = @("Real Camera Raw export requires -ConfirmApply and -ConfirmExport.")
+        warnings = @("Refusing Camera Raw export without explicit confirmation: -ConfirmApply and -ConfirmExport are required.")
         next_steps = @("Run the dry-run plan first, then retry with both confirmation flags for sandbox output.")
     }
     exit 0
