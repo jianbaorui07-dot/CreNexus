@@ -457,6 +457,22 @@ CAPABILITIES: tuple[ToolCapability, ...] = (
         ),
     ),
     ToolCapability(
+        name="comfyui.asset_list",
+        bridge="comfyui",
+        action="asset_list",
+        maturity="implemented",
+        risk_level="safe_read_only",
+        description="按最新优先列出当前会话中仍可继续迭代的脱敏 asset_id。",
+        side_effects="无；不访问 ComfyUI 或文件系统，不返回 workflow、prompt、模型、文件名、图像或路径。",
+        safe_default=True,
+        requires_confirmation=False,
+        requires_local_software=False,
+        source_projects=(
+            "joenorton/comfyui-mcp-server",
+            "artokun/comfyui-mcp",
+        ),
+    ),
+    ToolCapability(
         name="comfyui.asset_metadata",
         bridge="comfyui",
         action="asset_metadata",

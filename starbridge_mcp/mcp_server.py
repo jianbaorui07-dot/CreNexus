@@ -627,6 +627,25 @@ TOOL_DEFINITIONS: list[JsonObject] = [
         "annotations": _safe_read_annotations(requires_local_software=True),
     },
     _standard_tool(
+        name="comfyui.asset_list",
+        title="ComfyUI Asset List",
+        description=(
+            "List bounded current-session CreNexus asset IDs newest-first. Returns only "
+            "regeneration eligibility, remaining TTL, and workflow hashes; never returns "
+            "workflow, prompt, model, filename, image, or path data."
+        ),
+        input_schema=_object_schema(
+            {
+                "limit": {
+                    "type": "integer",
+                    "default": 20,
+                    "minimum": 1,
+                    "maximum": 100,
+                }
+            }
+        ),
+    ),
+    _standard_tool(
         name="comfyui.asset_metadata",
         title="ComfyUI Asset Metadata",
         description=(
@@ -2464,6 +2483,12 @@ def _handle_comfy_asset_metadata(arguments: JsonObject) -> JsonObject:
     return asset_metadata(arguments)
 
 
+def _handle_comfy_asset_list(arguments: JsonObject) -> JsonObject:
+    from examples.comfy_bridge.workflow_agent import asset_list
+
+    return asset_list(arguments)
+
+
 def _handle_comfy_regenerate(arguments: JsonObject) -> JsonObject:
     from examples.comfy_bridge.workflow_agent import regenerate
 
@@ -3600,6 +3625,7 @@ TOOL_HANDLERS: dict[str, ToolHandler] = {
     "comfyui.workflow_repair": _handle_comfy_workflow_repair,
     "comfyui.agent_run": _handle_comfy_agent_run,
     "comfyui.generation_result": _handle_comfy_generation_result,
+    "comfyui.asset_list": _handle_comfy_asset_list,
     "comfyui.asset_metadata": _handle_comfy_asset_metadata,
     "comfyui.regenerate": _handle_comfy_regenerate,
     "comfy.workflow_draft": _handle_comfy_workflow_draft,
