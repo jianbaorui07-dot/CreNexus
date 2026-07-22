@@ -464,12 +464,8 @@ const server = http.createServer(async (request, response) => {
       sendJson(response, 200, validationError);
       return;
     }
-    let reply = await rpcToUxp(message);
-    if (message.method === "ps.production.execute_confirmed") {
-      reply = finalizeProductionReply(reply, message.params || {});
-    }
     liveSession.publish(rpcLiveSession({ bridge: "photoshop", message, phase: "running" }));
-    reply = await rpcToUxp(message);
+    let reply = await rpcToUxp(message);
     if (message.method === "ps.production.execute_confirmed") {
       reply = finalizeProductionReply(reply, message.params || {});
     }

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BatchPage } from "../pages/BatchPage";
 import { ComfyUiGenerationPage } from "../pages/ComfyUiGenerationPage";
 import { DeliveryPage } from "../pages/DeliveryPage";
+import { DiagramForgePage } from "../pages/DiagramForgePage";
 import { DiagnosticsPage } from "../pages/DiagnosticsPage";
 import { HomePage } from "../pages/HomePage";
 import { IntegrationsPage } from "../pages/IntegrationsPage";
@@ -273,6 +274,8 @@ export function App({ client: providedClient }: AppProps) {
           return <IntegrationsPage client={client} connections={connections} loading={connectionsLoading} error={connectionsError} onRefresh={refreshConnections} onRestartBridge={restart} />;
         }
         return <WorkflowsPage client={client} runtimeReady={status.state === "connected"} initialProjectId={selectedProjectId} onOpenProjects={() => setPage("projects")} onOpenJob={openJob} />;
+      case "diagramforge":
+        return <DiagramForgePage />;
       case "ai-generation":
         if (connections?.drawing_enabled !== true) {
           return <IntegrationsPage client={client} connections={connections} loading={connectionsLoading} error={connectionsError} onRefresh={refreshConnections} onRestartBridge={restart} />;

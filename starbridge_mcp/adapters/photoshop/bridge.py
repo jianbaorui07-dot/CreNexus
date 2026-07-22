@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import importlib.util
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -1414,58 +1415,78 @@ class PhotoshopBridgeAdapter(BaseBridge):
     def get_preview(self, arguments: dict[str, Any]) -> dict[str, Any]:
         ctx = _build_context(arguments, self.repo_root, "ps.get_preview")
         max_side = int(arguments.get("max_side", 1024))
-        fmt = arguments.get("format", "jpg")
         include_base64 = bool(arguments.get("include_base64", True))
-        # Enhanced: leverage preview_export logic for consistency, return plan + preview info.
-        # In real run, node_proxy or UXP can provide base64 preview.
-        preview_export_args = {
-            **arguments,
-            "format": fmt,
-            "max_side": max_side,
-            "job_id": ctx.job_id,
-        }
-        # Call existing preview logic for plan (dry_run safe)
-        preview_result = self.preview_export(preview_export_args)
-        preview_files = preview_result.get("details", {}).get("preview_files", [])
-        base64_data = None
-        if include_base64 and preview_files:
-            # In full impl, read the file and base64 encode.
-            # For now, placeholder or assume.
+        preview_path = preview_path_for(ctx.output_root, ctx.job_id)
+        manifest_path = manifest_path_for(
+            ctx.evidence_dir, _safe_name("ps.preview.export"), ctx.job_id
+        )
+        preview_available = False
+        real_output_verified = False
+        artifact: dict[str, Any] | None = None
+        warnings: list[str] = []
+        if preview_path.is_file() and manifest_path.is_file():
             try:
-                # Try to find a preview png/jpg in sandbox
-                for pf in preview_files:
-                    p = self.repo_root / pf
-                    if p.exists() and p.suffix in (".png", ".jpg", ".jpeg"):
-                        with open(p, "rb") as f:
-                            base64_data = (
-                                f"data:image/{fmt};base64," + base64.b64encode(f.read()).decode()
-                            )
-                        break
-            except Exception:
-                base64_data = (
-                    "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/..."  # fallback placeholder
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                real_output_verified = bool(
+                    manifest.get("validation_result", {}).get("real_output_verified")
+                ) and not any(
+                    bool(item.get("placeholder"))
+                    for item in manifest.get("output_artifacts", [])
+                    if isinstance(item, dict)
                 )
+                if real_output_verified:
+                    raw_artifact = build_output_artifact(
+                        preview_path,
+                        repo_root=self.repo_root,
+                        document_name=None,
+                    )
+                    artifact = {
+                        key: raw_artifact.get(key)
+                        for key in (
+                            "relative_path",
+                            "format",
+                            "bytes",
+                            "sha256",
+                            "width",
+                            "height",
+                        )
+                    }
+                    preview_available = True
+            except (OSError, ValueError) as exc:
+                warnings.append(f"Preview evidence could not be verified: {type(exc).__name__}")
+
+        base64_data: str | None = None
+        if preview_available and include_base64:
+            data = preview_path.read_bytes()
+            if len(data) <= 8 * 1024 * 1024:
+                base64_data = "data:image/png;base64," + base64.b64encode(data).decode("ascii")
+            else:
+                warnings.append("Verified preview exceeds the 8 MiB base64 response limit.")
         details = {
             "job_id": ctx.job_id,
             "max_side": max_side,
-            "format": fmt,
             "include_base64": include_base64,
-            "preview_plan": preview_result.get("details", {}),
-            "preview_files": preview_files,
+            "preview_available": preview_available,
+            "real_output_verified": real_output_verified,
+            "artifact": artifact,
             "base64": base64_data,
-            "note": "Uses ps.preview.export under the hood for safe sandbox preview. Base64 for vision models.",
+            "current_document_match_verified": False,
+            "fabricated_preview": False,
         }
         return make_result(
-            ok=True,
+            ok=preview_available,
             bridge="photoshop",
             action="get_preview",
-            message="Preview ready (read-only, vision friendly).",
+            message=(
+                "Verified sandbox preview returned."
+                if preview_available
+                else "No verified real Photoshop preview is available for this job."
+            ),
             details=details,
-            warnings=preview_result.get("warnings", []),
+            warnings=warnings,
             next_steps=[
-                "Feed base64 to vision LLM for analysis.",
-                "Follow with ps.get_state for full context.",
-                "Use in Action Plan for iterative edits.",
+                "Run ps.preview.export with the same job_id and explicit sandbox write confirmation.",
+                "Call ps.get_preview again only after real_output_verified=true evidence exists.",
             ],
         )
 
@@ -1473,31 +1494,52 @@ class PhotoshopBridgeAdapter(BaseBridge):
         ctx = _build_context(arguments, self.repo_root, "ps.get_state")
         include_layers = bool(arguments.get("include_layers", True))
         lightweight = bool(arguments.get("lightweight", True))
-        # Enhanced: always get fresh doc info + layers for accurate snapshot.
         info = self.document_info({**arguments, "job_id": ctx.job_id})
-        layers = self.layers_list({**arguments, "job_id": ctx.job_id}) if include_layers else {}
+        info_details = dict(info.get("details") or {})
+        layers_result = (
+            self.layers_list({**arguments, "job_id": ctx.job_id}) if include_layers else None
+        )
+        layer_details = dict((layers_result or {}).get("details") or {})
+        bridge_kind = str(info_details.get("bridge_kind") or "not_available")
+        live_state_verified = bool(info.get("ok")) and bridge_kind in {"com", "node_proxy_uxp"}
+        layers_verified = not include_layers or (
+            bool((layers_result or {}).get("ok"))
+            and str(layer_details.get("bridge_kind") or "") in {"com", "node_proxy_uxp"}
+        )
+        ok = live_state_verified and layers_verified
+        document = dict(info_details.get("document") or {}) if live_state_verified else {}
+        layer_rows = list(layer_details.get("layers") or []) if layers_verified else []
+        active_layer_id = str(document.get("active_layer_id") or "")
+        active_layer = next(
+            (item for item in layer_rows if str(item.get("id") or "") == active_layer_id), None
+        )
         state = {
             "job_id": ctx.job_id,
-            "document": info.get("details", {}).get("document", {}),
-            "layer_count": layers.get("details", {}).get("count", 0) if include_layers else None,
-            "active_layer": layers.get("details", {}).get("active", None)
-            if include_layers
-            else None,
+            "document": document,
+            "layer_count": len(layer_rows) if include_layers and layers_verified else None,
+            "active_layer": active_layer,
             "lightweight": lightweight,
-            "bridge_kind": info.get("details", {}).get("bridge_kind", "node_proxy_uxp"),
-            "probe_status": "ok",
-            "capabilities": ["document", "layers", "preview"] if not lightweight else ["basic"],
+            "bridge_kind": bridge_kind,
+            "live_state_verified": live_state_verified,
+            "layers_verified": layers_verified,
+            "history_available": False,
+            "simulated_state_returned": False,
         }
+        warnings = [str(item) for item in info.get("warnings") or []]
+        warnings.extend(str(item) for item in (layers_result or {}).get("warnings") or [])
         return make_result(
-            ok=True,
+            ok=ok,
             bridge="photoshop",
             action="get_state",
-            message="Lightweight state snapshot (fresh from probe).",
+            message=(
+                "Verified live Photoshop state returned."
+                if ok
+                else "Live Photoshop state is unavailable; no mock state was returned."
+            ),
             details=state,
-            warnings=[],
+            warnings=warnings,
             next_steps=[
-                "Use before/after in recipes or Action Plan.",
-                "Combine with get_preview for vision context.",
-                "Ideal for state diff in optimization workflows.",
+                "Start an authorized Photoshop session and connect UXP, or open a document for COM readback.",
+                "Retry ps.get_state and require live_state_verified=true before accepting evidence.",
             ],
         )

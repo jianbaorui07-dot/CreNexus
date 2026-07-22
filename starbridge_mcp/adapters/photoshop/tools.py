@@ -3,8 +3,10 @@ from __future__ import annotations
 from typing import Any
 
 from .schemas import (
+    batch_plan_schema,
     batchplay_validate_schema,
     camera_raw_tune_schema,
+    capabilities_schema,
     disabled_confirmed_write_schema,
     document_info_schema,
     evidence_capture_schema,
@@ -14,6 +16,8 @@ from .schemas import (
     layers_list_schema,
     preview_export_schema,
     probe_schema,
+    recipe_compile_schema,
+    result_verify_schema,
     selection_subject_schema,
 )
 
@@ -83,6 +87,54 @@ def _unique_tools(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 def build_tool_definitions() -> list[dict[str, Any]]:
     tools = [
+        _tool(
+            "ps.capabilities",
+            "Photoshop Typed Capabilities",
+            "List typed capability categories, progressive profiles, and truthful execution maturity.",
+            capabilities_schema(),
+            risk_level="safe_read_only",
+            safe_default=True,
+            requires_confirmation=False,
+            requires_local_software=False,
+            current_status="stable",
+            read_only=True,
+        ),
+        _tool(
+            "ps.recipe.compile",
+            "Photoshop Recipe Compile",
+            "Compile a simple, advanced, or batch Photoshop Recipe DSL plan without executing it.",
+            recipe_compile_schema(),
+            risk_level="safe_read_only",
+            safe_default=True,
+            requires_confirmation=False,
+            requires_local_software=False,
+            current_status="stable",
+            read_only=True,
+        ),
+        _tool(
+            "ps.batch.plan",
+            "Photoshop Resumable Batch Plan",
+            "Build deterministic FIFO batch items, idempotency keys, and resume checkpoints.",
+            batch_plan_schema(),
+            risk_level="safe_read_only",
+            safe_default=True,
+            requires_confirmation=False,
+            requires_local_software=False,
+            current_status="stable",
+            read_only=True,
+        ),
+        _tool(
+            "ps.result.verify",
+            "Photoshop Result Verify",
+            "Verify sandbox, state-readback, artifact hash, and native reopen quality gates.",
+            result_verify_schema(),
+            risk_level="safe_read_only",
+            safe_default=True,
+            requires_confirmation=False,
+            requires_local_software=False,
+            current_status="stable",
+            read_only=True,
+        ),
         _tool(
             "ps.probe",
             "Photoshop Probe",
@@ -182,7 +234,7 @@ def build_tool_definitions() -> list[dict[str, Any]]:
         _tool(
             "ps.get_preview",
             "Photoshop Get Preview",
-            "Cheap base64 or file preview of active document for vision models. Prefers node_proxy_uxp, falls back safely.",
+            "Read a previously exported, evidence-verified real sandbox preview; never fabricate image data.",
             get_preview_schema(),
             risk_level="level_0_read_only",
             safe_default=True,
@@ -194,7 +246,7 @@ def build_tool_definitions() -> list[dict[str, Any]]:
         _tool(
             "ps.get_state",
             "Photoshop Get State",
-            "Lightweight snapshot of active document, layer count, active layer, history. No pixel data.",
+            "Fail-closed live snapshot of the active document and layers; mock fallback is never accepted as state evidence.",
             get_state_schema(),
             risk_level="level_0_read_only",
             safe_default=True,

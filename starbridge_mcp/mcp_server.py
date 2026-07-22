@@ -8,6 +8,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from starbridge_mcp.adapters.drawio import TOOL_DEFINITIONS as DRAWIO_TOOL_DEFINITIONS
+from starbridge_mcp.adapters.drawio import TOOL_HANDLERS as DRAWIO_TOOL_HANDLERS
 from starbridge_mcp.adapters.photoshop import TOOL_DEFINITIONS as PHOTOSHOP_V1_TOOL_DEFINITIONS
 from starbridge_mcp.adapters.photoshop import TOOL_HANDLERS as PHOTOSHOP_V1_TOOL_HANDLERS
 from starbridge_mcp.bridges import autocad_dxf
@@ -92,6 +94,7 @@ ToolHandler = Callable[[JsonObject], JsonObject]
 
 BRIDGE_ENUM = [
     "all",
+    "diagramforge",
     "comfyui",
     "blender",
     "autocad",
@@ -1815,6 +1818,7 @@ TOOL_DEFINITIONS: list[JsonObject] = [
     ),
 ]
 
+TOOL_DEFINITIONS.extend(DRAWIO_TOOL_DEFINITIONS)
 TOOL_DEFINITIONS.extend(PHOTOSHOP_V1_TOOL_DEFINITIONS)
 
 
@@ -3688,6 +3692,7 @@ TOOL_HANDLERS: dict[str, ToolHandler] = {
     "autocad_dxf.write_dxf": _handle_write_dxf,
 }
 
+TOOL_HANDLERS.update(DRAWIO_TOOL_HANDLERS)
 TOOL_HANDLERS.update(PHOTOSHOP_V1_TOOL_HANDLERS)
 
 

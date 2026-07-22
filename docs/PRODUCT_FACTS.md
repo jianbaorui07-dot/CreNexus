@@ -26,6 +26,8 @@
 - 四种离线矢量化引擎属于 Community。
 - 基础 Project、CreativeJob、Workflow Engine、单任务历史、基础交付和脱敏 Evidence 已有 Community 实现与集成测试，状态为 `experimental`。
 - `vector-delivery-v1`、`comfyui-generation-v1` 和 `photoshop-production-v1` 已接入统一任务系统；前者在离线小图夹具上完成闭环，后两者分别通过模拟回环服务和模拟 UXP 代理闭环。三者都尚未获得发布级或真实第三方软件写入验收。
+- 图枢 DiagramForge 的无头编译器已能生成并重开原生 `.drawio`、导出内嵌 XML 的 SVG、验证结构并按稳定 ID 做局部事务修改；已有集成测试，但 Live MCP、Draw.io Desktop PDF 与发布级桌面交互仍是独立的可选状态，因此整体为 `experimental`。
+- Photoshop 已增加类型化能力清单、渐进式工具配置、Recipe DSL、可续跑批处理计划和交付验收门；这些能力不会把模拟 UXP 或计划态能力描述为真实 Photoshop 连接或真实写入。
 - 批量队列、并发、检查点、高级恢复和商业策略属于未来 Pro。
 - 本地曾构建未签名 NSIS，但没有公开安装包、生产更新公钥、Authenti­code、干净 Windows、完整 Defender、SmartScreen 或公开升级证据。
 - 软件更新代码属于 `experimental` 且 not live。

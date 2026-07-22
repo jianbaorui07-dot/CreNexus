@@ -1,0 +1,32 @@
+{
+  "bridge_id": "diagramforge",
+  "display_name": "DiagramForge structured drawing bridge",
+  "maturity": "prototype",
+  "platforms": [
+    "Windows",
+    "Linux",
+    "macOS"
+  ],
+  "local_dependency": [
+    "Python 3.10+ for the deterministic headless compiler",
+    "Optional Draw.io desktop CLI for PDF export",
+    "Optional external Draw.io MCP for a live editor session"
+  ],
+  "required_env": [
+    "DRAWIO_EXE (optional)"
+  ],
+  "probe_supported": true,
+  "write_supported": true,
+  "safe_report_supported": true,
+  "last_verified": "2026-07-22",
+  "known_risks": [
+    "Generated diagrams and imported private specifications must stay out of Git.",
+    "Headless compilation does not prove a live Draw.io MCP or desktop connection.",
+    "PDF export is unavailable unless a verified Draw.io desktop executable is present."
+  ],
+  "next_steps": [
+    "Validate optional Draw.io desktop PDF export on each supported operating system.",
+    "Keep live MCP and ELK integrations optional until their pinned adapters pass cross-platform tests.",
+    "Extend the guarded handoff plan only through each target bridge's own confirmation gate."
+  ]
+}

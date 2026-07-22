@@ -9,7 +9,7 @@ description = "Windows-first, local-first MCP stdio server and safety bridge for
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "CreNexus contributors" }]
-keywords = ["mcp", "model-context-protocol", "codex", "comfyui", "autocad", "dxf", "photoshop", "illustrator", "blender", "ai-agent", "local-first", "safety"]
+keywords = ["mcp", "model-context-protocol", "codex", "comfyui", "autocad", "dxf", "drawio", "diagram", "photoshop", "illustrator", "blender", "ai-agent", "local-first", "safety"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",

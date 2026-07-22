@@ -84,6 +84,11 @@ DEFAULT_DEV_ORIGINS = (
 )
 
 CATALOG_BRIDGE_TIERS: dict[str, dict[str, str]] = {
+    "diagramforge": {
+        "tier": "Community / Open core",
+        "price_signal": "MIT published capability",
+        "buyer": "Local structured drawing workflows",
+    },
     "photoshop": {
         "tier": "Community / Open core",
         "price_signal": "MIT published capability",
@@ -155,7 +160,14 @@ HYBRID_EXECUTION: JsonObject = {
         {
             "id": "local_desktop",
             "label": "Local desktop lane",
-            "bridges": ["photoshop", "illustrator", "blender", "autocad_dxf", "jianying_capcut"],
+            "bridges": [
+                "diagramforge",
+                "photoshop",
+                "illustrator",
+                "blender",
+                "autocad_dxf",
+                "jianying_capcut",
+            ],
             "execution_target": "local",
             "billing_unit": "none",
             "safety": "Never uploads PSD, AI, DWG, blend, video drafts, or local project files.",

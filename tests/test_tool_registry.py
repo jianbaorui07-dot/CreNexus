@@ -47,6 +47,15 @@ class ToolRegistryTests(unittest.TestCase):
         self.assertIn("comfyui.queue_snapshot", names)
         self.assertNotIn("photoshop.subject_extract", names)
 
+    def test_diagramforge_bridge_filter_exposes_native_tools(self) -> None:
+        capabilities = list_capabilities(bridge="diagramforge", include_guarded=False)
+        names = {item["name"] for item in capabilities}
+
+        self.assertIn("drawio.probe", names)
+        self.assertIn("drawio.plan", names)
+        self.assertIn("drawio.handoff.plan", names)
+        self.assertNotIn("drawio.create", names)
+
     def test_capability_summary_is_safe_json(self) -> None:
         payload = capability_summary()
         text = json.dumps(payload, ensure_ascii=False)

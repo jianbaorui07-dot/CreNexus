@@ -2,6 +2,13 @@
 
 ## Unreleased / Optimizations
 
+### 2026-07-22 — DiagramForge and Photoshop typed production plans
+
+* Added the independent DiagramForge structured-drawing board, Codex Skill, typed MCP tools, native Draw.io compiler, editable SVG preview, stable-ID patch transactions, quality validation, resumable batch plans, and desktop navigation.
+* Added Photoshop capability discovery, progressive tool profiles, typed Recipe DSL compilation, deterministic batch planning, and copy-first delivery verification without expanding arbitrary BatchPlay or path access.
+* Fixed the Photoshop Node Proxy so each confirmed UXP operation is forwarded exactly once.
+* Added pinned upstream and license research, integration tests, truth-state documentation, and guarded package commands for both modules.
+
 ### 2026-07-18 — CreNexus 0.1.0-alpha.1 Windows app
 
 * Replaced the legacy desktop UI with the editorial StarBridge control-console design while retaining existing local workflows and software probes.

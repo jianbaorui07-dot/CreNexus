@@ -8,6 +8,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 BRIDGE_ENV_VARS = {
+    "diagramforge": ("DRAWIO_EXE",),
     "comfyui": ("STARBRIDGE_COMFYUI_URL", "COMFY_BASE_URL", "COMFY_ROOT", "COMFY_LAUNCHER"),
     "blender": ("STARBRIDGE_BLENDER_EXE", "BLENDER_EXE", "BLENDER_MCP_DIR"),
     "cad_autocad": ("STARBRIDGE_CAD_MODE", "AUTOCAD_EXE"),

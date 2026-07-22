@@ -368,6 +368,39 @@ async function saveProductionCopy(document, absolutePath, format) {
   }
 }
 
+async function validateNativePsdReopen(absolutePath, sandboxDocument) {
+  const entry = await localFileSystem.getEntryWithUrl(toFileUrl(absolutePath));
+  if (!entry || !entry.isFile) throw new Error("photoshop_psd_reopen_file_unavailable");
+  const reopened = await app.open(entry);
+  try {
+    const width = Number(reopened?.width || 0);
+    const height = Number(reopened?.height || 0);
+    const layerCount = Array.isArray(reopened?.layers) ? reopened.layers.length : 0;
+    const expectedWidth = Number(sandboxDocument?.width || 0);
+    const expectedHeight = Number(sandboxDocument?.height || 0);
+    const expectedLayerCount = Array.isArray(sandboxDocument?.layers)
+      ? sandboxDocument.layers.length
+      : 0;
+    if (
+      width <= 0
+      || height <= 0
+      || width !== expectedWidth
+      || height !== expectedHeight
+      || layerCount < 1
+      || layerCount !== expectedLayerCount
+    ) throw new Error("photoshop_psd_reopen_invalid_document");
+    return {
+      validated: true,
+      width,
+      height,
+      layer_count: layerCount,
+    };
+  } finally {
+    await closeDocumentWithoutSaving(reopened);
+    await activateDocument(sandboxDocument);
+  }
+}
+
 function assertProductionParams(params) {
   if (params?.confirm_write !== true || params?.managed_source_verified !== true || params?.safe_roots_verified !== true) {
     throw new Error("production_proxy_verification_required");
@@ -491,6 +524,9 @@ async function productionExecuteConfirmed(params) {
         if (!stagingOutputs.subject) throw new Error("subject_output_path_required");
         await exportSubjectCopy(sandboxDocument, String(stagingOutputs.subject));
       }
+      const nativeReopen = stagingOutputs.psd
+        ? await validateNativePsdReopen(String(stagingOutputs.psd), sandboxDocument)
+        : { validated: false, skipped: true };
       modalControl.checkpoint();
       await hostControl.unregisterAutoCloseDocument(sandboxId);
       return {
@@ -501,6 +537,8 @@ async function productionExecuteConfirmed(params) {
         imported_project_layer: imported,
         adjustment_count: adjustmentCount,
         output_formats: Object.keys(stagingOutputs),
+        native_reopen_validated: nativeReopen.validated === true,
+        native_reopen_skipped: nativeReopen.skipped === true,
         rollback_supported: true,
         photoshop_host: currentHost(),
         warnings: [],

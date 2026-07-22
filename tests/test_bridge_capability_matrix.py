@@ -22,6 +22,7 @@ spec.loader.exec_module(bridge_capability_matrix)
 
 
 EXPECTED_IDS = {
+    "diagramforge",
     "comfyui",
     "blender",
     "cad_autocad",
@@ -53,6 +54,7 @@ class BridgeCapabilityMatrixTest(unittest.TestCase):
         )
 
         for label in (
+            "DiagramForge",
             "ComfyUI",
             "Blender",
             "Stable Fast 3D",
