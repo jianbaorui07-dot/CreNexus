@@ -447,6 +447,7 @@ class ComfyUiAdapter(CreativeAdapter):
             )
         store = ArtifactStore(context.app_paths.artifacts)
         artifacts = []
+        written_targets: list[Path] = []
         for index, image in enumerate(images):
             if not isinstance(image, dict):
                 continue
@@ -458,18 +459,39 @@ class ComfyUiAdapter(CreativeAdapter):
                 _validate_generated_image_payload(basename, payload)
                 target = store.allocate_path(context.project_id, context.job_id, target_name)
                 self._write_bytes(target, payload)
+                written_targets.append(target)
                 artifacts.append(
                     store.register(
                         context.project_id, context.job_id, target, kind="generated_image"
                     )
                 )
             except (OSError, ValueError):
+                rollback_ok = True
+                for written_target in reversed(written_targets):
+                    try:
+                        written_target.unlink(missing_ok=True)
+                    except OSError:
+                        rollback_ok = False
                 return AdapterResult(
                     status="failed",
                     error=JobError(
-                        code="comfyui_output_fetch_failed",
-                        message="生成已经完成，但图片没有安全复制到项目产物目录。",
-                        next_steps=("保留本机 ComfyUI 输出，并检查回环 /view 接口后重试新任务。",),
+                        code=(
+                            "comfyui_output_fetch_failed"
+                            if rollback_ok
+                            else "comfyui_output_rollback_failed"
+                        ),
+                        message=(
+                            "生成已经完成，但图片没有安全复制到项目产物目录。"
+                            if rollback_ok
+                            else "生成产物登记失败，且本批次文件未能全部清理。"
+                        ),
+                        next_steps=(
+                            (
+                                "保留本机 ComfyUI 输出，并检查回环 /view 接口后重试新任务。"
+                                if rollback_ok
+                                else "检查当前任务的隔离产物目录并手动清理残留文件。"
+                            ),
+                        ),
                     ),
                 )
         if not artifacts:

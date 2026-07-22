@@ -8,9 +8,12 @@ from pathlib import Path
 
 from PIL import Image
 
+from starbridge_mcp.adapters.base import AdapterContext, CancellationToken
 from starbridge_mcp.adapters.comfyui import ComfyUiAdapter, RuntimeInputVault
 from starbridge_mcp.adapters.comfyui.adapter import _validate_generated_image_payload
 from starbridge_mcp.core.app_data import resolve_app_data_paths
+from starbridge_mcp.domain.models import WorkflowStep
+from starbridge_mcp.storage.atomic_json import atomic_write_json
 from starbridge_mcp.storage.evidence_store import EvidenceStore
 from starbridge_mcp.storage.job_store import JobStore
 from starbridge_mcp.storage.project_store import ProjectStore
@@ -197,6 +200,64 @@ class ComfyUiGenerationPipelineTests(unittest.TestCase):
         for basename, payload in invalid_outputs:
             with self.subTest(basename=basename), self.assertRaises(ValueError):
                 _validate_generated_image_payload(basename, payload)
+
+    def test_multi_output_failure_removes_files_written_by_the_same_batch(self) -> None:
+        image_buffer = io.BytesIO()
+        Image.new("RGB", (8, 8), (12, 34, 56)).save(image_buffer, format="PNG")
+        png_bytes = image_buffer.getvalue()
+        fetch_count = 0
+
+        def fetch_output(_base_url: str, _image: dict[str, object], _timeout: int) -> bytes:
+            nonlocal fetch_count
+            fetch_count += 1
+            return png_bytes if fetch_count == 1 else b"<html>local error</html>"
+
+        result_payload = {
+            "ok": True,
+            "state": "completed",
+            "terminal": True,
+            "result_ready": True,
+            "output_manifest": {
+                "image_count": 2,
+                "images": [
+                    {"filename": "first.png", "subfolder": "", "type": "output"},
+                    {"filename": "second.png", "subfolder": "", "type": "output"},
+                ],
+            },
+        }
+
+        with tempfile.TemporaryDirectory() as directory:
+            paths = resolve_app_data_paths(Path(directory))
+            adapter = ComfyUiAdapter(
+                RuntimeInputVault(),
+                result_reader=lambda _arguments: result_payload,
+                output_fetcher=fetch_output,
+            )
+            context = AdapterContext(
+                job_id="job-output-rollback",
+                project_id="project-output-rollback",
+                workflow_id=WORKFLOW_ID,
+                step=WorkflowStep(
+                    step_id="collect-results",
+                    adapter="comfyui",
+                    input_data={"operation": "collect-results"},
+                ),
+                app_paths=paths,
+                cancellation=CancellationToken(),
+            )
+            atomic_write_json(
+                adapter._state_path(context),
+                {"schemaVersion": 1, "submitted": True, "promptId": "prompt-test"},
+            )
+
+            result = adapter.execute(context)
+            artifact_files = [path for path in paths.artifacts.rglob("*") if path.is_file()]
+
+        self.assertEqual(2, fetch_count)
+        self.assertEqual("failed", result.status)
+        self.assertEqual("comfyui_output_fetch_failed", result.error.code if result.error else None)
+        self.assertEqual((), result.artifacts)
+        self.assertEqual([], artifact_files)
 
     def test_unavailable_service_soft_fails_without_prompt_submission(self) -> None:
         submit_calls = 0
