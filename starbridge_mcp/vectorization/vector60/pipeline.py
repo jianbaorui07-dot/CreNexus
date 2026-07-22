@@ -531,9 +531,37 @@ def run_vector60_pipeline(
         )
 
 
+def fallback_to_artisan_baseline(
+    *,
+    reference: Image.Image,
+    candidate_source: Image.Image,
+    baseline_svg: Path,
+    staging_dir: Path,
+    scene_preset: str | None = None,
+    detail_protection: float = 0.75,
+) -> Vector60PipelineResult:
+    """Create a safe report and render when the orchestrator itself fails unexpectedly."""
+
+    classification = _classification(reference, scene_preset)
+    candidate_count = len(build_candidate_matrix(classification.scene).candidates)
+    return _fallback_result(
+        baseline_svg=baseline_svg,
+        staging_dir=staging_dir,
+        reference=reference,
+        expected_width=candidate_source.width,
+        expected_height=candidate_source.height,
+        classification=classification,
+        candidate_count=candidate_count,
+        reason="pipeline_stage_failed",
+        warning_codes=("high_quality_not_claimed",),
+        detail_protection=detail_protection,
+    )
+
+
 __all__ = [
     "Vector60PipelineError",
     "Vector60PipelineResult",
+    "fallback_to_artisan_baseline",
     "generate_vtracer_candidate",
     "normalize_vtracer_svg",
     "optimize_with_svgo",

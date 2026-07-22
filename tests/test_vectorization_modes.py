@@ -339,6 +339,71 @@ class DesignVectorizationModeTests(VectorizationModeTests):
         self.assertNotIn("<image", svg)
         self.assertNotIn("base64", svg)
 
+    def test_artisan_auto_enhance_routes_to_vector60_and_unexpected_failure_falls_back(
+        self,
+    ) -> None:
+        source = self.make_design_source()
+
+        with mock.patch(
+            "starbridge_mcp.vectorization.vector60.pipeline.run_vector60_pipeline",
+            side_effect=RuntimeError("C:/private/customer-token-cookie.png"),
+        ) as vector60_run:
+            result = run_vectorization(
+                RunConfig(
+                    input_path=str(source),
+                    mode="artisan",
+                    reference_id="vector60-fallback",
+                    auto_enhance=True,
+                    scene_preset="flat",
+                )
+            )
+
+        output = self.output_root / "vector60-fallback" / "artisan"
+        vector60_run.assert_called_once()
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["vector60"]["status"], "artisan_baseline_fallback")
+        self.assertEqual(result["vector60"]["fallback_reason"], "pipeline_stage_failed")
+        self.assertFalse(result["validation"]["final_render_quality_gate_passed"])
+        self.assertFalse(result["validation"]["image_trace_used"])
+        self.assertEqual(
+            (output / "vector.svg").read_bytes(),
+            (output / "artisan_baseline.svg").read_bytes(),
+        )
+        self.assertTrue((output / "vector60_report.json").is_file())
+        self.assertFalse((output / "adaptive_optimization.json").exists())
+        parameters = json.loads((output / "parameters.json").read_text(encoding="utf-8"))
+        self.assertTrue(parameters["auto_enhance"])
+        self.assertEqual(parameters["scene_preset"], "flat")
+        report_text = (output / "vector60_report.json").read_text(encoding="utf-8")
+        self.assertNotIn(source.name, report_text)
+        self.assertNotIn("token", report_text)
+
+    def test_artisan_adaptive_failure_retains_published_baseline(self) -> None:
+        source = self.make_design_source()
+
+        with mock.patch(
+            "starbridge_mcp.vectorization.adaptive_optimize.optimize_artisan_scene",
+            side_effect=RuntimeError("C:/private/customer-cookie.png"),
+        ):
+            result = run_vectorization(
+                RunConfig(
+                    input_path=str(source),
+                    mode="artisan",
+                    reference_id="adaptive-fallback",
+                )
+            )
+
+        output = self.output_root / "adaptive-fallback" / "artisan"
+        self.assertTrue(result["ok"])
+        self.assertEqual(
+            (output / "vector.svg").read_bytes(),
+            (output / "artisan_baseline.svg").read_bytes(),
+        )
+        self.assertFalse((output / "adaptive_optimization.json").exists())
+        report_text = (output / "vector_report.json").read_text(encoding="utf-8")
+        self.assertNotIn("private", report_text)
+        self.assertNotIn("cookie", report_text)
+
     def test_artisan_junction_continuation_pairs_straight_tangents(self) -> None:
         import numpy as np
 
