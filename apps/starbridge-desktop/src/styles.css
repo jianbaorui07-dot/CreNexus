@@ -760,6 +760,12 @@ button.quiet-button, .text-button { color: var(--primary); }
 .codex-mode-panel > button:hover { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 7%, var(--surface)); }
 .codex-mode-panel > button strong { font-size: 11px; }
 .codex-mode-panel > button span { color: var(--text-muted); font-size: 9px; line-height: 1.55; }
+.adobe-export-panel { margin: 14px 0; padding: 16px; }
+.adobe-export-format { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
+.adobe-export-format button { display: grid; min-height: 70px; grid-template-columns: 54px minmax(0, 1fr); align-items: center; gap: 8px; padding: 10px; border: 1px solid var(--border); border-radius: 0; background: transparent; cursor: pointer; text-align: left; }
+.adobe-export-format button.is-selected { border: 2px solid var(--primary); background: color-mix(in srgb, var(--primary) 7%, var(--surface)); }
+.adobe-export-format button strong { font-family: Impact, "Arial Black", sans-serif; font-size: 30px; }
+.adobe-export-format button span { color: var(--text-muted); font-size: 9px; line-height: 1.5; }
 
 @media (max-width: 1240px) {
   .app-shell { grid-template-columns: 192px minmax(0, 1fr); }

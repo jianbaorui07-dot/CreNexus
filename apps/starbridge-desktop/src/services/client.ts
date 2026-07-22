@@ -1,4 +1,6 @@
 import type {
+  AdobeExportReceipt,
+  AdobeExportRequest,
   ApiEnvelope,
   CodexConnectionResetResult,
   CodexConnectorInstallResult,
@@ -46,6 +48,7 @@ export interface CreNexusClient {
   restartBackend(): Promise<RuntimeStatus>;
   openLogsDirectory(): Promise<string>;
   openProjectArtifacts(projectId: string): Promise<string>;
+  exportAdobeFile(request: AdobeExportRequest): Promise<AdobeExportReceipt | null>;
   getConnections(): Promise<ConnectionOverview>;
   installCodexConnector(confirmInstall: boolean): Promise<CodexConnectorInstallResult>;
   resetCodexConnection(confirmReset: boolean): Promise<CodexConnectionResetResult>;
@@ -188,6 +191,10 @@ export class CreNexusApiClient implements CreNexusClient {
 
   openProjectArtifacts(projectId: string): Promise<string> {
     return this.execute(() => this.transport.openProjectArtifacts(projectId));
+  }
+
+  exportAdobeFile(request: AdobeExportRequest): Promise<AdobeExportReceipt | null> {
+    return this.execute(() => this.transport.exportAdobeFile(request));
   }
 
   getConnections(): Promise<ConnectionOverview> {

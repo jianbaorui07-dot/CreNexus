@@ -1,6 +1,8 @@
 import { Channel, invoke as tauriInvoke } from "@tauri-apps/api/core";
 
 import type {
+  AdobeExportReceipt,
+  AdobeExportRequest,
   ApiEnvelope,
   CodexConnectionResetResult,
   CodexConnectorInstallResult,
@@ -96,6 +98,15 @@ export class DesktopTransport implements CreNexusTransport {
 
   openProjectArtifacts(projectId: string): Promise<string> {
     return this.call<string>("open_project_artifacts", { projectId });
+  }
+
+  exportAdobeFile(request: AdobeExportRequest): Promise<AdobeExportReceipt | null> {
+    return this.call<AdobeExportReceipt | null>("export_adobe_file", {
+      projectId: request.projectId,
+      artifactRelativePath: request.artifactRelativePath,
+      format: request.format,
+      confirmExport: request.confirmExport,
+    });
   }
 
   installCodexConnector(
