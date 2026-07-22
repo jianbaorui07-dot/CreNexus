@@ -1,0 +1,4 @@
+interface:
+  display_name: "CreNexus macOS 适配审计"
+  short_description: "在 macOS 上安全审计 CreNexus 环境与未验证桌面能力边界"
+  default_prompt: "使用 $starbridge-macos-adapter 审计当前 CreNexus checkout 的 macOS 安全核心与未验证桌面边界。"
