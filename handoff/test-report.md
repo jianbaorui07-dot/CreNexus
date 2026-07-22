@@ -107,7 +107,7 @@ PYTHONDONTWRITEBYTECODE=1 "$PROJECT_VENV/bin/python" -m unittest discover -s tes
 ### 根因与修改
 
 1. `camera_raw_export.ps1` 的未确认分支已返回结构化拒绝结果，但 warning 文案漂移，缺少测试和公开契约要求的稳定拒绝语义。现统一为明确的 `Refusing Camera Raw export without explicit confirmation`，并继续声明 `-ConfirmApply` 与 `-ConfirmExport` 都是必需条件。
-2. 原失败不是任意文本或 URI 脱敏问题。`create_manifest()` 把 `ensure_evidence_path()` 返回的已解析文件系统路径交给 `evidence.py::sanitize_path_string()`，clean worktree 位于 macOS 临时根时，该结构化路径原样进入 `redacted_paths`。第三次返工已撤销阶段 0.5 对通用 `security.py` 引入的 URI、query/fragment 和 percent-encoding 解析，将通用 sanitizer 完整恢复到阶段 0 基准。仅在 evidence 模块的结构化 path helper 中，对 `/tmp`、`/private/tmp`、`/var/tmp`、`/private/var/tmp`、`/var/folders` 和 `/private/var/folders` 整值或其子路径返回 `<REDACTED_PATH>`；相似根保持原值。该 helper 不解析 HTTP(S)、`file:` URI、query/fragment 或多层 URL encoding；通用 sanitizer 对畸形 URI-like 文本不因本阶段代码抛异常。
+2. 原失败不是任意文本或 URI 脱敏问题。`create_manifest()` 把 `ensure_evidence_path()` 返回的已解析文件系统路径交给 `evidence.py::sanitize_path_string()`，clean worktree 位于 macOS 临时根时，该结构化路径原样进入 `redacted_paths`。第三次返工已撤销阶段 0.5 对通用 `security.py` 引入的 URI、query/fragment 和 percent-encoding 解析，将通用 sanitizer 完整恢复到阶段 0 基准。evidence 模块的结构化 path helper 仅对以 `/` 开头的 POSIX 路径做判定用词法规范化：折叠重复 `/`，不 `resolve`、不访问文件系统，也不改写非敏感输出。规范化后命中 `/tmp`、`/private/tmp`、`/var/tmp`、`/private/var/tmp`、`/var/folders` 或 `/private/var/folders` 根值及其子路径时，整值返回 `<REDACTED_PATH>`；相似根、相对路径和带 scheme 的 HTTP/`file:` URI-like 字符串不由该 helper 扩展解析。
 
 ### 验证证据
 
@@ -115,12 +115,13 @@ PYTHONDONTWRITEBYTECODE=1 "$PROJECT_VENV/bin/python" -m unittest discover -s tes
 
 | 范围 | 命令 | 结果 |
 | --- | --- | --- |
-| 两个原失败 + sanitizer/evidence 相关测试 | `PYTHONDONTWRITEBYTECODE=1 "$PROJECT_VENV/bin/python" -m unittest -v tests.test_photoshop_camera_raw_protocol.PhotoshopCameraRawProtocolTests.test_export_script_refuses_without_confirmations tests.test_photoshop_color_preprocess.PhotoshopColorPreprocessTests.test_confirmed_recipe_records_redacted_evidence tests.test_security_sanitizer tests.test_evidence_manifest` | PASS：13 tests |
-| Python clean-worktree 全量 | `PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$CLEAN_WORKTREE" "$PROJECT_VENV/bin/python" -m unittest discover -s tests` | PASS：694 tests，5 skipped |
+| 两个原失败 + sanitizer/evidence 相关测试 | `PYTHONDONTWRITEBYTECODE=1 "$PROJECT_VENV/bin/python" -m unittest -v tests.test_photoshop_camera_raw_protocol.PhotoshopCameraRawProtocolTests.test_export_script_refuses_without_confirmations tests.test_photoshop_color_preprocess.PhotoshopColorPreprocessTests.test_confirmed_recipe_records_redacted_evidence tests.test_security_sanitizer tests.test_evidence_manifest` | PASS：14 tests |
+| Python clean-worktree 全量 | `PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$CLEAN_WORKTREE" "$PROJECT_VENV/bin/python" -m unittest discover -s tests` | PASS：695 tests，5 skipped |
 | Python lint | `"$PROJECT_VENV/bin/python" -m ruff check starbridge_mcp/core/evidence.py starbridge_mcp/core/security.py tests/test_evidence_manifest.py tests/test_security_sanitizer.py` | PASS |
 | Diff 完整性 | `git diff --check` | PASS |
 | 公开安全扫描 | `PYTHONDONTWRITEBYTECODE=1 "$PROJECT_VENV/bin/python" scripts/security_check.py` | PASS |
 | 文本编码 | `PYTHONDONTWRITEBYTECODE=1 "$PROJECT_VENV/bin/python" scripts/check_text_encoding.py` | PASS |
+| Clean preflight | `PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$CLEAN_WORKTREE" "$PROJECT_VENV/bin/python" scripts/starbridge_preflight.py --markdown` | PASS：5 checks |
 
 第一次 clean-worktree 全量运行未设置 `PYTHONPATH="$CLEAN_WORKTREE"`，导致一个 subprocess 从项目 `.venv` 的 editable 安装位置解析源码并报 `ModuleNotFoundError`；这不是仓库代码失败。补齐与 clean worktree 一致的源码根后，全量结果如上恢复绿色。localhost/socket 测试按权限流程在非沙箱环境运行，没有把 sandbox 的 `PermissionError` 计为代码失败。
 

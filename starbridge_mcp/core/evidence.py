@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -28,12 +29,13 @@ def utc_now_iso() -> str:
 
 
 def sanitize_path_string(value: str) -> str:
-    normalized = value.casefold()
-    if any(
-        normalized == root or normalized.startswith(f"{root}/")
-        for root in POSIX_TEMP_PATH_ROOTS
-    ):
-        return "<REDACTED_PATH>"
+    if value.startswith("/"):
+        normalized = re.sub(r"/+", "/", value).casefold()
+        if any(
+            normalized == root or normalized.startswith(f"{root}/")
+            for root in POSIX_TEMP_PATH_ROOTS
+        ):
+            return "<REDACTED_PATH>"
     return str(sanitize(value))
 
 
