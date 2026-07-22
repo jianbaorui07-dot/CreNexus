@@ -185,7 +185,7 @@ bash ./bootstrap.sh --profile auto
 
 它以脚本所在仓库动态解析 POSIX 路径，创建 `.venv/bin/python` 并写入项目级 MCP 配置；不会自动安装 Homebrew、Xcode Command Line Tools、Rosetta 或桌面软件，也不启动 Tauri。`standard` / `all` 保持相同的 Python extras，并仅在 Node.js/npm 已存在时安装可选 Node bridge 依赖；没有桌面软件不影响核心 MCP 自检，但桌面能力仍需单独实机验证。
 
-若已有 `.codex/config.toml` 不是有效 TOML，或在 managed block 外声明了 Starbridge MCP server / 冲突的 `mcp_servers` 结构，POSIX bootstrap 会 fail closed 并保留原文件；包含换行等控制字符的仓库路径同样会被拒绝。`.codex` 与 `.venv` 必须是仓库内的真实目录而非 symlink；已有 `.venv` 的 `sys.prefix`、关键子目录以及 sysconfig/pip 可写安装路径也必须留在当前仓库的 `.venv` 内。迁移 Windows quickstart managed block 时只接受 PowerShell `Resolve-Path` 可产生的规范绝对 Windows 路径。
+若已有 `.codex/config.toml` 不是有效 TOML，或在 managed block 外声明了 Starbridge MCP server / 冲突的 `mcp_servers` 结构，POSIX bootstrap 会 fail closed 并保留原文件；包含换行等控制字符的仓库路径同样会被拒绝。`.codex` 与 `.venv` 必须是仓库内的真实目录而非 symlink；已有 `.venv` 的 `sys.prefix`、关键子目录以及 sysconfig/pip 可写安装路径也必须留在当前仓库的 `.venv` 内。POSIX bootstrap 会禁用 pip 配置文件并移除可改变解释器、安装落点、构建子进程或额外输入输出的非网络 `PIP_*` / `PYTHON*` 覆盖，同时保留代理、证书和索引等网络环境。迁移 Windows quickstart managed block 时只接受 PowerShell `Resolve-Path` 可产生的规范绝对 Windows 路径，并拒绝 `CON`、`NUL.txt`、`COM1` 等 Win32 保留设备名路径段。
 
 如果仓库已经在本机，也可以直接运行：
 

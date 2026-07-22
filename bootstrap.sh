@@ -92,6 +92,41 @@ run_step() {
     add_step "$name" "completed" "$detail"
 }
 
+run_pip_step() {
+    local name="$1" variable
+    local pip_environment=(env)
+    shift
+
+    # PIP_CONFIG_FILE=os.devnull is pip's documented way to disable global,
+    # user, site, and explicitly selected configuration files.  Do not use
+    # --isolated here: it would also discard proxy, certificate, index, and
+    # other network settings that a legitimate installation may require.
+    # Instead, pass through a narrow network/authentication allowlist and
+    # remove every other PIP_* option so no inherited option can redirect the
+    # interpreter, install scheme, requirements, report, or log destination.
+    while IFS= read -r variable; do
+        case "$variable" in
+            PIP_INDEX_URL|PIP_EXTRA_INDEX_URL|PIP_NO_INDEX|PIP_FIND_LINKS|\
+            PIP_TRUSTED_HOST|PIP_PROXY|PIP_CERT|PIP_CLIENT_CERT|\
+            PIP_TIMEOUT|PIP_DEFAULT_TIMEOUT|PIP_RETRIES|PIP_RESUME_RETRIES|\
+            PIP_DISABLE_PIP_VERSION_CHECK|PIP_NO_INPUT|PIP_KEYRING_PROVIDER|\
+            PIP_NETRC|PIP_REQUIRE_VIRTUALENV|PIP_REQUIRE_VENV)
+                ;;
+            PIP_*)
+                pip_environment+=(-u "$variable")
+                ;;
+            PYTHON*)
+                pip_environment+=(-u "$variable")
+                ;;
+        esac
+    done < <(compgen -e)
+    pip_environment+=(PIP_CONFIG_FILE=/dev/null)
+
+    # Python -I also blocks PYTHONPATH/PYTHONHOME/user-site injection without
+    # affecting the local project path passed explicitly to pip.
+    run_step "$name" "${pip_environment[@]}" "$venv_python" -I -m pip "$@"
+}
+
 toml_escape() {
     local value="$1"
     value="${value//\\/\\\\}"
@@ -583,12 +618,30 @@ def canonical_windows_root(value: object) -> str:
     if any(ord(character) < 32 or character in '<>"|?*' for character in value):
         raise ValueError
     drive, tail = ntpath.splitdrive(value)
+    def validate_segment(segment: str) -> None:
+        if (
+            not segment
+            or segment in (".", "..")
+            or segment.endswith((" ", "."))
+            or ":" in segment
+        ):
+            raise ValueError
+        # Win32 device matching also ignores an extension and normalizes
+        # spaces/dots immediately before it (for example, "CON .txt").
+        device_stem = segment.split(".", 1)[0].rstrip(" .").upper()
+        if device_stem in {"CON", "PRN", "AUX", "NUL"}:
+            raise ValueError
+        if re.fullmatch(r"(?:COM|LPT)[1-9]", device_stem):
+            raise ValueError
+
     if value.startswith("\\\\"):
         share_parts = drive[2:].split("\\")
         if len(share_parts) != 2 or not all(share_parts):
             raise ValueError
         if ":" in drive or (tail and not tail.startswith("\\")):
             raise ValueError
+        for share_part in share_parts:
+            validate_segment(share_part)
         root_only = tail in ("", "\\")
     else:
         if not re.fullmatch(r"[A-Z]:", drive) or not tail.startswith("\\"):
@@ -601,13 +654,8 @@ def canonical_windows_root(value: object) -> str:
     if value.endswith("\\") and not root_only:
         raise ValueError
     segments = [segment for segment in tail.split("\\") if segment]
-    if any(
-        segment in (".", "..")
-        or segment.endswith((" ", "."))
-        or ":" in segment
-        for segment in segments
-    ):
-        raise ValueError
+    for segment in segments:
+        validate_segment(segment)
     return value
 
 
@@ -910,8 +958,8 @@ else
     fi
 fi
 
-run_step "upgrade pip" "$venv_python" -m pip install --upgrade pip
-run_step "install Python extras" "$venv_python" -m pip install ".[${extras_csv}]"
+run_pip_step "upgrade pip" install --upgrade pip
+run_pip_step "install Python extras" install ".[${extras_csv}]"
 install_node_bridges
 write_codex_config
 

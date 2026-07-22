@@ -232,6 +232,55 @@ class PosixBootstrapEntrypointTests(unittest.TestCase):
         venv_python.chmod(0o755)
         return values
 
+    def configure_offline_build_backend(self, repo_root: Path) -> None:
+        (repo_root / "pyproject.toml").write_text(
+            "[build-system]\n"
+            "requires = []\n"
+            "build-backend = 'offline_backend'\n"
+            "backend-path = ['.']\n\n"
+            "[project]\n"
+            "name = 'fixture'\n"
+            "version = '1.0'\n",
+            encoding="utf-8",
+        )
+        (repo_root / "offline_backend.py").write_text(
+            "from pathlib import Path\n"
+            "from zipfile import ZIP_DEFLATED, ZipFile\n\n"
+            "DIST_INFO = 'fixture-1.0.dist-info'\n"
+            "METADATA = (\n"
+            "    'Metadata-Version: 2.1\\nName: fixture\\nVersion: 1.0\\n'\n"
+            "    'Provides-Extra: dev\\nProvides-Extra: vectorization\\n'\n"
+            ")\n"
+            "WHEEL = (\n"
+            "    'Wheel-Version: 1.0\\nGenerator: starbridge-test\\n'\n"
+            "    'Root-Is-Purelib: true\\nTag: py3-none-any\\n'\n"
+            ")\n\n"
+            "def get_requires_for_build_wheel(config_settings=None):\n"
+            "    return []\n\n"
+            "def prepare_metadata_for_build_wheel(metadata_directory, config_settings=None):\n"
+            "    target = Path(metadata_directory, DIST_INFO)\n"
+            "    target.mkdir()\n"
+            "    target.joinpath('METADATA').write_text(METADATA, encoding='utf-8')\n"
+            "    target.joinpath('WHEEL').write_text(WHEEL, encoding='utf-8')\n"
+            "    return DIST_INFO\n\n"
+            "def build_wheel(wheel_directory, config_settings=None, metadata_directory=None):\n"
+            "    wheel_name = 'fixture-1.0-py3-none-any.whl'\n"
+            "    entries = {\n"
+            "        'starbridge_mcp/__init__.py': '',\n"
+            "        'starbridge_mcp/server.py': '',\n"
+            "        f'{DIST_INFO}/METADATA': METADATA,\n"
+            "        f'{DIST_INFO}/WHEEL': WHEEL,\n"
+            "    }\n"
+            "    record = ''.join(f'{name},,\\n' for name in entries)\n"
+            "    record += f'{DIST_INFO}/RECORD,,\\n'\n"
+            "    entries[f'{DIST_INFO}/RECORD'] = record\n"
+            "    with ZipFile(Path(wheel_directory, wheel_name), 'w', ZIP_DEFLATED) as wheel:\n"
+            "        for name, content in entries.items():\n"
+            "            wheel.writestr(name, content)\n"
+            "    return wheel_name\n",
+            encoding="utf-8",
+        )
+
     def test_help_describes_safe_platform_boundaries(self) -> None:
         completed = self.run_bootstrap(REPO_ROOT, "--help")
 
@@ -463,6 +512,10 @@ class PosixBootstrapEntrypointTests(unittest.TestCase):
             r"\\server",
             r"\\server\share\CreNexus\..\Other",
             r"C:\CreNexus\\Nested",
+            r"C:\Work\file:stream",
+            "C:\\Work\\trailing ",
+            r"C:\Work\trailing.",
+            "C:\\Work\\control\x1f",
         )
         for index, root in enumerate(rejected):
             with self.subTest(root=root), tempfile.TemporaryDirectory(
@@ -481,6 +534,63 @@ class PosixBootstrapEntrypointTests(unittest.TestCase):
                 self.assertNotEqual(0, completed.returncode)
                 self.assertIn("ambiguous managed block", completed.stderr)
                 self.assertEqual(original, codex_config.read_bytes())
+                self.assert_no_config_temporaries(codex_config)
+
+    def test_windows_managed_root_rejects_reserved_device_segments(self) -> None:
+        rejected = (
+            r"C:\CON\Repo",
+            r"C:\AUX",
+            r"C:\NUL.txt",
+            r"C:\Work\COM1",
+            r"C:\Work\LPT9.log",
+            r"C:\Folder\PRN.txt",
+            r"C:\Work\con.any.extension",
+            r"C:\Work\CON .txt",
+            r"C:\Work\COM1 .log",
+            r"\\server\share\AUX.txt",
+            r"\\server\NUL\Repo",
+        )
+        accepted = (
+            r"C:\console\Repo",
+            r"C:\auxiliary",
+            r"C:\Work\COM10",
+            r"C:\Work\LPT0.log",
+            r"C:\Work\NULled.txt",
+            r"\\server\share\console",
+        )
+        for index, root in enumerate(rejected):
+            with self.subTest(kind="rejected", root=root), tempfile.TemporaryDirectory(
+                prefix="cre nexus bootstrap "
+            ) as temporary_directory:
+                repo_root, environment = self.make_config_fixture(
+                    Path(temporary_directory), f"windows-device-bad-{index}"
+                )
+                codex_config = repo_root / ".codex/config.toml"
+                codex_config.parent.mkdir()
+                original = self.windows_managed_config(root=root)
+                codex_config.write_bytes(original)
+
+                completed = self.run_fixture_bootstrap(repo_root, environment)
+
+                self.assertNotEqual(0, completed.returncode)
+                self.assertEqual(original, codex_config.read_bytes())
+                self.assert_no_config_temporaries(codex_config)
+
+        for index, root in enumerate(accepted):
+            with self.subTest(kind="accepted", root=root), tempfile.TemporaryDirectory(
+                prefix="cre nexus bootstrap "
+            ) as temporary_directory:
+                repo_root, environment = self.make_config_fixture(
+                    Path(temporary_directory), f"windows-device-good-{index}"
+                )
+                codex_config = repo_root / ".codex/config.toml"
+                codex_config.parent.mkdir()
+                codex_config.write_bytes(self.windows_managed_config(root=root))
+
+                completed = self.run_fixture_bootstrap(repo_root, environment)
+
+                self.assertEqual(0, completed.returncode, completed.stderr)
+                self.load_toml(codex_config)
                 self.assert_no_config_temporaries(codex_config)
 
     def test_windows_managed_block_rejects_pythonpath_not_emitted_by_quickstart(self) -> None:
@@ -863,11 +973,11 @@ class PosixBootstrapEntrypointTests(unittest.TestCase):
             fake_python = temporary_root / "bin/python3"
             fake_python.unlink()
             fake_python.symlink_to(sys.executable)
-            local_pip = repo_root / "pip"
-            local_pip.mkdir()
-            (local_pip / "__init__.py").write_text("", encoding="utf-8")
-            (local_pip / "__main__.py").write_text("", encoding="utf-8")
-            (repo_root / "starbridge_mcp/server.py").write_text("", encoding="utf-8")
+            self.configure_offline_build_backend(repo_root)
+            environment = environment | {
+                "PIP_NO_INDEX": "1",
+                "PIP_DISABLE_PIP_VERSION_CHECK": "1",
+            }
 
             first = self.run_fixture_bootstrap(repo_root, environment)
             second = self.run_fixture_bootstrap(repo_root, environment)
@@ -888,6 +998,151 @@ class PosixBootstrapEntrypointTests(unittest.TestCase):
                 encoding="utf-8",
             ).stdout.strip()
             self.assertEqual(str((repo_root / ".venv").resolve()), prefix)
+
+    def test_pip_target_overrides_and_config_files_cannot_write_outside_venv(self) -> None:
+        cases = (
+            "target",
+            "prefix",
+            "root",
+            "userbase",
+            "explicit_config",
+            "user_config",
+            "site_config",
+            "python_runtime_env",
+        )
+        for name in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory(
+                prefix="cre nexus bootstrap "
+            ) as temporary_directory:
+                temporary_root = Path(temporary_directory)
+                repo_root, environment = self.make_config_fixture(temporary_root, name)
+                self.configure_offline_build_backend(repo_root)
+                venv = repo_root / ".venv"
+                subprocess.run(
+                    [sys.executable, "-m", "venv", str(venv)],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                )
+                outside = temporary_root / f"outside-{name}"
+                home = temporary_root / "home"
+                home.mkdir()
+                environment = environment | {
+                    "HOME": str(home),
+                    "PIP_NO_INDEX": "1",
+                    "PIP_DISABLE_PIP_VERSION_CHECK": "1",
+                }
+                if name == "target":
+                    environment["PIP_TARGET"] = str(outside)
+                elif name == "prefix":
+                    environment["PIP_PREFIX"] = str(outside)
+                elif name == "root":
+                    environment["PIP_ROOT"] = str(outside)
+                elif name == "userbase":
+                    environment["PIP_USER"] = "1"
+                    environment["PYTHONUSERBASE"] = str(outside)
+                elif name == "explicit_config":
+                    config = temporary_root / "attacker-pip.conf"
+                    config.write_text(
+                        "[install]\n"
+                        f"target = {outside}\n"
+                        f"prefix = {outside}\n"
+                        "user = true\n",
+                        encoding="utf-8",
+                    )
+                    environment["PIP_CONFIG_FILE"] = str(config)
+                    environment["PYTHONUSERBASE"] = str(outside)
+                elif name == "user_config":
+                    user_config = home / ".config/pip"
+                    user_config.mkdir(parents=True)
+                    (user_config / "pip.conf").write_text(
+                        f"[global]\nroot = {outside}\n", encoding="utf-8"
+                    )
+                elif name == "site_config":
+                    (venv / "pip.conf").write_text(
+                        f"[install]\ntarget = {outside}\n", encoding="utf-8"
+                    )
+                else:
+                    attacker = temporary_root / "attacker-pythonpath/pip"
+                    attacker.mkdir(parents=True)
+                    attacker_trace = temporary_root / "attacker-pythonpath.trace"
+                    (attacker / "__init__.py").write_text("", encoding="utf-8")
+                    (attacker / "__main__.py").write_text(
+                        "from pathlib import Path\n"
+                        f"Path({str(attacker_trace)!r}).write_text('executed')\n",
+                        encoding="utf-8",
+                    )
+                    environment["PYTHONPATH"] = str(attacker.parent)
+
+                completed = self.run_fixture_bootstrap(repo_root, environment)
+
+                self.assertEqual(0, completed.returncode, completed.stderr)
+                self.assertFalse(outside.exists())
+                if name == "python_runtime_env":
+                    self.assertFalse(attacker_trace.exists())
+                self.assertTrue((venv / "lib").is_dir())
+                self.load_toml(repo_root / ".codex/config.toml")
+
+    def test_pip_sanitization_preserves_network_and_certificate_environment(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="cre nexus bootstrap ") as temporary_directory:
+            temporary_root = Path(temporary_directory)
+            repo_root, environment = self.make_config_fixture(temporary_root, "pip-env")
+            identity_trace = temporary_root / "identity.trace"
+            values = self.make_fake_existing_venv(repo_root, identity_trace)
+            ordered = (
+                "prefix",
+                "base_prefix",
+                "version",
+                "sys_scripts",
+                "sys_purelib",
+                "sys_platlib",
+                "sys_data",
+                "sys_include",
+                "pip_scripts",
+                "pip_purelib",
+                "pip_platlib",
+                "pip_data",
+                "pip_headers",
+            )
+            output_arguments = " ".join(shlex.quote(values[name]) for name in ordered)
+            pip_trace = temporary_root / "pip-env.trace"
+            venv_python = repo_root / ".venv/bin/python"
+            venv_python.write_text(
+                "#!/usr/bin/env bash\n"
+                "if [[ \"${1:-}\" == \"-I\" && \"${2:-}\" == \"-c\" ]]; then\n"
+                f"  printf '%s\\n' {output_arguments}\n"
+                "  exit 0\n"
+                "fi\n"
+                "if [[ \"${1:-}\" == \"-I\" && \"${2:-}\" == \"-m\" && \"${3:-}\" == \"pip\" ]]; then\n"
+                f"  printf '%s|%s|%s|%s|%s|%s|%s\\n' \"${{PIP_TARGET-unset}}\" \"${{PIP_CONFIG_FILE-unset}}\" \"${{HTTPS_PROXY-unset}}\" \"${{PIP_PROXY-unset}}\" \"${{PIP_CERT-unset}}\" \"${{SSL_CERT_FILE-unset}}\" \"${{REQUESTS_CA_BUNDLE-unset}}\" >> {shlex.quote(str(pip_trace))}\n"
+                "fi\n"
+                "exit 0\n",
+                encoding="utf-8",
+            )
+            venv_python.chmod(0o755)
+            environment = environment | {
+                "PIP_TARGET": str(temporary_root / "outside-target"),
+                "PIP_CONFIG_FILE": str(temporary_root / "bad-pip.conf"),
+                "HTTPS_PROXY": "http://proxy.invalid:8443",
+                "PIP_PROXY": "http://pip-proxy.invalid:8080",
+                "PIP_CERT": "/certs/pip.pem",
+                "SSL_CERT_FILE": "/certs/ssl.pem",
+                "REQUESTS_CA_BUNDLE": "/certs/requests.pem",
+            }
+
+            completed = self.run_fixture_bootstrap(repo_root, environment)
+
+            self.assertEqual(0, completed.returncode, completed.stderr)
+            expected = (
+                "unset|/dev/null|http://proxy.invalid:8443|"
+                "http://pip-proxy.invalid:8080|/certs/pip.pem|"
+                "/certs/ssl.pem|/certs/requests.pem"
+            )
+            self.assertEqual(
+                [expected, expected], pip_trace.read_text(encoding="utf-8").splitlines()
+            )
+            self.assertFalse((temporary_root / "outside-target").exists())
 
     def test_nonregular_config_paths_fail_before_temporary_file_creation(self) -> None:
         cases: dict[str, tuple[str, bytes | None]] = {
