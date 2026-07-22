@@ -24,13 +24,21 @@ npm.cmd run install:bootstrap
 
 ## 给 Codex 的 3 分钟安装
 
-首次把仓库链接交给 Codex 时，使用项目根目录的 `bootstrap.ps1`：
+首次把仓库链接交给 Codex 时，Windows 使用项目根目录的 `bootstrap.ps1`：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\bootstrap.ps1 -Profile auto
 ```
 
 它会创建隔离环境、按档位安装依赖、生成项目级 `.codex/config.toml`，并执行 Python 包、版本协同器和 safe MCP tools 自检。`auto` 默认走轻量的无桌面路径；检测到桌面软件线索时升级到 `standard`。需要更完整的可选依赖时使用 `-Profile standard` 或 `-Profile all`。
+
+macOS / Linux 使用仓库根目录的 `bootstrap.sh`：
+
+```bash
+bash ./bootstrap.sh --profile auto
+```
+
+它保持 `auto` / `core` / `standard` / `all` 的 Python extras 语义，使用 `.venv/bin/python` 和动态 POSIX 路径生成同一份安全 MCP 配置。它只操作当前仓库的 `.venv`、可选 Node bridge 依赖和被忽略的 `.codex/config.toml`；不会自动安装 Homebrew、Xcode Command Line Tools、Rosetta 或桌面软件，也不接管 Tauri 桌面运行链。缺少这些可选前置条件时会提示用户手动处理，核心 Python/MCP 路径仍可独立验证。
 
 如果只有 Git URL，也可以在任意目录执行：
 
