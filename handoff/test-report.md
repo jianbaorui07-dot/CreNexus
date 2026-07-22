@@ -102,12 +102,12 @@ PYTHONDONTWRITEBYTECODE=1 "$PROJECT_VENV/bin/python" -m unittest discover -s tes
 
 - 日期：2026-07-22（Asia/Shanghai）
 - 范围：只修复阶段 0 记录的两个 Python 基线失败；未开始阶段 1，未处理 Darwin sidecar 或 Tauri `npm.cmd`。
-- CodeGraph：本阶段已确认仓库登记有效，并在编辑前查询相关测试、`sanitize_text`、Photoshop color preprocess 执行路径、调用链、依赖和变更影响。所有命中路径均在本仓库内。
+- CodeGraph：本阶段已确认仓库登记有效，并在编辑前重建 evidence manifest 真实调用链、相关测试、依赖和变更影响。`sanitize_path()` 是 medium 影响的通用文本边界（128 个传递影响点）；`evidence.py::sanitize_path_string()` 仅处理 evidence 字段中已确定的路径值，影响为 low（12 个传递影响点）。所有 CodeGraph 命中路径均在本仓库内。
 
 ### 根因与修改
 
 1. `camera_raw_export.ps1` 的未确认分支已返回结构化拒绝结果，但 warning 文案漂移，缺少测试和公开契约要求的稳定拒绝语义。现统一为明确的 `Refusing Camera Raw export without explicit confirmation`，并继续声明 `-ConfirmApply` 与 `-ConfirmExport` 都是必需条件。
-2. 通用 sanitizer 已覆盖用户主目录，但没有覆盖 macOS 的临时目录根；在 `/private/tmp` 或 `/private/var/folders` 下创建 clean worktree 时，evidence manifest 的 `redacted_paths` 会泄露临时 checkout 绝对路径。前两个阶段 0.5 候选依赖单一正则，先后暴露文本边界、上下文吞噬、local `file:` URI 漏检，以及 `/tmp.foo` 等相似根误匹配。第二次返工改为分阶段解析：先识别 URI 引用，以 `urlsplit()` 仅处理空 authority 或 `localhost` authority 的本地 `file:` URI path，对所有 URI 的 query/fragment 中显式携带的临时绝对路径继续扫描，同时保留 HTTP(S) 和 remote `file:` 的 authority/route；再对 URI 之外的普通文本扫描精确临时根和路径 token。句末点号只在其后为结束、空白或文本标点时作为边界，点号后为字母或数字时保留原文；ASCII 三点、Unicode 省略号、em dash、中英文标点、括号和引号均保留上下文。`sanitize_path()` 与 `contains_sensitive_text()` 共用同一解析结果；旧的贪婪占位符后处理保持删除。
+2. 原失败不是任意文本或 URI 脱敏问题。`create_manifest()` 把 `ensure_evidence_path()` 返回的已解析文件系统路径交给 `evidence.py::sanitize_path_string()`，clean worktree 位于 macOS 临时根时，该结构化路径原样进入 `redacted_paths`。第三次返工已撤销阶段 0.5 对通用 `security.py` 引入的 URI、query/fragment 和 percent-encoding 解析，将通用 sanitizer 完整恢复到阶段 0 基准。仅在 evidence 模块的结构化 path helper 中，对 `/tmp`、`/private/tmp`、`/var/tmp`、`/private/var/tmp`、`/var/folders` 和 `/private/var/folders` 整值或其子路径返回 `<REDACTED_PATH>`；相似根保持原值。该 helper 不解析 HTTP(S)、`file:` URI、query/fragment 或多层 URL encoding；通用 sanitizer 对畸形 URI-like 文本不因本阶段代码抛异常。
 
 ### 验证证据
 
@@ -115,9 +115,9 @@ PYTHONDONTWRITEBYTECODE=1 "$PROJECT_VENV/bin/python" -m unittest discover -s tes
 
 | 范围 | 命令 | 结果 |
 | --- | --- | --- |
-| 两个原失败 + sanitizer/evidence 相关测试 | `PYTHONDONTWRITEBYTECODE=1 "$PROJECT_VENV/bin/python" -m unittest -v tests.test_photoshop_camera_raw_protocol.PhotoshopCameraRawProtocolTests.test_export_script_refuses_without_confirmations tests.test_photoshop_color_preprocess.PhotoshopColorPreprocessTests.test_confirmed_recipe_records_redacted_evidence tests.test_security_sanitizer tests.test_evidence_manifest` | PASS：17 tests |
-| Python clean-worktree 全量 | `PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$CLEAN_WORKTREE" "$PROJECT_VENV/bin/python" -m unittest discover -s tests` | PASS：698 tests，5 skipped |
-| Python lint | `"$PROJECT_VENV/bin/python" -m ruff check starbridge_mcp/core/security.py tests/test_security_sanitizer.py` | PASS |
+| 两个原失败 + sanitizer/evidence 相关测试 | `PYTHONDONTWRITEBYTECODE=1 "$PROJECT_VENV/bin/python" -m unittest -v tests.test_photoshop_camera_raw_protocol.PhotoshopCameraRawProtocolTests.test_export_script_refuses_without_confirmations tests.test_photoshop_color_preprocess.PhotoshopColorPreprocessTests.test_confirmed_recipe_records_redacted_evidence tests.test_security_sanitizer tests.test_evidence_manifest` | PASS：13 tests |
+| Python clean-worktree 全量 | `PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$CLEAN_WORKTREE" "$PROJECT_VENV/bin/python" -m unittest discover -s tests` | PASS：694 tests，5 skipped |
+| Python lint | `"$PROJECT_VENV/bin/python" -m ruff check starbridge_mcp/core/evidence.py starbridge_mcp/core/security.py tests/test_evidence_manifest.py tests/test_security_sanitizer.py` | PASS |
 | Diff 完整性 | `git diff --check` | PASS |
 | 公开安全扫描 | `PYTHONDONTWRITEBYTECODE=1 "$PROJECT_VENV/bin/python" scripts/security_check.py` | PASS |
 | 文本编码 | `PYTHONDONTWRITEBYTECODE=1 "$PROJECT_VENV/bin/python" scripts/check_text_encoding.py` | PASS |

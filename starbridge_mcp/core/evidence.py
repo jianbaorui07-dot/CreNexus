@@ -13,6 +13,14 @@ VALID_JOB_STATUSES = ("queued", "running", "completed", "failed", "cancelled", "
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_EVIDENCE_ROOT = REPO_ROOT / "examples" / "output" / "evidence"
 DEFAULT_MANIFEST_FILENAME = "manifest.latest.json"
+POSIX_TEMP_PATH_ROOTS = (
+    "/private/var/folders",
+    "/private/var/tmp",
+    "/private/tmp",
+    "/var/folders",
+    "/var/tmp",
+    "/tmp",
+)
 
 
 def utc_now_iso() -> str:
@@ -20,6 +28,12 @@ def utc_now_iso() -> str:
 
 
 def sanitize_path_string(value: str) -> str:
+    normalized = value.casefold()
+    if any(
+        normalized == root or normalized.startswith(f"{root}/")
+        for root in POSIX_TEMP_PATH_ROOTS
+    ):
+        return "<REDACTED_PATH>"
     return str(sanitize(value))
 
 
