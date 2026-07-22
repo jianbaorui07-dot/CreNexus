@@ -19,6 +19,8 @@ flowchart TD
     K --> L["Poll /history/{prompt_id}"]
     L -->|completed within wait window| M["Return job_status and output_manifest"]
     L -->|still running| O["comfyui.generation_result"]
+    O -->|cancel requested| U["comfyui.generation_cancel (dry-run)"]
+    U -->|confirm_cancel=true| V["Cancel only this job ID"]
     O --> P["Resume bounded history polling"]
     P --> M
     M --> Q["Review asset_id"]
@@ -38,6 +40,7 @@ flowchart TD
 | `comfy.workflow_lifecycle_summary` | safe read-only | Returns redacted job / asset lifecycle, submit gate, and evidence preview for a reviewed workflow. | None |
 | `comfyui.agent_run` | dry-run by default; confirmed run with `confirm_run=true` | Runs build, validate, repair, submit, status, manifest. | Contacts local ComfyUI and may cause ComfyUI to write images to its own output folder |
 | `comfyui.generation_result` | live read-only | Resumes bounded polling for one explicit prompt ID and returns terminal state plus a stable-ID, basename-only output manifest. | Sends loopback-only `GET /history/{prompt_id}` requests; never submits or reads image bytes |
+| `comfyui.generation_cancel` | dry-run by default; confirmed cancellation with `confirm_cancel=true` | Cancels one explicit running or pending ComfyUI job without interrupting unrelated jobs. | Confirmed mode sends loopback-only `POST /api/jobs/{prompt_id}/cancel`; never falls back to global `/interrupt` |
 | `comfyui.asset_list` | session read-only | Lists a bounded set of current-session asset IDs newest-first with only regeneration eligibility, workflow hash, and remaining TTL. | None; never contacts ComfyUI or reads files |
 | `comfyui.asset_metadata` | session read-only | Checks whether one stable `asset_id` still has usable in-memory provenance and reports its remaining TTL plus supported regeneration overrides. | None; never contacts ComfyUI or reads files |
 | `comfyui.regenerate` | dry-run by default; confirmed run with `confirm_run=true` | Replays the in-memory workflow provenance for one `asset_id` with bounded parameter overrides. | Confirmed mode submits a new loopback ComfyUI job; provenance is never persisted |
@@ -155,6 +158,16 @@ history 中出现任务记录本身不能作为成功证据；只有规范化终
 
 - [ComfyUI `execution.py` 终态事件](https://github.com/Comfy-Org/ComfyUI/blob/0aecac867d7840b56ad790aa76c5e76e33c74c3d/execution.py#L674-L820)
 - [ComfyUI `comfy_execution/jobs.py` 状态归一化](https://github.com/Comfy-Org/ComfyUI/blob/0aecac867d7840b56ad790aa76c5e76e33c74c3d/comfy_execution/jobs.py#L191-L243)
+
+### 单任务取消契约
+
+`comfyui.generation_cancel` 只接受一个有界、URL-safe 的 `prompt_id` 和 loopback ComfyUI URL。默认 `confirm_cancel=false` 只返回脱敏取消计划，不访问 ComfyUI；只有 `confirm_cancel=true` 才会发送 `POST /api/jobs/{prompt_id}/cancel`。
+
+官方接口会原子化地中断匹配 ID 的运行任务，或从队列移除匹配 ID 的待执行任务。已完成或未知 ID 是幂等 no-op，返回 `cancelled=false`。CreNexus 把这两种结果分别规范化为 `cancelled` 与 `not_cancelled`，只返回 prompt ID 的哈希逻辑标识、取消状态和通用下一步，不回显原始 ID、URL、queue、workflow、prompt、模型、异常正文或路径。
+
+为避免误伤，工具不得回退到全局 `/interrupt`，不得自动重试取消，也不得把 `cancelled=true` 当作已经生成成功。取消后应使用同一 `prompt_id` 调用 `comfyui.generation_result` 读取最终 history；如果接口不可用，返回结构化 `cancel_unavailable`，由用户在本机确认 ComfyUI 版本和任务状态。
+
+- [ComfyUI 官方单任务取消实现](https://github.com/Comfy-Org/ComfyUI/blob/master/server.py#L1728-L1795)
 
 If the confirmed run returns `queued_or_running`, call `comfyui.generation_result` with the returned `prompt_id`. The result tool:
 

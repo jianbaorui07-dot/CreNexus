@@ -1648,6 +1648,87 @@ def generation_result(arguments: dict[str, Any]) -> dict[str, Any]:
     )
 
 
+def generation_cancel(arguments: dict[str, Any]) -> dict[str, Any]:
+    prompt_id = _validate_prompt_id(arguments.get("prompt_id"))
+    base_url = _validate_loopback_url(str(arguments.get("comfy_url") or DEFAULT_BASE_URL))
+    timeout = _as_int(arguments.get("timeout"), 8, minimum=1, maximum=15)
+    confirm_cancel = bool(arguments.get("confirm_cancel", False))
+    logical_job_id = _logical_generation_id(prompt_id)
+    base_result = {
+        "bridge": BRIDGE_ID,
+        "action": "generation_cancel",
+        "logical_job_id": logical_job_id,
+    }
+
+    if not confirm_cancel:
+        return sanitize(
+            {
+                **base_result,
+                "ok": True,
+                "mode": "dry_run",
+                "cancel_requested": False,
+                "cancelled": False,
+                "state": "not_cancelled",
+                "warnings": ["confirmation_required"],
+                "next_steps": [
+                    "Review this single-job cancellation, then set confirm_cancel=true to dispatch it."
+                ],
+            }
+        )
+
+    try:
+        response = post_json(base_url, f"/api/jobs/{prompt_id}/cancel", {}, timeout)
+    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, OSError, ValueError):
+        return sanitize(
+            {
+                **base_result,
+                "ok": False,
+                "mode": "confirmed",
+                "cancel_requested": True,
+                "cancelled": False,
+                "state": "cancel_unavailable",
+                "error_code": "comfyui_cancel_unavailable",
+                "warnings": ["comfyui_cancel_unavailable"],
+                "next_steps": [
+                    "Confirm local ComfyUI supports per-job cancellation and inspect this job locally."
+                ],
+            }
+        )
+
+    cancelled = response.get("cancelled")
+    if not isinstance(cancelled, bool):
+        return sanitize(
+            {
+                **base_result,
+                "ok": False,
+                "mode": "confirmed",
+                "cancel_requested": True,
+                "cancelled": False,
+                "state": "cancel_unavailable",
+                "error_code": "comfyui_cancel_unavailable",
+                "warnings": ["comfyui_cancel_response_invalid"],
+                "next_steps": [
+                    "Confirm local ComfyUI supports per-job cancellation and inspect this job locally."
+                ],
+            }
+        )
+
+    return sanitize(
+        {
+            **base_result,
+            "ok": True,
+            "mode": "confirmed",
+            "cancel_requested": True,
+            "cancelled": cancelled,
+            "state": "cancelled" if cancelled else "not_cancelled",
+            "warnings": [] if cancelled else ["job_finished_or_unknown"],
+            "next_steps": [
+                "Call comfyui.generation_result with the same prompt_id to verify final history."
+            ],
+        }
+    )
+
+
 def asset_metadata(arguments: dict[str, Any]) -> dict[str, Any]:
     asset_id = _validate_asset_id(arguments.get("asset_id"))
     now = time.monotonic()

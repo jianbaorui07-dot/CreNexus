@@ -457,6 +457,26 @@ CAPABILITIES: tuple[ToolCapability, ...] = (
         ),
     ),
     ToolCapability(
+        name="comfyui.generation_cancel",
+        bridge="comfyui",
+        action="generation_cancel",
+        maturity="implemented",
+        risk_level="guarded_local_process",
+        description="默认 dry-run；显式确认后只取消一个指定 ComfyUI 任务。",
+        side_effects=(
+            "confirm_cancel=true 时向 loopback ComfyUI 发送单任务取消请求；"
+            "不回退到会影响其他任务的全局 interrupt。"
+        ),
+        safe_default=False,
+        requires_confirmation=True,
+        requires_local_software=True,
+        source_projects=(
+            "Comfy-Org/ComfyUI",
+            "artokun/comfyui-mcp",
+            "joenorton/comfyui-mcp-server",
+        ),
+    ),
+    ToolCapability(
         name="comfyui.asset_list",
         bridge="comfyui",
         action="asset_list",

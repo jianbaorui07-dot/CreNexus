@@ -626,6 +626,38 @@ TOOL_DEFINITIONS: list[JsonObject] = [
         "outputSchema": STARBRIDGE_OUTPUT_SCHEMA,
         "annotations": _safe_read_annotations(requires_local_software=True),
     },
+    {
+        "name": "comfyui.generation_cancel",
+        "title": "ComfyUI Generation Cancel",
+        "description": (
+            "Cancel one explicit running or pending ComfyUI job without affecting unrelated jobs. "
+            "Defaults to a network-free dry-run; confirm_cancel=true is required to call the "
+            "loopback-only per-job cancellation endpoint. Never falls back to global /interrupt."
+        ),
+        "inputSchema": _object_schema(
+            {
+                "prompt_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "pattern": "^[A-Za-z0-9_-]+$",
+                },
+                "comfy_url": {"type": "string", "default": "http://127.0.0.1:8188"},
+                "timeout": {"type": "integer", "default": 8, "minimum": 1, "maximum": 15},
+                "confirm_cancel": {
+                    "type": "boolean",
+                    "default": False,
+                    "description": "Explicitly confirms cancellation of this job ID only.",
+                },
+            },
+            required=["prompt_id"],
+        ),
+        "outputSchema": STARBRIDGE_OUTPUT_SCHEMA,
+        "annotations": _guarded_write_annotations(
+            risk_level="guarded_local_process",
+            requires_local_software=True,
+        ),
+    },
     _standard_tool(
         name="comfyui.asset_list",
         title="ComfyUI Asset List",
@@ -2477,6 +2509,12 @@ def _handle_comfy_generation_result(arguments: JsonObject) -> JsonObject:
     return generation_result(arguments)
 
 
+def _handle_comfy_generation_cancel(arguments: JsonObject) -> JsonObject:
+    from examples.comfy_bridge.workflow_agent import generation_cancel
+
+    return generation_cancel(arguments)
+
+
 def _handle_comfy_asset_metadata(arguments: JsonObject) -> JsonObject:
     from examples.comfy_bridge.workflow_agent import asset_metadata
 
@@ -3625,6 +3663,7 @@ TOOL_HANDLERS: dict[str, ToolHandler] = {
     "comfyui.workflow_repair": _handle_comfy_workflow_repair,
     "comfyui.agent_run": _handle_comfy_agent_run,
     "comfyui.generation_result": _handle_comfy_generation_result,
+    "comfyui.generation_cancel": _handle_comfy_generation_cancel,
     "comfyui.asset_list": _handle_comfy_asset_list,
     "comfyui.asset_metadata": _handle_comfy_asset_metadata,
     "comfyui.regenerate": _handle_comfy_regenerate,
