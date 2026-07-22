@@ -344,6 +344,67 @@ def get_state_schema() -> dict[str, Any]:
     )
 
 
+def capabilities_schema() -> dict[str, Any]:
+    return object_schema({})
+
+
+def recipe_compile_schema() -> dict[str, Any]:
+    return object_schema(
+        {
+            "recipe_id": {
+                "type": "string",
+                "enum": [
+                    "simple-tone-export-v1",
+                    "production-subject-delivery-v1",
+                    "batch-production-delivery-v1",
+                    "product-composite-verified-v1",
+                    "batch-smart-object-replace-v1",
+                ],
+            },
+            "parameters": {
+                "type": "object",
+                "description": "Typed recipe parameters using managed opaque asset IDs, never private paths.",
+            },
+        },
+        required=["recipe_id"],
+    )
+
+
+def batch_plan_schema() -> dict[str, Any]:
+    return object_schema(
+        {
+            "items": {"type": "array", "maxItems": 500, "items": {"type": "object"}},
+            "completed_item_ids": {"type": "array", "items": {"type": "string"}},
+        },
+        required=["items"],
+    )
+
+
+def result_verify_schema() -> dict[str, Any]:
+    return object_schema(
+        {
+            "before_state": {"type": "object"},
+            "after_state": {"type": "object"},
+            "artifacts": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "basename": {"type": "string"},
+                        "sha256": {"type": "string"},
+                        "size_bytes": {"type": "integer", "minimum": 1},
+                    },
+                    "required": ["basename", "sha256", "size_bytes"],
+                    "additionalProperties": False,
+                },
+            },
+            "require_native_reopen": {"type": "boolean", "default": True},
+            "repair_round": {"type": "integer", "minimum": 0, "maximum": 3, "default": 0},
+        },
+        required=["before_state", "after_state", "artifacts"],
+    )
+
+
 @dataclass(frozen=True)
 class EvidenceManifest:
     job_id: str

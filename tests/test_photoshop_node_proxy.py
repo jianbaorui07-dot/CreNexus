@@ -345,6 +345,7 @@ class PhotoshopNodeProxyTests(unittest.TestCase):
         self.assertIn("registerAutoCloseDocument", runner_source)
         self.assertIn("unregisterAutoCloseDocument", runner_source)
         self.assertIn("productionExecuteConfirmed", index_source)
+        self.assertIn("validateNativePsdReopen", index_source)
         self.assertIn("managed_source_verified", index_source)
 
     def test_uxp_bridge_has_in_app_codex_live_panel(self) -> None:
@@ -359,6 +360,15 @@ class PhotoshopNodeProxyTests(unittest.TestCase):
             self.assertIn(f'id="{element_id}"', html)
         self.assertIn('message?.type === "codex_session"', client)
         self.assertIn("this.onSession(message)", client)
+
+    def test_each_rpc_is_forwarded_to_uxp_exactly_once(self) -> None:
+        server_source = SERVER_JS.read_text(encoding="utf-8")
+
+        self.assertEqual(1, server_source.count("reply = await rpcToUxp(message)"))
+        self.assertLess(
+            server_source.index('phase: "running"'),
+            server_source.index("reply = await rpcToUxp(message)"),
+        )
 
 
 if __name__ == "__main__":

@@ -2,6 +2,7 @@ export type PageId =
   | "home"
   | "projects"
   | "workflows"
+  | "diagramforge"
   | "vectorization"
   | "ai-generation"
   | "photoshop-production"
@@ -24,6 +25,7 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
   { id: "home", label: "首页", caption: "HOME" },
   { id: "projects", label: "项目", caption: "PROJECTS" },
   { id: "workflows", label: "创意工作流", caption: "WORKFLOWS" },
+  { id: "diagramforge", label: "图枢", caption: "DIAGRAMFORGE" },
   { id: "vectorization", label: "图片矢量化", caption: "VECTORIZATION" },
   { id: "ai-generation", label: "AI 图片生成", caption: "AI GENERATION" },
   { id: "tasks", label: "任务中心", caption: "TASK CENTER" },
@@ -38,6 +40,7 @@ export const PAGE_TITLES: Record<PageId, string> = {
   home: "首页",
   projects: "项目",
   workflows: "创意工作流",
+  diagramforge: "图枢 DiagramForge",
   vectorization: "图片矢量化",
   "ai-generation": "AI 图片生成",
   "photoshop-production": "Photoshop 安全副本",
@@ -55,6 +58,7 @@ export const PAGE_CAPTIONS: Record<PageId, string> = {
   home: "HOME",
   projects: "PROJECTS",
   workflows: "WORKFLOWS",
+  diagramforge: "DIAGRAMFORGE",
   vectorization: "VECTORIZATION",
   "ai-generation": "AI GENERATION",
   "photoshop-production": "PHOTOSHOP PRODUCTION",

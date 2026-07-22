@@ -287,6 +287,7 @@ class PhotoshopWorkflowAdapter(CreativeAdapter):
             for artifact in artifacts
         ]
         state["sandboxCopy"] = bool(payload.get("sandbox_copy"))
+        state["nativeReopenValidated"] = bool(payload.get("native_reopen_validated"))
         state["rollbackSupported"] = bool(payload.get("rollback_supported"))
         atomic_write_json(self._state_path(context), state)
         return AdapterResult(
@@ -295,6 +296,7 @@ class PhotoshopWorkflowAdapter(CreativeAdapter):
                 "sandboxCopy": bool(payload.get("sandbox_copy")),
                 "sourceOverwritten": False,
                 "artifactCount": len(artifacts),
+                "nativeReopenValidated": bool(payload.get("native_reopen_validated")),
                 "rollbackSupported": bool(payload.get("rollback_supported")),
             },
             artifacts=tuple(artifacts),
@@ -304,6 +306,19 @@ class PhotoshopWorkflowAdapter(CreativeAdapter):
     def _verify_output(self, context: AdapterContext) -> AdapterResult:
         state = read_json(self._state_path(context))
         rows = list(state.get("outputs") or ())
+        requires_native_reopen = any(
+            str(row.get("basename") or "").lower().endswith(".psd")
+            for row in rows
+            if isinstance(row, dict)
+        )
+        if requires_native_reopen and state.get("nativeReopenValidated") is not True:
+            return AdapterResult(
+                status="failed",
+                error=JobError(
+                    code="photoshop_native_reopen_unverified",
+                    message="Photoshop PSD delivery was not verified by a native reopen.",
+                ),
+            )
         artifact_dir = ArtifactStore(context.app_paths.artifacts).job_directory(
             context.project_id, context.job_id
         )
@@ -334,6 +349,7 @@ class PhotoshopWorkflowAdapter(CreativeAdapter):
             output={
                 "verifiedArtifactCount": verified,
                 "hashesVerified": True,
+                "nativeReopenValidated": bool(state.get("nativeReopenValidated")),
                 "sourcePathPersisted": False,
                 "documentNamePersisted": False,
                 "layerNamesPersisted": False,

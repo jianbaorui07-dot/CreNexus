@@ -286,6 +286,7 @@ flowchart LR
 | 目标 | 文档 | 验证入口 |
 | --- | --- | --- |
 | 项目定位 | [Skill / MCP / UXP 定位](docs/skill-mcp-uxp-positioning.md) | `python scripts\starbridge_preflight.py --markdown` |
+| 图枢 DiagramForge | [结构化绘图接入](docs/04-codex-drawio.md) | `npm.cmd run drawio:plan` |
 | Photoshop | [Photoshop 接入](docs/03-codex-photoshop.md) / [UXP modal 安全协议](docs/photoshop-uxp-modal-envelope.md) | `npm.cmd run photoshop:diagnose` |
 | Illustrator | [Illustrator 接入](docs/05-codex-illustrator.md) | `npm.cmd run illustrator:preflight:plan` |
 | 四模式图片转 SVG | [四模式矢量化](docs/vectorization-modes.md) | `npm.cmd run illustrator:vectorize -- --input "<input.png>" --reference-id "reference"` |
@@ -305,6 +306,7 @@ flowchart LR
 | --- | --- |
 | 图像生成区 | ComfyUI workflow 校验、队列监控、模板和任务生命周期摘要 |
 | 工程制图区 | CAD / AutoCAD plan、DXF dry-run 与受控写入 |
+| 结构化绘图区 | DiagramForge 原生 `.drawio`、稳定 ID、局部补丁、质量门、SVG/PDF 受控交付 |
 | AI 矢量文件桥 | 匠心 Iteration 5、几何意图选择器、局部编辑索引；智能、轻量、精确及旧量化入口继续保留 |
 | 图像编辑区 | Photoshop session / preview / state、UXP、Node Proxy、modal 回滚与 sandbox recipe |
 | 视频草稿区 | CapCut / 剪映只读探针；未配置时报告“剪映可执行文件”状态 |

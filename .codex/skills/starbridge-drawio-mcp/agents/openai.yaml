@@ -1,0 +1,4 @@
+interface:
+  display_name: "图枢 DiagramForge"
+  short_description: "生成、验证并增量修改原生可编辑 Draw.io 图表"
+  default_prompt: "Use $starbridge-drawio-mcp to plan a native editable diagram, validate its structure, and keep all writes inside the DiagramForge safe output root."

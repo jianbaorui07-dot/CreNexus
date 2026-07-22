@@ -171,3 +171,16 @@ powershell -ExecutionPolicy Bypass -File examples\photoshop_bridge\experiments\4
 3. 增加二次蒙版、最大主体保留、边缘羽化和人工确认流程。
 4. 评估 UXP 面板和本地 MCP 工具层。
 5. 保持输入和输出路径都由参数传入，不写默认个人路径。
+
+## Photoshop Recipe DSL 与批处理闭环
+
+本次新增四个只读类型化入口：
+
+- `ps.capabilities`：把 session、document、layers、selection/mask、adjustments、smart objects、text、history、export 分开标注为 `implemented / experimental / planned`；工具存在不等于真实 Photoshop 已连接。
+- `ps.recipe.compile`：编译 `simple-tone-export-v1`、`production-subject-delivery-v1`、`batch-production-delivery-v1` 及规划中的智能对象 Recipe，返回执行入口、最小或高级能力面、确认门、检查点和质量门。
+- `ps.batch.plan`：为真实 `photoshop-production-v1` 工作流生成单 Photoshop host FIFO、确定性 item ID、幂等键和已完成 item 续跑计划；规划中的智能对象任务会进入 `blocked_planned`，不会排进执行队列。
+- `ps.result.verify`：验收 sandbox 副本、原图未覆盖、前后状态回读、产物 SHA-256 和 Photoshop 原生重开；失败时最多允许三轮局部修正。
+
+`simple-tone-export-v1`、`production-subject-delivery-v1` 和 `batch-production-delivery-v1` 统一路由到已有的真实 `photoshop-production-v1` 管理型工作流；该工作流具备源 hash、复制后处理、画布与基础调色、主体导出、PNG/JPEG/PSD 交付、暂存提升和产物 hash 验证。请求 PSD 时，UXP 必须重新打开暂存 PSD 并验证尺寸后才允许代理提升为最终产物。`product-composite-verified-v1` 和批量智能对象 Recipe 会如实列出仍为 `planned` 的类别并返回 `execution_ready=false`。
+
+`ps.get_state` 只有 COM 或 UXP 实时回读成功时才返回成功，绝不把 mock 状态作为证据。`ps.get_preview` 只读取同一 `job_id` 下由 `ps.preview.export` 生成且 EvidenceManifest 标记 `real_output_verified=true` 的预览；不存在真实预览时返回不可用，不生成伪 base64。

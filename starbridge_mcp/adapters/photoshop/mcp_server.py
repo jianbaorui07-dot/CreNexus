@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from .bridge import PhotoshopBridgeAdapter
+from .recipe_dsl import build_batch_plan, capability_manifest, compile_recipe, verify_result
 from .tools import build_tool_definitions
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -10,6 +11,16 @@ _ADAPTER = PhotoshopBridgeAdapter(REPO_ROOT)
 
 TOOL_DEFINITIONS = build_tool_definitions()
 TOOL_HANDLERS = {
+    "ps.capabilities": lambda _arguments: capability_manifest(),
+    "ps.recipe.compile": lambda arguments: compile_recipe(
+        str(arguments.get("recipe_id") or ""),
+        arguments.get("parameters") if isinstance(arguments.get("parameters"), dict) else {},
+    ),
+    "ps.batch.plan": lambda arguments: build_batch_plan(
+        list(arguments.get("items") or []),
+        completed_item_ids=list(arguments.get("completed_item_ids") or []),
+    ),
+    "ps.result.verify": verify_result,
     "ps.probe": _ADAPTER.probe,
     "ps.document.info": _ADAPTER.document_info,
     "ps.layers.list": _ADAPTER.layers_list,

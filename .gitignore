@@ -68,6 +68,7 @@ examples/output/**/*.psd
 examples/output/**/*.ai
 examples/output/**/*.svg
 examples/output/**/*.pdf
+examples/output/**/*.drawio
 examples/output/**/*.json
 examples/output/**/*.jsonl
 examples/output/**/*.blend

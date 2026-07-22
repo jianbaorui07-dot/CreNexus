@@ -100,6 +100,7 @@ def collect_status(
     *, comfy_url: str, timeout: int, probe_executables: bool
 ) -> list[dict[str, Any]]:
     from examples import bridge_status as legacy
+    from starbridge_mcp.adapters.drawio.service import DiagramForgeService
     from starbridge_mcp.bridges.autocad_dxf import status as autocad_dxf_status
 
     legacy_results = [
@@ -110,7 +111,26 @@ def collect_status(
         legacy.check_illustrator(probe_executables),
         legacy.check_jianying_capcut(),
     ]
-    return [normalize_legacy_status(item) for item in legacy_results] + [autocad_dxf_status()]
+    drawio_probe = DiagramForgeService(REPO_ROOT).probe({})
+    diagramforge_status = make_result(
+        ok=bool(drawio_probe.get("ok")),
+        bridge="diagramforge",
+        action="status",
+        message="DiagramForge headless compiler status",
+        details=dict(drawio_probe.get("details") or {}),
+        warnings=list(drawio_probe.get("warnings") or []),
+        next_steps=(
+            []
+            if drawio_probe.get("details", {}).get("drawio_desktop_available")
+            else ["Configure DRAWIO_EXE only when local PDF export is needed."]
+        ),
+    )
+    validated_diagramforge_status = sanitize(diagramforge_status)
+    validate_result(validated_diagramforge_status)
+    return [normalize_legacy_status(item) for item in legacy_results] + [
+        autocad_dxf_status(),
+        validated_diagramforge_status,
+    ]
 
 
 def build_response(args: argparse.Namespace) -> dict[str, Any]:
@@ -470,6 +490,7 @@ def main() -> None:
         default="all",
         choices=[
             "all",
+            "diagramforge",
             "comfyui",
             "blender",
             "autocad",

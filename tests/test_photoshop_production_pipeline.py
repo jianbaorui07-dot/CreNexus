@@ -19,8 +19,9 @@ from starbridge_mcp.workflows.registry import WorkflowRegistry
 
 
 class FakePhotoshopProxy:
-    def __init__(self, *, connected: bool = True) -> None:
+    def __init__(self, *, connected: bool = True, native_reopen: bool = True) -> None:
         self.connected = connected
+        self.native_reopen = native_reopen
         self.production_calls = 0
 
     def status(self) -> dict[str, object]:
@@ -62,6 +63,7 @@ class FakePhotoshopProxy:
                     "executed": True,
                     "sandbox_copy": True,
                     "source_overwritten": False,
+                    "native_reopen_validated": self.native_reopen and "psd" in params["outputs"],
                     "rollback_supported": True,
                     "warnings": [],
                 },
@@ -201,6 +203,7 @@ class PhotoshopProductionPipelineTests(unittest.TestCase):
             self.assertNotIn(str(self.paths.root), text)
             self.assertNotIn(str(Path(self.temporary.name)), text)
         self.assertIn('"sourcePathPersisted": false', runtime_text)
+        self.assertIn('"nativeReopenValidated": true', runtime_text)
 
     def test_invalid_format_is_rejected_before_job_creation(self) -> None:
         with self.assertRaises(ValueError):
@@ -211,6 +214,22 @@ class PhotoshopProductionPipelineTests(unittest.TestCase):
                     "outputFormats": ["tiff"],
                 }
             )
+
+    def test_psd_delivery_fails_closed_without_native_reopen(self) -> None:
+        proxy = FakePhotoshopProxy(native_reopen=False)
+        engine = self._engine(proxy)
+        job = self._create_job(engine)
+        approval = engine.run(job.job_id).approval
+        self.assertIsNotNone(approval)
+
+        result = engine.run(
+            job.job_id,
+            approval_ref=approval.approval_ref,
+            confirm_execute=True,
+        )
+
+        self.assertEqual("failed", result.job.status)
+        self.assertEqual("photoshop_native_reopen_unverified", result.job.error.code)
 
     def test_subject_export_registers_only_fixed_subject_and_requested_outputs(self) -> None:
         proxy = FakePhotoshopProxy()

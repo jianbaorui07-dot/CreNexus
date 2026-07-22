@@ -18,6 +18,7 @@ Read only what is needed:
 - `examples/photoshop_bridge/README.md`
 - `docs/03-codex-photoshop.md`
 - `docs/photoshop-codex-bridge.md`
+- `docs/diagramforge-photoshop-upstream-audit.md` when comparing upstream capabilities
 - `.codex/skills/starbridge-smart-cutout-ps/SKILL.md` for one-subject-per-layer tasks
 - `starbridge_mcp/adapters/photoshop/`
 - `starbridge_mcp/core/tool_registry.py`
@@ -44,6 +45,11 @@ Use `npm.cmd`, not bare `npm`, on Windows PowerShell.
 | Need | Preferred tool path | Boundary |
 | --- | --- | --- |
 | Check availability | `ps.probe`, `photoshop.session_info` | Read-only, no PSD open |
+| Discover typed maturity | `ps.capabilities` | Static support is separate from live connection truth |
+| Compile a result Recipe | `ps.recipe.compile` | Real production recipes name `workflow:photoshop-production-v1`; planned categories are blocked |
+| Build a resumable batch | `ps.batch.plan` | Deterministic single-host FIFO; planned items never enter the executable queue |
+| Verify delivery gates | `ps.result.verify` | Sanitized before/after state, artifact hashes, native reopen when PSD is requested |
+| Read live state/preview | `ps.get_state`, `ps.get_preview` | Fail closed; mock state and placeholder previews are never accepted as evidence |
 | Inspect active document | `ps.document.info`, `photoshop.document_info` | Active document only, no save/export |
 | Inspect layers | `ps.layers.list` | Layer tree summary only |
 | Separate each visible subject | `$starbridge-smart-cutout-ps` | Explicit image/spec/model; generated files stay in ignored output |

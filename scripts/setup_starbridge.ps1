@@ -99,6 +99,7 @@ $checks = [ordered]@{
         Test-EnvPath "BLENDER_EXE"
         Test-EnvPath "BLENDER_MCP_DIR"
         Test-EnvPath "AUTOCAD_EXE"
+        Test-EnvPath "DRAWIO_EXE"
         Test-EnvPath "PHOTOSHOP_EXE"
         Test-EnvPath "ILLUSTRATOR_EXE"
         Test-EnvPath "JIANYING_EXE"

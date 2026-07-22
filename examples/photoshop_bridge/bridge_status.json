@@ -1,6 +1,6 @@
 {
   "bridge_id": "photoshop",
-  "display_name": "Photoshop 修图桥",
+  "display_name": "Photoshop production bridge",
   "maturity": "prototype",
   "platforms": [
     "Windows"
@@ -9,6 +9,7 @@
     "Adobe Photoshop desktop",
     "PowerShell",
     "Photoshop.Application COM",
+    "Node.js proxy and the CreNexus UXP plugin",
     "Python 3.10+ with .[image-to-psd] for offline decomposition"
   ],
   "required_env": [
@@ -17,15 +18,16 @@
   "probe_supported": true,
   "write_supported": true,
   "safe_report_supported": true,
-  "last_verified": "2026-07-16",
+  "last_verified": "2026-07-22",
   "known_risks": [
-    "PSD、源图、导出图、商业字体、商业笔刷和 Creative Cloud 缓存不能提交。",
-    "扁平图像不包含原始图层关系；当前能力是语义重建，不能声称无损恢复原 PSD。",
-    "Photoshop 写入只允许在 examples/output/photoshop 内且需要显式确认。"
+    "PSD files, source images, exports, commercial fonts, brushes, and Creative Cloud caches must not be committed.",
+    "A flat image has no original layer graph; semantic reconstruction is not lossless PSD recovery.",
+    "Real production writes require an authorized live UXP session, a managed source hash, a sandbox duplicate, and explicit approval.",
+    "Live Photoshop acceptance remains separate from mock and protocol test success."
   ],
   "next_steps": [
-    "把已验证的公开跨类型回归集扩展到至少 20 个经人工复审的主体样本和 8 个独立源图组。",
-    "候选模型只在按源图分组的未见图片验证集质量提高后用于复审排序，并继续禁止自动应用。",
-    "稳定 manifest 和 PSD 重开验收后，再考虑暴露受控 MCP 写入工具。"
+    "Run the authorized UXP sandbox workflow with PNG, JPEG, PSD, preview readback, and native PSD reopen evidence.",
+    "Extend the reviewed public subject dataset without adding client assets or generated artifacts to Git.",
+    "Keep smart-object, text, and complex compositing recipes blocked until their typed implementations pass the same gates."
   ]
 }
