@@ -12,7 +12,7 @@
 | MCP 本地配置 | [local-mcp-setup.md](local-mcp-setup.md) |
 | Windows 开发环境 | [windows-install.md](windows-install.md) |
 | Community / Pro 离线商业化边界 | [OFFLINE_COMMERCIALIZATION.md](OFFLINE_COMMERCIALIZATION.md) |
-| MIT 与商业功能边界审计 | [COMMERCIAL_FEATURE_BOUNDARY_AUDIT.md](COMMERCIAL_FEATURE_BOUNDARY_AUDIT.md) |
+| 许可证与商业功能边界审计 | [COMMERCIAL_FEATURE_BOUNDARY_AUDIT.md](COMMERCIAL_FEATURE_BOUNDARY_AUDIT.md) |
 | Pro 商业条款待决策 | [PRO_COMMERCIAL_TERMS_DRAFT.md](PRO_COMMERCIAL_TERMS_DRAFT.md) |
 | 私有 Pro 编译期架构 | [PRIVATE_PRO_ARCHITECTURE.md](PRIVATE_PRO_ARCHITECTURE.md) |
 | Windows 收费发布门槛 | [WINDOWS_RELEASE_READINESS.md](WINDOWS_RELEASE_READINESS.md) |

@@ -86,32 +86,32 @@ DEFAULT_DEV_ORIGINS = (
 CATALOG_BRIDGE_TIERS: dict[str, dict[str, str]] = {
     "diagramforge": {
         "tier": "Community / Open core",
-        "price_signal": "MIT published capability",
+        "price_signal": "Community capability",
         "buyer": "Local structured drawing workflows",
     },
     "photoshop": {
         "tier": "Community / Open core",
-        "price_signal": "MIT published capability",
+        "price_signal": "Community capability",
         "buyer": "Local creative workflows",
     },
     "comfyui": {
         "tier": "Community / Open core",
-        "price_signal": "MIT published capability",
+        "price_signal": "Community capability",
         "buyer": "Local ComfyUI workflows",
     },
     "autocad_dxf": {
         "tier": "Community / Open core",
-        "price_signal": "MIT published capability",
+        "price_signal": "Community capability",
         "buyer": "Local CAD workflows",
     },
     "illustrator": {
         "tier": "Community / Open core",
-        "price_signal": "MIT published capability",
+        "price_signal": "Community capability",
         "buyer": "Local vector workflows",
     },
     "blender": {
         "tier": "Community / Open core",
-        "price_signal": "MIT published capability",
+        "price_signal": "Community capability",
         "buyer": "Local 3D workflows",
     },
 }
@@ -1133,7 +1133,7 @@ class CreNexusBackend:
                     "item_count": len(cards),
                     "items": cards,
                     "monetization_model": [
-                        "Published recipe implementations remain Community / MIT capabilities.",
+                        "Published recipe implementations remain Community capabilities.",
                         "Future Pro value must come from new private production workflow enhancements.",
                         "No cloud execution or metered compute billing is provided.",
                     ],

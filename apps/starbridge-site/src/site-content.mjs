@@ -10,12 +10,12 @@ export const pages = {
     title: "让创意软件协同工作，而不是反复切换。",
     intro: "CreNexus 把图片矢量化、批量任务和创意软件联动集中在一个应用中。你的图片和设计文件始终留在自己的电脑里。",
     actions: [["/editions", "查看 Community 免费版"], ["/features", "了解 Pro 专业版"]],
-    sections: [["先完成作品，再处理工具切换", "从图片导入、模式选择、本地执行到结果预览和任务记录，Community 工作流集中在一个桌面应用中。"], ["本机处理是产品边界", "不上传图片、设计文件或授权文件，不收集遥测，也不依赖 CreNexus 授权服务器。"], ["能力状态说清楚", "公开 MIT 能力继续属于 Community；批量、项目管理和新的私有增强仍处于专业版规划阶段。"]]
+    sections: [["先完成作品，再处理工具切换", "从图片导入、模式选择、本地执行到结果预览和任务记录，Community 工作流集中在一个桌面应用中。"], ["本机处理是产品边界", "不上传图片、设计文件或授权文件，不收集遥测，也不依赖 CreNexus 授权服务器。"], ["能力状态说清楚", "已经交付的基础能力继续属于 Community；批量、项目管理和新的私有增强仍处于专业版规划阶段。"]]
   },
   "/features": {
     eyebrow: "功能", title: "为真实创作流程组织功能。",
     intro: "页面只陈述已有证据或明确的规划状态，不把按钮、schema 或测试替代为商业交付。",
-    sections: [["Community 图片矢量化", "匠心矢量、智能矢量、轻量矢量和精确重建均来自已公开 MIT 代码，可在本机执行。"], ["创意软件联动", "仓库已有 Illustrator、Photoshop、ComfyUI、Blender 与 CAD 的公开实现或协议；具体桌面验收状态以文档和 Manifest 为准。"], ["生产级矢量工作流 · 规划中", "未来 Pro 的价值来自批量队列、文件夹处理、项目历史、任务恢复、商业交付、新私有增强和专业支持。"]]
+    sections: [["Community 图片矢量化", "匠心矢量、智能矢量、轻量矢量和精确重建均可在本机执行。"], ["创意软件联动", "仓库已有 Illustrator、Photoshop、ComfyUI、Blender 与 CAD 的实现或协议；具体桌面验收状态以文档和 Manifest 为准。"], ["生产级矢量工作流 · 规划中", "未来 Pro 的价值来自批量队列、文件夹处理、项目历史、任务恢复、商业交付、新私有增强和专业支持。"]]
   },
   "/editions": {
     eyebrow: "版本对比", title: "免费能力直接使用，专业能力按证据开放。",
@@ -34,9 +34,9 @@ export const pages = {
   },
   "/docs": {
     eyebrow: "文档", title: "从产品事实到开发边界。",
-    intro: "仓库文档记录功能证据、MIT 商业边界、离线授权、私有 Pro 架构和 Windows 发布门槛。",
+    intro: "仓库文档记录功能证据、许可证与商业边界、离线授权、私有 Pro 架构和 Windows 发布门槛。",
     actions: [["https://github.com/jianbaorui07-dot/CreNexus/tree/main/docs", "打开 GitHub 文档"]],
-    sections: [["产品 Manifest", "机器可读事实源区分可用、实验、规划和未支持状态。"], ["商业边界审计", "已经公开的能力继续受 MIT 许可，不改写历史。"], ["发布准备", "签名、干净机器、Defender、SmartScreen 和正式条款全部设为收费门槛。"]]
+    sections: [["产品 Manifest", "机器可读事实源区分可用、实验、规划和未支持状态。"], ["商业边界审计", "当前版本使用自有许可证；历史版本仍适用其发布时随附的许可证。"], ["发布准备", "签名、干净机器、Defender、SmartScreen 和正式条款全部设为收费门槛。"]]
   },
   "/download": {
     eyebrow: "下载", title: "Windows 内部预览版可以直接下载。",

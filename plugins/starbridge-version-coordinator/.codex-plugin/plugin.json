@@ -3,12 +3,12 @@
   "version": "0.1.0+codex.20260717090725",
   "description": "Plan safe CreNexus configurations for different creative-software and project generations.",
   "author": {
-    "name": "CreNexus contributors",
+    "name": "菅宝瑞",
     "url": "https://github.com/jianbaorui07-dot/CreNexus"
   },
   "homepage": "https://github.com/jianbaorui07-dot/CreNexus/blob/main/docs/codex-version-coordination-service.md",
   "repository": "https://github.com/jianbaorui07-dot/CreNexus",
-  "license": "MIT",
+  "license": "LicenseRef-CreNexus-Proprietary",
   "keywords": [
     "codex",
     "mcp",
@@ -21,7 +21,7 @@
     "displayName": "CreNexus Version Coordinator",
     "shortDescription": "Match software versions to safe CreNexus routes.",
     "longDescription": "Create a conservative Codex plan for Photoshop, Illustrator, AutoCAD, Blender, ComfyUI, and CapCut/Jianying, and migrate CreNexus v5-v8 workflows to v9.",
-    "developerName": "CreNexus contributors",
+    "developerName": "菅宝瑞",
     "category": "Productivity",
     "capabilities": [
       "Read",

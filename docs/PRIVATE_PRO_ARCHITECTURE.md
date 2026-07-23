@@ -15,7 +15,7 @@
 ```text
 starbridge-community
 ├─ runtime-api          公共、本地、安全接口
-├─ community-features   MIT 实现
+├─ community-features   Community 实现
 ├─ licensing-verifier  公开验签协议与类型
 └─ desktop-shell        Community UI 与扩展插槽
 
@@ -47,7 +47,7 @@ Community CI 必须证明：
 - 许可证拒绝、功能映射、签名更新包与回滚路径通过测试；
 - 输出物签名、哈希和软件物料清单可追溯。
 
-## 公开 MIT 能力的处理
+## 已发布 Community 能力的处理
 
 匠心矢量、智能矢量、轻量矢量、精确重建，以及已经公开的 Illustrator、Photoshop、ComfyUI、Blender、CAD 协议和实现不能从历史上“收回”。未来 Pro 只能销售新增私有增强、生产工作流、交付和支持，详细证据见 [`COMMERCIAL_FEATURE_BOUNDARY_AUDIT.md`](COMMERCIAL_FEATURE_BOUNDARY_AUDIT.md)。
 

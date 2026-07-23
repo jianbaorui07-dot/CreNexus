@@ -4,7 +4,7 @@
   "description": "Windows-first, local-first MCP stdio bridge for safe probes, workflow validation, DXF dry-run planning, and guarded creative software automation.",
   "version": "0.1.0-alpha.2",
   "homepage": "https://github.com/jianbaorui07-dot/CreNexus",
-  "license": "MIT",
+  "license": "LicenseRef-CreNexus-Proprietary",
   "transport": {
     "type": "stdio",
     "command": "python",

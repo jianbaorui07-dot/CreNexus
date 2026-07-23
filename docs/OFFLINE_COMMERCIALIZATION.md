@@ -9,7 +9,7 @@
 - 桌面后端仅绑定 loopback；临时会话凭据留在 Rust 层，不暴露给 WebView。
 - 所有写入继续受 safe roots 与 `confirm_write`、`confirm_export`、`confirm_run` 约束。
 - 生产签名私钥不得进入任何 Git 仓库、安装包、日志或客户电脑。
-- Community 二进制不得包含私有 Pro 实现；公开 MIT 能力不能重新包装成 Pro 独占功能。
+- Community 二进制不得包含私有 Pro 实现；已经交付的 Community 能力不能仅改名后重新包装成 Pro 独占功能。
 
 ## Community 与 Pro
 

@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,13 +7,13 @@ name = "starbridge-creative-software-mcp"
 version = "0.1.0a2"
 description = "Windows-first, local-first MCP stdio server and safety bridge for connecting AI agents (Codex, Cursor, Claude) to creative desktop software."
 readme = "README.md"
-license = { text = "MIT" }
-authors = [{ name = "CreNexus contributors" }]
+license = "LicenseRef-CreNexus-Proprietary"
+license-files = ["LICENSE"]
+authors = [{ name = "菅宝瑞" }]
 keywords = ["mcp", "model-context-protocol", "codex", "comfyui", "autocad", "dxf", "drawio", "diagram", "photoshop", "illustrator", "blender", "ai-agent", "local-first", "safety"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
-  "License :: OSI Approved :: MIT License",
   "Operating System :: Microsoft :: Windows",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.10",

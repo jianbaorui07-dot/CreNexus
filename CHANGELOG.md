@@ -2,6 +2,12 @@
 
 ## Unreleased / Optimizations
 
+### 2026-07-23 — Author and license metadata correction
+
+* Corrected the author and copyright name to 菅宝瑞 across project, desktop, plugin, registry, and documentation metadata.
+* Changed current-version project metadata from MIT to `LicenseRef-CreNexus-Proprietary`, while preserving the license terms already distributed with earlier revisions.
+* Added the CreNexus proprietary license notice, third-party rights boundary, and the statement that final interpretation of the CreNexus licensing terms belongs to 菅宝瑞 to the extent permitted by applicable law.
+
 ### 2026-07-23 — Pixel Reconstruction first customer route
 
 * Promoted Pixel Reconstruction into the four-card processing-mode selector and made it the default customer route.

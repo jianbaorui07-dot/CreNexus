@@ -1,21 +1,31 @@
-MIT License
+CreNexus Proprietary License
 
-Copyright (c) 2025 曹瑞 and CreNexus contributors
+Copyright (c) 2025-2026 菅宝瑞. All rights reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+To the extent that 菅宝瑞 holds the applicable rights, CreNexus and its source
+code, documentation, designs, assets, binaries, and related materials
+(collectively, the "Software") are proprietary works.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+Unless 菅宝瑞 has given prior written permission or a separate written
+agreement expressly permits it, no person or entity may use, copy, modify,
+merge, publish, distribute, sublicense, sell, reverse engineer, or create
+derivative works from the Software.
+
+Third-party software and other materials included with or referenced by the
+Software remain subject to their respective licenses and copyright notices.
+Those third-party terms are not replaced or restricted by this license.
+Nothing in this license assigns or claims ownership of rights held by others.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. TO THE MAXIMUM EXTENT
+PERMITTED BY APPLICABLE LAW, 菅宝瑞 SHALL NOT BE LIABLE FOR ANY CLAIM, DAMAGES,
+OR OTHER LIABILITY ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR
+THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+This license applies to revisions first published with this notice. Earlier
+revisions remain subject to the license terms distributed with those
+revisions.
+
+本许可证以中文含义为准。在适用法律允许的范围内，本许可证及 CreNexus
+相关授权条款的最终解释权归菅宝瑞所有。

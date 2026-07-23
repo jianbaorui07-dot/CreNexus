@@ -152,4 +152,4 @@ CAD-MCP/
 
 ## License
 
-MIT License
+CreNexus Proprietary License — Copyright © 2025–2026 菅宝瑞. All rights reserved. See [LICENSE](LICENSE).

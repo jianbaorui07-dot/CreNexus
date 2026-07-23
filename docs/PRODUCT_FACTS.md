@@ -21,7 +21,7 @@
 
 ## 当前发布事实
 
-- Community 为公开 MIT 开放核心，无需激活。
+- Community 为免费版，无需激活；当前源码版本适用仓库根目录的自有许可证。
 - Pro 和 Enterprise 均为 `planned`，没有开售。
 - 四种离线矢量化引擎属于 Community。
 - 基础 Project、CreativeJob、Workflow Engine、单任务历史、基础交付和脱敏 Evidence 已有 Community 实现与集成测试，状态为 `experimental`。
