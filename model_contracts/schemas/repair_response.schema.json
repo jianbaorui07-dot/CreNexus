@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.koryao.local/model-contract/v1/repair_response.schema.json",
+  "title": "KORYAO Repair Response v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "confidence",
+    "decision",
+    "modelId",
+    "modelVersion",
+    "providerId",
+    "replacementSteps",
+    "requestId",
+    "requiresConfirmation",
+    "safety",
+    "schema",
+    "summary",
+    "workflowId"
+  ],
+  "properties": {
+    "schema": {
+      "$ref": "common.schema.json#/$defs/contractVersion"
+    },
+    "requestId": {
+      "$ref": "common.schema.json#/$defs/safeId"
+    },
+    "modelId": {
+      "$ref": "common.schema.json#/$defs/safeId"
+    },
+    "modelVersion": {
+      "$ref": "common.schema.json#/$defs/semanticVersion"
+    },
+    "providerId": {
+      "$ref": "common.schema.json#/$defs/safeId"
+    },
+    "workflowId": {
+      "$ref": "common.schema.json#/$defs/safeId"
+    },
+    "decision": {
+      "enum": [
+        "retry",
+        "replace_remaining",
+        "abort",
+        "needs_user"
+      ]
+    },
+    "confidence": {
+      "$ref": "common.schema.json#/$defs/confidence"
+    },
+    "summary": {
+      "$ref": "common.schema.json#/$defs/shortText"
+    },
+    "replacementSteps": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "$ref": "common.schema.json#/$defs/plannedStep"
+      }
+    },
+    "requiresConfirmation": {
+      "type": "boolean"
+    },
+    "safety": {
+      "$ref": "common.schema.json#/$defs/responseSafety"
+    }
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.koryao.local/model-contract/v1/evaluate_request.schema.json",
+  "title": "KORYAO Evaluate Request v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "attempt",
+    "evidence",
+    "jobId",
+    "privacy",
+    "projectId",
+    "qualityTargets",
+    "requestId",
+    "resultAssets",
+    "schema",
+    "workflowId"
+  ],
+  "properties": {
+    "schema": {
+      "$ref": "common.schema.json#/$defs/contractVersion"
+    },
+    "requestId": {
+      "$ref": "common.schema.json#/$defs/safeId"
+    },
+    "projectId": {
+      "$ref": "common.schema.json#/$defs/safeId"
+    },
+    "jobId": {
+      "$ref": "common.schema.json#/$defs/safeId"
+    },
+    "workflowId": {
+      "$ref": "common.schema.json#/$defs/safeId"
+    },
+    "attempt": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10
+    },
+    "qualityTargets": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "$ref": "common.schema.json#/$defs/qualityTarget"
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "maxItems": 128,
+      "items": {
+        "$ref": "common.schema.json#/$defs/evidenceMetric"
+      }
+    },
+    "resultAssets": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "$ref": "common.schema.json#/$defs/assetRef"
+      }
+    },
+    "privacy": {
+      "$ref": "common.schema.json#/$defs/privacyDeclaration"
+    }
+  }
+}

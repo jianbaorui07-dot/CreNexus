@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.koryao.local/model-contract/v1/model_status.schema.json",
+  "title": "KORYAO Model Runtime Status v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "models",
+    "network",
+    "privacy",
+    "runtimeMode",
+    "schema",
+    "serviceId",
+    "serviceVersion",
+    "status",
+    "supportedContracts"
+  ],
+  "properties": {
+    "schema": {
+      "$ref": "common.schema.json#/$defs/contractVersion"
+    },
+    "serviceId": {
+      "$ref": "common.schema.json#/$defs/safeId"
+    },
+    "serviceVersion": {
+      "$ref": "common.schema.json#/$defs/semanticVersion"
+    },
+    "status": {
+      "enum": [
+        "healthy",
+        "degraded",
+        "unavailable"
+      ]
+    },
+    "runtimeMode": {
+      "const": "local"
+    },
+    "supportedContracts": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "contains": {
+        "const": "koryao-model-contract/v1"
+      },
+      "items": {
+        "type": "string",
+        "maxLength": 64
+      }
+    },
+    "network": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bindAddress",
+        "externalNetworkAccess"
+      ],
+      "properties": {
+        "bindAddress": {
+          "enum": [
+            "127.0.0.1",
+            "::1"
+          ]
+        },
+        "externalNetworkAccess": {
+          "const": false
+        }
+      }
+    },
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "acceptsRawAssets",
+        "logsAbsolutePaths",
+        "logsFullInstructions"
+      ],
+      "properties": {
+        "acceptsRawAssets": {
+          "const": false
+        },
+        "logsAbsolutePaths": {
+          "const": false
+        },
+        "logsFullInstructions": {
+          "const": false
+        }
+      }
+    },
+    "models": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "capabilities",
+          "modelId",
+          "providerId",
+          "status",
+          "version"
+        ],
+        "properties": {
+          "modelId": {
+            "$ref": "common.schema.json#/$defs/safeId"
+          },
+          "version": {
+            "$ref": "common.schema.json#/$defs/semanticVersion"
+          },
+          "providerId": {
+            "$ref": "common.schema.json#/$defs/safeId"
+          },
+          "status": {
+            "enum": [
+              "experimental",
+              "ready",
+              "disabled",
+              "unavailable"
+            ]
+          },
+          "capabilities": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 3,
+            "uniqueItems": true,
+            "items": {
+              "enum": [
+                "plan",
+                "evaluate",
+                "repair"
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

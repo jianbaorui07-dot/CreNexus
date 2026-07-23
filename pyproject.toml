@@ -39,6 +39,7 @@ dev = [
   "numpy>=2,<3",
   "opencv-python-headless>=4.10,<6",
   "pytest>=8",
+  "jsonschema>=4.23,<5",
   "ruff>=0.4.0",
   "mypy>=1.10",
   "pytest-cov>=5.0",
@@ -109,7 +110,10 @@ vectorflow-studio = "starbridge_mcp.vectorization.app:main"
 starbridge-image-to-psd = "starbridge_mcp.adapters.photoshop.semantic_layers.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["starbridge_mcp*"]
+include = ["starbridge_mcp*", "model_contracts*"]
+
+[tool.setuptools.package-data]
+model_contracts = ["schemas/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -44,11 +44,17 @@
     "placeholderLetterIconReplaced": true
   },
   "sourceBoundary": {
-    "communityRepository": "jianbaorui07-dot/KORYAO",
-    "communitySource": "public-mit",
+    "communityRepository": "jianbaorui07-dot/KORYAO-basic",
+    "communitySource": "public-proprietary-current",
+    "currentLicense": "KORYAO Proprietary License",
+    "historicalLicenseRightsPreserved": true,
     "commercialSource": "private-planned",
     "suggestedCommercialRepository": "KORYAO-Pro",
     "commercialRepositoryCreated": false,
+    "suggestedModelRuntimeRepository": "KORYAO-Model-Private",
+    "modelRuntimeRepositoryCreated": false,
+    "suggestedModelDataRepository": "KORYAO-Data-Private",
+    "modelDataRepositoryCreated": false,
     "premiumImplementationsAllowedInCommunityRepository": false,
     "communityBuildContainsPrivateProSource": false
   },
@@ -61,7 +67,7 @@
       "licenseTerm": "free",
       "activationRequired": false,
       "deviceLimit": null,
-      "sourceVisibility": "public-mit"
+      "sourceVisibility": "public-proprietary-current"
     },
     {
       "id": "pro",
@@ -169,6 +175,18 @@
       "requiresUserConfirmation": true,
       "requiresThirdPartySoftware": false,
       "documentation": "docs/ARCHITECTURE_V2.md"
+    },
+    {
+      "id": "model.contract_v1",
+      "publicName": "闭源模型公共协议 v1",
+      "edition": "community",
+      "capabilityStatus": "experimental",
+      "evidenceLevel": "schema",
+      "recommended": false,
+      "deprecated": false,
+      "requiresUserConfirmation": true,
+      "requiresThirdPartySoftware": false,
+      "documentation": "docs/CLOSED_MODEL_ARCHITECTURE.md"
     },
     {
       "id": "workflow.vector_delivery_v1",
@@ -335,6 +353,8 @@
     "userImages": "local-only",
     "designFiles": "local-only",
     "licenseFiles": "local-only",
+    "modelRequests": "loopback-structured-metadata-only",
+    "cloudModel": "not_implemented-explicit-opt-in-required",
     "telemetry": "disabled",
     "backgroundNetworkService": false,
     "loopbackOnly": true,

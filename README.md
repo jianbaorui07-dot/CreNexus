@@ -214,9 +214,9 @@ python scripts\starbridge_preflight.py --write-report --soft-exit
 
 ## 当前版本 / Current Version
 
-当前公开版本为 **v0.1.0-alpha.2**。Community 开放核心免费且无需激活；桌面产品、安装器和第三方软件写入仍按各自证据等级标记为 stable、experimental 或 planned，不能把“代码存在”写成“所有客户机器都已验收”。
+当前公开版本为 **v0.1.0-alpha.2**。Community 基础能力免费且无需激活；当前公开源码修订采用 KORYAO 自有许可证，历史版本保留其发布时随附的许可证权利。桌面产品、安装器和第三方软件写入仍按各自证据等级标记为 stable、experimental 或 planned，不能把“代码存在”写成“所有客户机器都已验收”。
 
-> The current public version is **v0.1.0-alpha.2**. The Community open core is free and requires no activation. The desktop product, installer, and third-party write paths remain labeled stable, experimental, or planned according to their evidence level; code existence must not be presented as acceptance on every customer machine.
+> The current public version is **v0.1.0-alpha.2**. Community baseline capabilities are free and require no activation. The current public source revision uses the KORYAO Proprietary License, while historical revisions retain the license rights distributed with them. The desktop product, installer, and third-party write paths remain labeled stable, experimental, or planned according to their evidence level; code existence must not be presented as acceptance on every customer machine.
 
 ## 小规模实测数据 / Small-Scope Measured Results
 

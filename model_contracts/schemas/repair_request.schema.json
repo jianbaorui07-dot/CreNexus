@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.koryao.local/model-contract/v1/repair_request.schema.json",
+  "title": "KORYAO Repair Request v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "availableAdapters",
+    "constraints",
+    "error",
+    "failedStepId",
+    "jobId",
+    "privacy",
+    "projectId",
+    "repairAttempt",
+    "requestId",
+    "schema",
+    "workflowId"
+  ],
+  "properties": {
+    "schema": {
+      "$ref": "common.schema.json#/$defs/contractVersion"
+    },
+    "requestId": {
+      "$ref": "common.schema.json#/$defs/safeId"
+    },
+    "projectId": {
+      "$ref": "common.schema.json#/$defs/safeId"
+    },
+    "jobId": {
+      "$ref": "common.schema.json#/$defs/safeId"
+    },
+    "workflowId": {
+      "$ref": "common.schema.json#/$defs/safeId"
+    },
+    "failedStepId": {
+      "$ref": "common.schema.json#/$defs/safeId"
+    },
+    "repairAttempt": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 3
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message",
+        "retryable"
+      ],
+      "properties": {
+        "code": {
+          "$ref": "common.schema.json#/$defs/safeId"
+        },
+        "message": {
+          "$ref": "common.schema.json#/$defs/shortText"
+        },
+        "retryable": {
+          "type": "boolean"
+        }
+      }
+    },
+    "evaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "failedTargets",
+        "findingCodes",
+        "verdict"
+      ],
+      "properties": {
+        "verdict": {
+          "enum": [
+            "pass",
+            "fail",
+            "needs_review"
+          ]
+        },
+        "failedTargets": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "common.schema.json#/$defs/safeId"
+          }
+        },
+        "findingCodes": {
+          "type": "array",
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "common.schema.json#/$defs/safeId"
+          }
+        }
+      }
+    },
+    "availableAdapters": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": {
+        "$ref": "common.schema.json#/$defs/availableAdapter"
+      }
+    },
+    "constraints": {
+      "$ref": "common.schema.json#/$defs/constraints"
+    },
+    "privacy": {
+      "$ref": "common.schema.json#/$defs/privacyDeclaration"
+    }
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.koryao.local/model-contract/v1/evaluate_response.schema.json",
+  "title": "KORYAO Evaluate Response v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "confidence",
+    "failedTargets",
+    "findings",
+    "modelId",
+    "modelVersion",
+    "providerId",
+    "repairRecommended",
+    "requestId",
+    "safety",
+    "schema",
+    "summary",
+    "verdict"
+  ],
+  "properties": {
+    "schema": {
+      "$ref": "common.schema.json#/$defs/contractVersion"
+    },
+    "requestId": {
+      "$ref": "common.schema.json#/$defs/safeId"
+    },
+    "modelId": {
+      "$ref": "common.schema.json#/$defs/safeId"
+    },
+    "modelVersion": {
+      "$ref": "common.schema.json#/$defs/semanticVersion"
+    },
+    "providerId": {
+      "$ref": "common.schema.json#/$defs/safeId"
+    },
+    "verdict": {
+      "enum": [
+        "pass",
+        "fail",
+        "needs_review"
+      ]
+    },
+    "confidence": {
+      "$ref": "common.schema.json#/$defs/confidence"
+    },
+    "summary": {
+      "$ref": "common.schema.json#/$defs/shortText"
+    },
+    "findings": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "$ref": "common.schema.json#/$defs/finding"
+      }
+    },
+    "failedTargets": {
+      "type": "array",
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "common.schema.json#/$defs/safeId"
+      }
+    },
+    "repairRecommended": {
+      "type": "boolean"
+    },
+    "safety": {
+      "$ref": "common.schema.json#/$defs/responseSafety"
+    }
+  }
+}

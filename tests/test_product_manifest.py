@@ -32,9 +32,14 @@ class ProductManifestTests(unittest.TestCase):
 
     def test_public_and_private_source_boundary_is_machine_readable(self) -> None:
         boundary = self.manifest["sourceBoundary"]
-        self.assertEqual(boundary["communitySource"], "public-mit")
+        self.assertEqual(boundary["communityRepository"], "jianbaorui07-dot/KORYAO-basic")
+        self.assertEqual(boundary["communitySource"], "public-proprietary-current")
+        self.assertEqual(boundary["currentLicense"], "KORYAO Proprietary License")
+        self.assertTrue(boundary["historicalLicenseRightsPreserved"])
         self.assertEqual(boundary["commercialSource"], "private-planned")
         self.assertFalse(boundary["commercialRepositoryCreated"])
+        self.assertFalse(boundary["modelRuntimeRepositoryCreated"])
+        self.assertFalse(boundary["modelDataRepositoryCreated"])
         self.assertFalse(boundary["premiumImplementationsAllowedInCommunityRepository"])
 
     def test_pro_offer_is_proposed_not_claimed_as_launched(self) -> None:
@@ -70,6 +75,16 @@ class ProductManifestTests(unittest.TestCase):
             self.assertEqual("community", features[feature_id]["edition"])
         self.assertEqual("pro", features["batch.processing"]["edition"])
         self.assertEqual("pro", features["projects.advanced_recovery"]["edition"])
+
+    def test_closed_model_contract_is_public_but_implementation_is_not(self) -> None:
+        features = {feature["id"]: feature for feature in self.manifest["features"]}
+        contract = features["model.contract_v1"]
+        self.assertEqual("community", contract["edition"])
+        self.assertEqual("experimental", contract["capabilityStatus"])
+        self.assertEqual("schema", contract["evidenceLevel"])
+        boundary = self.manifest["sourceBoundary"]
+        self.assertFalse(boundary["modelRuntimeRepositoryCreated"])
+        self.assertFalse(boundary["communityBuildContainsPrivateProSource"])
 
     def test_feature_statuses_and_document_links_are_valid(self) -> None:
         for feature in self.manifest["features"]:

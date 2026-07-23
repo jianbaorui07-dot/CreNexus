@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.koryao.local/model-contract/v1/plan_response.schema.json",
+  "title": "KORYAO Plan Response v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "confidence",
+    "modelId",
+    "modelVersion",
+    "providerId",
+    "qualityTargets",
+    "requestId",
+    "requiresConfirmation",
+    "safety",
+    "schema",
+    "steps",
+    "summary",
+    "workflowId"
+  ],
+  "properties": {
+    "schema": {
+      "$ref": "common.schema.json#/$defs/contractVersion"
+    },
+    "requestId": {
+      "$ref": "common.schema.json#/$defs/safeId"
+    },
+    "modelId": {
+      "$ref": "common.schema.json#/$defs/safeId"
+    },
+    "modelVersion": {
+      "$ref": "common.schema.json#/$defs/semanticVersion"
+    },
+    "providerId": {
+      "$ref": "common.schema.json#/$defs/safeId"
+    },
+    "workflowId": {
+      "$ref": "common.schema.json#/$defs/safeId"
+    },
+    "confidence": {
+      "$ref": "common.schema.json#/$defs/confidence"
+    },
+    "requiresConfirmation": {
+      "type": "boolean"
+    },
+    "summary": {
+      "$ref": "common.schema.json#/$defs/shortText"
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "items": {
+        "$ref": "common.schema.json#/$defs/plannedStep"
+      }
+    },
+    "qualityTargets": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "$ref": "common.schema.json#/$defs/qualityTarget"
+      }
+    },
+    "safety": {
+      "$ref": "common.schema.json#/$defs/responseSafety"
+    }
+  }
+}
