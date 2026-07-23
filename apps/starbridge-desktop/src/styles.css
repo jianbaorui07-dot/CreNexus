@@ -786,6 +786,31 @@ button.quiet-button, .text-button { color: var(--primary); }
 .adobe-history-list dt { color: var(--text-muted); font-size: 9px; }
 .adobe-history-list dd { overflow-wrap: anywhere; margin: 3px 0 7px; font-family: Consolas, monospace; font-size: 9px; }
 
+.model-runtime-page .page-intro { display: flex; align-items: end; justify-content: space-between; gap: 24px; }
+.model-runtime-offline, .model-runtime-summary, .model-runtime-models, .model-runtime-boundary { border: 1px solid var(--border); background: rgba(250, 249, 244, .9); }
+.model-runtime-offline { padding: 18px; border-left: 4px solid var(--warning); }
+.model-runtime-offline strong, .model-runtime-offline p, .model-runtime-offline small { display: block; }
+.model-runtime-offline p { margin: 8px 0; }
+.model-runtime-offline small { color: var(--text-muted); }
+.model-runtime-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 14px; }
+.model-runtime-summary > div { min-width: 0; padding: 15px; border-left: 1px solid var(--border); }
+.model-runtime-summary > div:first-child { border-left: 0; }
+.model-runtime-summary span, .model-runtime-summary strong { display: block; }
+.model-runtime-summary span { color: var(--text-muted); font-size: 8px; }
+.model-runtime-summary strong { overflow-wrap: anywhere; margin-top: 7px; font-family: ui-monospace, "Cascadia Code", monospace; font-size: 11px; }
+.model-runtime-models { margin-bottom: 14px; }
+.model-runtime-models > header, .model-runtime-models article { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr) auto; align-items: center; gap: 18px; padding: 14px 16px; }
+.model-runtime-models > header { border-bottom: 1px solid var(--border); }
+.model-runtime-models > header span, .model-runtime-models > header small, .model-runtime-models article span, .model-runtime-models article p { color: var(--text-muted); font-size: 8px; }
+.model-runtime-models h3, .model-runtime-models p { margin: 4px 0 0; }
+.model-capabilities { display: flex; flex-wrap: wrap; gap: 6px; }
+.model-capabilities span { padding: 4px 7px; border: 1px solid var(--border); color: var(--text) !important; font-family: ui-monospace, "Cascadia Code", monospace; text-transform: uppercase; }
+.model-state { padding: 5px 8px; border: 1px solid currentColor; color: var(--warning); font-family: ui-monospace, "Cascadia Code", monospace; font-size: 8px; }
+.model-state-ready { color: var(--success); }
+.model-state-disabled, .model-state-unavailable { color: var(--danger); }
+.model-runtime-boundary { padding: 16px; border-left: 4px solid var(--success); }
+.model-runtime-boundary ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px 20px; margin: 12px 0 0; padding-left: 18px; color: var(--text-muted); font-size: 9px; }
+
 @media (max-width: 1240px) {
   .app-shell { grid-template-columns: 192px minmax(0, 1fr); }
   .brand-lockup img { display: none; }
@@ -814,6 +839,9 @@ button.quiet-button, .text-button { color: var(--primary); }
   .quick-action-panel > button { border-right: 1px solid #c6c2b8; }
   .codex-workspace-grid { grid-template-columns: 1fr; }
   .adobe-history-list article { grid-template-columns: 1fr; }
+  .model-runtime-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .model-runtime-summary > div:nth-child(3) { border-top: 1px solid var(--border); border-left: 0; }
+  .model-runtime-summary > div:nth-child(4) { border-top: 1px solid var(--border); }
 }
 
 @media (max-width: 840px) {

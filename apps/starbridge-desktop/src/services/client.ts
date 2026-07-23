@@ -12,6 +12,7 @@ import type {
   JobHistoryEvent,
   LicenseRequestReceipt,
   LicenseStatus,
+  ModelRuntimeStatus,
   Project,
   ProjectDelivery,
   RuntimeStatus,
@@ -51,6 +52,7 @@ export interface KORYAOClient {
   exportAdobeFile(request: AdobeExportRequest): Promise<AdobeExportReceipt | null>;
   listAdobeExports(projectId: string): Promise<AdobeExportReceipt[]>;
   getConnections(): Promise<ConnectionOverview>;
+  getModelRuntimeStatus(): Promise<ModelRuntimeStatus>;
   installCodexConnector(confirmInstall: boolean): Promise<CodexConnectorInstallResult>;
   resetCodexConnection(confirmReset: boolean): Promise<CodexConnectionResetResult>;
   openCodexPairing(pairingCode: string): Promise<void>;
@@ -209,6 +211,13 @@ export class KORYAOApiClient implements KORYAOClient {
         path: "/api/connections",
       });
       return this.unwrap(response.status, response.body);
+    });
+  }
+
+  getModelRuntimeStatus(): Promise<ModelRuntimeStatus> {
+    return this.requestData({
+      method: "GET",
+      path: "/api/model/status",
     });
   }
 

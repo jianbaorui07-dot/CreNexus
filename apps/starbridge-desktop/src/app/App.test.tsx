@@ -44,6 +44,7 @@ function makeClient(status: RuntimeStatus | Promise<RuntimeStatus>): KORYAOClien
     exportAdobeFile: vi.fn().mockResolvedValue(null),
     listAdobeExports: vi.fn().mockResolvedValue([]),
     getConnections: vi.fn().mockResolvedValue(PAIRED_CONNECTIONS),
+    getModelRuntimeStatus: vi.fn().mockRejectedValue(new Error("model runtime offline")),
     installCodexConnector: vi.fn().mockResolvedValue({
       installed: true,
       connector: "starbridge-desktop",

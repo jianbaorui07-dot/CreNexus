@@ -85,6 +85,36 @@ export interface ConnectionOverview {
   };
 }
 
+export type ModelRuntimeHealth = "healthy" | "degraded" | "unavailable";
+export type ModelAvailability = "experimental" | "ready" | "disabled" | "unavailable";
+
+export interface ModelRuntimeModel {
+  modelId: string;
+  version: string;
+  providerId: string;
+  status: ModelAvailability;
+  capabilities: Array<"plan" | "evaluate" | "repair">;
+}
+
+export interface ModelRuntimeStatus {
+  schema: "koryao-model-contract/v1";
+  serviceId: string;
+  serviceVersion: string;
+  status: ModelRuntimeHealth;
+  runtimeMode: "local";
+  supportedContracts: string[];
+  network: {
+    bindAddress: "127.0.0.1" | "::1";
+    externalNetworkAccess: false;
+  };
+  privacy: {
+    acceptsRawAssets: false;
+    logsAbsolutePaths: false;
+    logsFullInstructions: false;
+  };
+  models: ModelRuntimeModel[];
+}
+
 export interface CodexConnectorInstallResult {
   installed: boolean;
   connector: string;

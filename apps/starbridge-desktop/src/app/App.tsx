@@ -10,6 +10,7 @@ import { HomePage } from "../pages/HomePage";
 import { IntegrationsPage } from "../pages/IntegrationsPage";
 import { JobDetailPage } from "../pages/JobDetailPage";
 import { LicensePage } from "../pages/LicensePage";
+import { ModelRuntimePage } from "../pages/ModelRuntimePage";
 import { PhotoshopProductionPage } from "../pages/PhotoshopProductionPage";
 import { ProjectsPage } from "../pages/ProjectsPage";
 import { TasksPage } from "../pages/TasksPage";
@@ -305,6 +306,8 @@ export function App({ client: providedClient }: AppProps) {
           onRefresh={refreshConnections}
           onRestartBridge={restart}
         />;
+      case "models":
+        return <ModelRuntimePage client={client} runtimeReady={status.state === "connected"} />;
       case "tasks":
         return <TasksPage tasks={tasks} onStart={() => openWorkflow()} onOpenJob={openJob} />;
       case "job-detail":

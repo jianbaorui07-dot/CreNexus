@@ -1,6 +1,6 @@
 # KORYAO 闭源模型架构与公共协议边界
 
-状态：`koryao-model-contract/v1` 公共协议已定义；真实模型运行端、训练端、数据与权重不在本仓库。
+状态：`koryao-model-contract/v1` 公共协议和 loopback 客户端已实现。私有规则运行端与数据治理仓库已经建立，但 Provider 实现、训练端、数据与权重仍不在本仓库。
 
 ## 目标
 
@@ -121,6 +121,18 @@ KORYAO 只向模型发送：
 - 实现 `POST /v1/plan`、`POST /v1/evaluate`、`POST /v1/repair`；
 - 对所有请求和响应执行 `koryao-model-contract/v1` 验证；
 - 结构化日志只记录请求 ID、模型版本、意图类别、耗时、状态和错误码。
+
+当前 KORYAO Basic 提供：
+
+- `starbridge_mcp.models.ModelRuntimeClient`，只接受数字 loopback HTTP 地址；
+- `GET /api/model/status`；
+- `POST /api/model/plan`、`POST /api/model/evaluate`、`POST /api/model/repair`；
+- 桌面端“模型运行端”状态页；
+- 请求和响应 schema 校验、路径/URI/凭据阻断，以及 plan 交叉安全校验。
+
+默认运行端地址固定为 `http://127.0.0.1:8765`。开发或企业离线部署可以通过 `KORYAO_MODEL_RUNTIME_URL` 覆盖端口，但客户端仍只接受数字 loopback HTTP 地址，不接受域名、HTTPS、认证信息、路径、查询参数或外部 IP。
+
+私有 `KORYAO-Model-Private` v0.1 已提供规则版 `koryao-c1-planner`，仅作为实验性 Provider。KORYAO Basic 不导入该实现，只通过固定 v1 HTTP 协议连接。私有 `KORYAO-Data-Private` v0.1 已提供 provenance、训练授权阻断规则和 100 条合成评测框架；原始客户或第三方素材没有进入普通 Git 历史。
 
 ## 未来云模型
 

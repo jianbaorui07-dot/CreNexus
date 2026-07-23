@@ -110,6 +110,7 @@ def check_product_facts() -> list[str]:
         "projects.basic",
         "jobs.creative_job",
         "model.contract_v1",
+        "model.local_runtime_client_v1",
         "workflow.vector_delivery_v1",
         "workflow.comfyui_generation_v1",
         "delivery.basic",

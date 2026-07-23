@@ -39,6 +39,11 @@ from starbridge_mcp.domain.errors import (
     RecordNotFoundError,
 )
 from starbridge_mcp.mcp_server import SERVER_INFO, handle_request
+from starbridge_mcp.models import (
+    ModelRuntimeClient,
+    ModelRuntimeClientProtocol,
+    ModelRuntimeError,
+)
 from starbridge_mcp.storage import AssetStore, EvidenceStore, JobStore, ProjectStore
 from starbridge_mcp.vectorization.engine import (
     RunConfig,
@@ -205,6 +210,7 @@ class KORYAOBackend:
         mode: str = "development",
         cors_allowed_origins: Iterable[str] | None = None,
         max_request_body_bytes: int = MAX_REQUEST_BODY_BYTES,
+        model_runtime_client: ModelRuntimeClientProtocol | None = None,
     ) -> None:
         if mode not in {"development", "desktop"}:
             raise ValueError("mode must be development or desktop")
@@ -241,6 +247,15 @@ class KORYAOBackend:
             app_paths=self.app_paths,
         )
         self.connections = DesktopConnectionManager(self.app_paths)
+        self._model_runtime_initialization_error: ModelRuntimeError | None = None
+        if model_runtime_client is not None:
+            self.model_runtime = model_runtime_client
+        else:
+            try:
+                self.model_runtime = ModelRuntimeClient.from_environment()
+            except ModelRuntimeError as error:
+                self.model_runtime = None
+                self._model_runtime_initialization_error = error
         self.static_root = static_root or DEFAULT_STATIC_ROOT
         self.history_path = history_path or self.app_paths.history_file
         if cors_allowed_origins is None:
@@ -380,6 +395,36 @@ class KORYAOBackend:
         if not isinstance(payload, dict):
             raise ValueError("request body must be a JSON object")
         return payload
+
+    def _model_runtime_call(
+        self, operation: str, body: Mapping[str, Any] | None = None
+    ) -> BackendResponse:
+        if self.model_runtime is None:
+            error = self._model_runtime_initialization_error
+            return self._error(
+                error.status if error is not None else 503,
+                error.code if error is not None else "model_runtime_unavailable",
+                str(error) if error is not None else "local model runtime is not configured",
+            )
+        try:
+            if operation == "status":
+                result = self.model_runtime.status()
+            else:
+                method = getattr(self.model_runtime, operation)
+                result = method(body or {})
+        except ModelRuntimeError as error:
+            return self._error(error.status, error.code, str(error))
+        if operation != "status":
+            self.record_runtime_event(
+                f"model_{operation}_validated",
+                {
+                    "requestId": result.get("requestId"),
+                    "modelId": result.get("modelId"),
+                    "modelVersion": result.get("modelVersion"),
+                    "workflowId": result.get("workflowId"),
+                },
+            )
+        return BackendResponse(200, {"ok": True, "data": result})
 
     def _static(self, path: str) -> BackendResponse:
         static_root = self.static_root.resolve()
@@ -1340,6 +1385,16 @@ class KORYAOBackend:
 
         if method == "GET" and path == "/api/connections":
             return BackendResponse(200, {"ok": True, "data": self.connections.overview()})
+
+        if method == "GET" and path == "/api/model/status":
+            return self._model_runtime_call("status")
+
+        if method == "POST" and path in {
+            "/api/model/plan",
+            "/api/model/evaluate",
+            "/api/model/repair",
+        }:
+            return self._model_runtime_call(path.rsplit("/", 1)[-1], body)
 
         if method == "POST" and path == "/api/connections/codex/install":
             if self.mode != "desktop":

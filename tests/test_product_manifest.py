@@ -38,8 +38,18 @@ class ProductManifestTests(unittest.TestCase):
         self.assertTrue(boundary["historicalLicenseRightsPreserved"])
         self.assertEqual(boundary["commercialSource"], "private-planned")
         self.assertFalse(boundary["commercialRepositoryCreated"])
-        self.assertFalse(boundary["modelRuntimeRepositoryCreated"])
-        self.assertFalse(boundary["modelDataRepositoryCreated"])
+        self.assertEqual(
+            "jianbaorui07-dot/KORYAO-Model-Private",
+            boundary["modelRuntimeRepository"],
+        )
+        self.assertTrue(boundary["modelRuntimeRepositoryCreated"])
+        self.assertEqual("private", boundary["modelRuntimeRepositoryVisibility"])
+        self.assertEqual(
+            "jianbaorui07-dot/KORYAO-Data-Private",
+            boundary["modelDataRepository"],
+        )
+        self.assertTrue(boundary["modelDataRepositoryCreated"])
+        self.assertEqual("private", boundary["modelDataRepositoryVisibility"])
         self.assertFalse(boundary["premiumImplementationsAllowedInCommunityRepository"])
 
     def test_pro_offer_is_proposed_not_claimed_as_launched(self) -> None:
@@ -81,9 +91,12 @@ class ProductManifestTests(unittest.TestCase):
         contract = features["model.contract_v1"]
         self.assertEqual("community", contract["edition"])
         self.assertEqual("experimental", contract["capabilityStatus"])
-        self.assertEqual("schema", contract["evidenceLevel"])
+        self.assertEqual("integration", contract["evidenceLevel"])
+        client = features["model.local_runtime_client_v1"]
+        self.assertEqual("community", client["edition"])
+        self.assertEqual("integration", client["evidenceLevel"])
         boundary = self.manifest["sourceBoundary"]
-        self.assertFalse(boundary["modelRuntimeRepositoryCreated"])
+        self.assertTrue(boundary["modelRuntimeRepositoryCreated"])
         self.assertFalse(boundary["communityBuildContainsPrivateProSource"])
 
     def test_feature_statuses_and_document_links_are_valid(self) -> None:

@@ -469,6 +469,7 @@ fn p1_request_allowed(request: &ApiRequest) -> bool {
         "/api/health",
         "/api/bootstrap",
         "/api/connections",
+        "/api/model/status",
         "/api/status",
         "/api/capabilities",
         "/api/tools",
@@ -497,6 +498,12 @@ fn p1_request_allowed(request: &ApiRequest) -> bool {
     }
     if request.method == "POST" && request.body.as_ref().is_some_and(Value::is_object) {
         if matches!(request.path.as_str(), "/api/projects" | "/api/jobs") {
+            return true;
+        }
+        if matches!(
+            request.path.as_str(),
+            "/api/model/plan" | "/api/model/evaluate" | "/api/model/repair"
+        ) {
             return true;
         }
         let parts: Vec<&str> = request.path.trim_matches('/').split('/').collect();
@@ -1099,6 +1106,16 @@ mod tests {
     #[test]
     fn p1_proxy_allows_product_reads_and_narrow_workflow_writes() {
         assert!(p1_request_allowed(&request("GET", "/api/bootstrap", None)));
+        assert!(p1_request_allowed(&request(
+            "GET",
+            "/api/model/status",
+            None
+        )));
+        assert!(p1_request_allowed(&request(
+            "POST",
+            "/api/model/plan",
+            Some(serde_json::json!({"schema": "koryao-model-contract/v1"})),
+        )));
         assert!(p1_request_allowed(&request(
             "GET",
             "/api/recipes?bridge=all",

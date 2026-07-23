@@ -9,6 +9,7 @@ export type PageId =
   | "photoshop-production"
   | "tasks"
   | "integrations"
+  | "models"
   | "delivery"
   | "batch"
   | "license"
@@ -32,6 +33,7 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
   { id: "ai-generation", label: "AI 图片生成", caption: "AI GENERATION" },
   { id: "tasks", label: "任务中心", caption: "TASK CENTER" },
   { id: "integrations", label: "连接中心", caption: "CONNECTIONS" },
+  { id: "models", label: "模型运行端", caption: "MODEL RUNTIME" },
   { id: "delivery", label: "交付与证据", caption: "DELIVERABLES" },
   { id: "batch", label: "批量生产", caption: "BATCH PRODUCTION" },
   { id: "license", label: "版本与授权", caption: "VERSIONS & LICENSE" },
@@ -49,6 +51,7 @@ export const PAGE_TITLES: Record<PageId, string> = {
   "photoshop-production": "Photoshop 安全副本",
   tasks: "任务中心",
   integrations: "连接中心",
+  models: "模型运行端",
   delivery: "交付与证据",
   batch: "批量生产",
   license: "版本与授权",
@@ -68,6 +71,7 @@ export const PAGE_CAPTIONS: Record<PageId, string> = {
   "photoshop-production": "PHOTOSHOP PRODUCTION",
   tasks: "TASK CENTER",
   integrations: "CONNECTIONS",
+  models: "MODEL RUNTIME",
   delivery: "DELIVERABLES",
   batch: "BATCH PRODUCTION",
   license: "VERSIONS & LICENSE",
